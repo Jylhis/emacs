@@ -816,6 +816,13 @@ doing search.  'compilation-search-extra-path' is consulted first.
 One possible use case of this option is to customize add new search
 paths on a per-project basis with directory-local variables.
 
+---
+** Emacs no longer kills child processes after EPIPE.
+Previously, Emacs would immediately kill a child process and set its
+exit status to 256 if sending input to that process returned EPIPE.
+Now when this happens, Emacs closes the file descriptor to write to the
+child process, but allows it to continue execution as normal.
+
 
 * Editing Changes in Emacs 31.1
 
