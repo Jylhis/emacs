@@ -1,10 +1,13 @@
+---
+description: Review code changes in the GNU Emacs codebase. Works with diffs, patches, or branch comparisons.
+argument-hint: <branch-or-path>
+---
+
 # Emacs Code Review
 
-Review code changes in the GNU Emacs codebase. Works with diffs, patches, or branch comparisons.
+## Diff to Review
 
-## When to Use
-
-Invoke with `/review` when reviewing changes before they are committed or merged.
+!`git diff $ARGUMENTS 2>/dev/null || echo "No arguments provided — review staged changes or specify a branch/path."`
 
 ## Process
 

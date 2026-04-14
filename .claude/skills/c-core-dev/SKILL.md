@@ -1,10 +1,9 @@
+---
+description: Work with the C source code that implements the Emacs core (src/ directory). Auto-invoked when working with C files in src/.
+user-invocable: false
+---
+
 # Emacs C Core Development
-
-Work with the C source code that implements the Emacs core (src/ directory).
-
-## When to Use
-
-Automatically loaded when working with `.c` or `.h` files in the `src/` directory.
 
 ## Architecture Overview
 

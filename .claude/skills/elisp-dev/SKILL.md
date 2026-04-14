@@ -1,10 +1,9 @@
+---
+description: Write, modify, and review Emacs Lisp code following GNU Emacs conventions. Auto-invoked when working with .el files.
+user-invocable: false
+---
+
 # Emacs Lisp Development
-
-Write, modify, and review Emacs Lisp code following GNU Emacs conventions.
-
-## When to Use
-
-Automatically loaded when working with `.el` files or Emacs Lisp code in this repository.
 
 ## Conventions
 

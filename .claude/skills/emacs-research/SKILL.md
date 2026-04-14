@@ -1,10 +1,9 @@
+---
+description: Research a topic, subsystem, or approach within GNU Emacs and produce a decision-ready summary.
+argument-hint: <topic-or-question>
+---
+
 # Emacs Research
-
-Research a topic, subsystem, or approach within GNU Emacs and produce a decision-ready summary.
-
-## When to Use
-
-Invoke with `/research` when you need to understand an Emacs subsystem, evaluate an approach, or investigate how something works before making changes.
 
 ## Process
 

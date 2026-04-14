@@ -1,10 +1,9 @@
+---
+description: Write and run ERT tests for GNU Emacs changes.
+argument-hint: <file-or-test-name>
+---
+
 # Emacs Testing
-
-Write and run ERT tests for GNU Emacs changes.
-
-## When to Use
-
-Use when writing new tests, fixing test failures, or validating changes.
 
 ## Test File Convention
 

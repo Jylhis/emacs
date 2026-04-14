@@ -1,10 +1,9 @@
+---
+description: Find the root cause of issues in GNU Emacs. No guessing, no shotgun fixes.
+argument-hint: <error-or-symptom>
+---
+
 # Emacs Debugging
-
-Find the root cause of issues in GNU Emacs. No guessing, no shotgun fixes.
-
-## When to Use
-
-Use when investigating bugs, crashes, test failures, or unexpected behavior in Emacs.
 
 ## Process
 
