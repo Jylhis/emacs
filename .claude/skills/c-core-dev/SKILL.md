@@ -5,9 +5,8 @@ user-invocable: false
 
 # Emacs C Core Development
 
-## Architecture Overview
+## Architecture
 
-The C core implements:
 - **Lisp interpreter**: eval, data types, garbage collector (`eval.c`, `alloc.c`, `data.c`)
 - **Buffer engine**: text storage, gap buffer, overlays (`buffer.c`, `insdel.c`)
 - **Display engine**: redisplay, terminal/GUI rendering (`xdisp.c`, `dispnew.c`)
@@ -15,31 +14,15 @@ The C core implements:
 - **Process management**: subprocesses, networking (`process.c`)
 - **Keyboard/input**: command loop, key handling (`keyboard.c`, `cmds.c`)
 
-## Coding Style
+## Style
 
-### GNU C Style
-- Indent with spaces (2-space default in GNU style)
+- GNU C style with tabs (`indent-tabs-mode: t`, tab-width 8)
 - Braces on their own line for function definitions
-- Space before parentheses in function calls: `foo (arg1, arg2)`
-- No space after cast: `(int)value`
-- Pointer declarations: `Lisp_Object *ptr`
+- Space before parentheses in calls: `foo (arg1, arg2)`
+- Fill column: 72
+- Two spaces between sentences in comments and doc strings
 
-### Lisp Object Handling
-
-```c
-/* All Lisp values are Lisp_Object — a tagged pointer/integer */
-Lisp_Object val = XCAR (list);       /* Extract car of a cons */
-CHECK_STRING (arg);                    /* Signal error if not a string */
-EMACS_INT n = XFIXNUM (number);       /* Extract fixnum value */
-
-/* Type checking macros */
-STRINGP (obj)    /* Is it a string? */
-CONSP (obj)      /* Is it a cons cell? */
-NILP (obj)       /* Is it nil? */
-FIXNUMP (obj)    /* Is it a fixnum? */
-```
-
-### Defining Lisp Primitives (DEFUN)
+## DEFUN
 
 ```c
 DEFUN ("my-function", Fmy_function, Smy_function, 1, 2, 0,
@@ -57,46 +40,61 @@ Optional second argument ARG2 defaults to nil.  */)
 ```
 
 - Register in `syms_of_*` function with `defsubr (&Smy_function);`
-- Document with `doc:` comment using Texinfo-like markup
 - Argument names in doc: UPPERCASE
 
-### Memory and GC Safety
-
-- Use `GCPRO` / `record_unwind_protect` for GC roots when needed
-- Call `maybe_quit ()` in long loops to allow user interrupts
-- Use `AUTO_STRING` for temporary Lisp strings from C literals
-- Never hold raw C pointers to Lisp data across potential GC points
-
-### Error Handling
+## Lisp Object API
 
 ```c
-signal_error ("Description", data);       /* Signal a generic error */
-error ("Format string %s", cstr);          /* Signal with message */
-xsignal2 (Qwrong_type_argument, Qstringp, obj);  /* Type error */
+/* Type predicates */
+STRINGP (obj)   CONSP (obj)    NILP (obj)
+FIXNUMP (obj)   SYMBOLP (obj)  VECTORP (obj)
+BUFFERP (obj)   FLOATP (obj)   MARKERP (obj)
+
+/* Argument validation (signal error if wrong type) */
+CHECK_STRING (arg)    CHECK_LIST (arg)     CHECK_FIXNUM (arg)
+CHECK_SYMBOL (arg)    CHECK_BUFFER (arg)   CHECK_VECTOR (arg)
+
+/* Value extraction */
+XCAR (cons)           XCDR (cons)
+XFIXNUM (fixnum)      XFLOAT_DATA (float)
+SSDATA (string)       SCHARS (string)      SBYTES (string)
+AREF (vector, idx)    ASIZE (vector)
 ```
 
-## Build and Test
+## GC Safety
+
+GCPRO is removed.  Modern Emacs uses:
+- `record_unwind_protect` / `record_unwind_protect_ptr` for cleanup
+- `specpdl` for dynamic bindings
+- Never hold raw C pointers to Lisp data across calls that can trigger GC
+- Call `maybe_quit ()` in long loops
+
+## Build and Debug
 
 ```bash
+# Debug build (from etc/DEBUG):
+./configure --enable-checking='yes,glyphs' CFLAGS='-O0 -g3'
+make
+
 # Rebuild after C changes:
 make -j$(nproc)
 
-# Debug build:
-./configure CFLAGS='-O0 -g3' --enable-checking=all
-make
+# Run under GDB (from src/ directory for .gdbinit):
+cd src && gdb --args ./emacs -Q
 
-# Run C-level tests:
-make -C test check-src
-
-# Run Emacs under GDB:
-gdb --args src/emacs -Q
+# Key GDB commands (from src/.gdbinit):
+# xbacktrace     -- Lisp-level backtrace
+# xtype OBJ      -- show Lisp_Object type
+# xprint OBJ     -- pretty-print Lisp_Object
+# pp OBJ         -- alias for xprint
+# break Fsignal  -- break on Lisp errors
+# break terminate_due_to_signal  -- break on fatal signals
 ```
 
 ## Key Files
 
-- `src/lisp.h` — Core Lisp_Object type definitions and macros
-- `src/eval.c` — Lisp evaluator
-- `src/alloc.c` — Memory allocation and garbage collector
-- `src/xdisp.c` — Display/redisplay engine (largest file)
-- `src/keyboard.c` — Command loop and input handling
-- `src/emacs.c` — Main entry point and initialization
+- `src/lisp.h` -- Lisp_Object type, macros, CHECK_* definitions
+- `src/eval.c` -- Lisp evaluator
+- `src/alloc.c` -- Allocator and garbage collector
+- `src/xdisp.c` -- Display engine (extensively commented)
+- `src/keyboard.c` -- Command loop and input

@@ -7,54 +7,53 @@ argument-hint: <branch-or-path>
 
 ## Diff to Review
 
-!`git diff $ARGUMENTS 2>/dev/null || echo "No arguments provided — review staged changes or specify a branch/path."`
+!`git diff $ARGUMENTS 2>/dev/null || echo "No arguments provided -- review staged changes or specify a branch/path."`
 
 ## Process
 
-1. **Understand the change** — Read the diff, commit messages, and any referenced bug reports (Bug#NNNNN)
-2. **Read surrounding context** — Examine the full functions and modules affected, not just the diff hunks
-3. **Evaluate across dimensions**:
-   - **Correctness**: Edge cases, error handling, type checking (CHECK_* macros in C, type predicates in Elisp)
-   - **Conventions**: GNU coding style, naming prefixes, docstrings, lexical-binding
-   - **Tests**: Are new/modified behaviors covered by ERT tests?
-   - **Documentation**: Docstrings updated? `etc/NEWS` entry needed? Manual updates?
-   - **Commit message**: Follows ChangeLog format? Bug references? Present tense?
-   - **Compatibility**: Does the change break existing behavior or public API?
-   - **Performance**: Especially in display code (xdisp.c) and tight loops
-4. **Categorize findings**:
-   - **Must-fix**: Bugs, data loss, security issues, crashes
-   - **Should-fix**: Convention violations, missing tests, missing docs
-   - **Nit**: Style preferences, minor improvements
-5. **Acknowledge strengths**: Call out clean solutions and thoughtful design
+1. **Understand the change** -- read the diff, commit messages, and any referenced bug reports (Bug#NNNNN)
+2. **Read surrounding context** -- examine the full functions and modules affected
+3. **Evaluate** against the checks below
+4. **Categorize findings**: must-fix (bugs, crashes, data loss), should-fix (conventions, missing tests), nit (style)
+5. **Acknowledge strengths** -- call out clean solutions
 
-## Emacs-Specific Checks
+## Elisp Checks
 
-### For Elisp Changes
-- [ ] `lexical-binding` enabled in file header
-- [ ] All public symbols properly prefixed
-- [ ] Docstrings present and pass `checkdoc`
+- [ ] `lexical-binding: t` in file header
+- [ ] All public symbols properly prefixed with library name
+- [ ] Docstrings present, pass `checkdoc`, fill column 72
+- [ ] Two spaces between sentences in docstrings and comments
 - [ ] `defcustom` has `:type`, `:version`, `:group`
 - [ ] Autoload cookies on user-facing commands
-- [ ] `etc/NEWS` entry for user-visible changes
+- [ ] `etc/NEWS` entry for user-visible changes (with `'symbol'` quoting)
 - [ ] ERT tests added or updated
+- [ ] Byte-compiles without warnings
+- [ ] Indentation uses spaces, not tabs
 
-### For C Changes
-- [ ] `CHECK_*` macros for argument validation in DEFUNs
-- [ ] GC safety (no raw pointers across GC points)
-- [ ] `maybe_quit()` in long loops
-- [ ] Proper error signaling (not C-level abort)
-- [ ] Matching tests in `test/src/`
+## C Checks
 
-### For Documentation Changes
-- [ ] Texinfo markup correct (run `make info` to verify)
-- [ ] Index entries (`@findex`, `@vindex`) for new symbols
-- [ ] Cross-references to related nodes
+- [ ] GNU style, tabs for indentation
+- [ ] `CHECK_*` macros for DEFUN argument validation
+- [ ] No raw C pointers held across GC-triggering calls
+- [ ] `maybe_quit ()` in long loops
+- [ ] `record_unwind_protect` for cleanup (not GCPRO, which is removed)
+- [ ] Error signaling via `signal_error`/`error`/`xsignal`, not `abort`
+- [ ] Two spaces between sentences in doc: comments
 
-## Output Format
+## Documentation Checks
 
-Group findings by severity. For each finding:
-- File and line reference
-- What the problem is
-- Suggested fix (with code if applicable)
+- [ ] Texinfo markup correct (`make info` to verify)
+- [ ] Index entries (`@findex`, `@vindex`, `@kindex`) for new symbols
+- [ ] American English, "Point" without article, active voice
+- [ ] NEWS symbols quoted with `'like-this'` (clickable in Emacs)
 
-End with verdict: **ship it**, **ship with fixes**, or **rethink approach**.
+## Commit Message Checks
+
+- [ ] Summary line under 50 chars, no trailing period, present tense
+- [ ] ChangeLog entry lines under 78 chars (63 preferred)
+- [ ] Bug references as `(Bug#NNNNN)`
+- [ ] No "Signed-off-by:" lines
+
+## Output
+
+Group findings by severity with file:line references.  End with verdict: **ship it**, **ship with fixes**, or **rethink approach**.

@@ -5,7 +5,7 @@ argument-hint: <file-or-test-name>
 
 # Emacs Testing
 
-## Test File Convention
+## File Convention
 
 Tests for `lisp/foo/bar.el` go in `test/lisp/foo/bar-tests.el`.
 Tests for `src/eval.c` go in `test/src/eval-tests.el`.
@@ -42,44 +42,33 @@ Tests for `src/eval.c` go in `test/src/eval-tests.el`.
 ;;; bar-tests.el ends here
 ```
 
-## ERT Assertions
+## Assertions
 
 ```elisp
 (should FORM)                              ; FORM must be non-nil
 (should-not FORM)                          ; FORM must be nil
 (should-error FORM :type 'error-symbol)    ; FORM must signal error
-(should (equal ACTUAL EXPECTED))           ; Equality test
-(should (string-match REGEXP STRING))      ; Regexp match
 ```
 
-## Test Tags
+## Tags
 
-- `:expensive-test` — Slow tests, skipped by `make check`, run by `make check-expensive`
-- `:nativecomp` — Requires native compilation support
-- `:unstable` — Under development, run by `make check-all` only
+- `:expensive-test` -- slow tests, skipped by `make check`, run by `make check-expensive`
+- `:nativecomp` -- requires native compilation
+- `:unstable` -- under development, run by `make check-all` only
 
-## Running Tests
+## Running
 
 ```bash
-# All tests:
-make check
-
-# Tests for one file:
-make -C test lisp/foo/bar-tests
-
-# Single named test:
-make -C test lisp/foo/bar-tests SELECTOR='bar-tests-basic-functionality'
-
-# Verbose output:
-make -C test lisp/foo/bar-tests 2>&1 | tee test-output.log
+make check                                                  # all tests
+make -C test lisp/foo/bar-tests                            # one file
+make -C test lisp/foo/bar-tests SELECTOR='test-name'       # one test
 ```
+
+Do not use `make -j` for tests (parallel test runs cause flaky failures).
 
 ## Best Practices
 
 - Test behavior, not implementation details
-- One assertion per logical check (multiple `should` in one test is fine for a single behavior)
 - Use `with-temp-buffer` for buffer-dependent tests
-- Use `let` to bind dynamic variables for isolated test state
-- Clean up side effects: files created, buffers opened, hooks added
-- Prefer `string-match-p` over `string-match` (no match data side effects)
+- Clean up side effects: files, buffers, hooks
 - Name tests: `<library>-tests-<what-is-tested>`

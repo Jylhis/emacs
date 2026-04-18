@@ -13,6 +13,12 @@ Every `.el` file must start with:
 ;;; filename.el --- Short description  -*- lexical-binding: t; -*-
 ```
 
+## Indentation
+
+- Indent with spaces only (`indent-tabs-mode: nil`)
+- Use default Emacs indentation; never put closing parens on separate lines
+- Fill column: 72 (including docstrings)
+
 ## Naming
 
 - Prefix all global symbols with the library name: `my-pkg-function`
@@ -22,8 +28,6 @@ Every `.el` file must start with:
 
 ## Style
 
-- Use default Emacs indentation; never put closing parens on separate lines
-- Lines should not exceed 80 characters
 - Use `when` instead of `(if x (progn ...))`
 - Use `unless` instead of `(when (not ...) ...)`
 - Use `#'function-name` for function references
@@ -34,13 +38,14 @@ Every `.el` file must start with:
 
 - Every public function/variable needs a docstring
 - First line: complete imperative sentence ("Return the buffer name.")
-- Arguments mentioned in UPPERCASE
+- Arguments mentioned in UPPERCASE, unquoted
 - American English, two spaces between sentences
+- Fill column: 72
+- "Point" is a proper name (no article): "Point is at end" not "The point is at end"
 - Run `checkdoc` to validate
 
 ## File Footer
 
-End every file with:
 ```elisp
 (provide 'filename)
 ;;; filename.el ends here
