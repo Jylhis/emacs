@@ -1,5 +1,8 @@
 { pkgs, ... }:
 
+let
+  installDir = "$DEVENV_ROOT/.emacs-dev";
+in
 {
   # https://devenv.sh/packages/
   packages = with pkgs; [
@@ -22,14 +25,41 @@
     ncurses
     sqlite
 
+    # Image libraries
+    libjpeg
+    libtiff
+    giflib
+    libpng
+    librsvg
+    libwebp
+
+    # Tree-sitter (modern syntax parsing)
+    tree-sitter
+
+    # Native compilation (Emacs Lisp -> native code)
+    libgccjit
+
+    # Text shaping
+    harfbuzz
+
+    # Bignum support (GMP)
+    gmp
+
+    # Other useful libraries
+    lcms2
+    dbus
+    zlib
+
     # Debugging
-    gdb
+    # gdb
   ];
 
   # https://devenv.sh/languages/
   languages = {
     nix.enable = true;
     c.enable = true;
+    java.enable = true;
+    shell.enable = true;
   };
 
   # https://devenv.sh/binary-caching/
@@ -49,8 +79,13 @@
         set -euo pipefail
         cd "$DEVENV_ROOT"
         ./autogen.sh
-        ./configure --enable-checking='yes,glyphs' \
+        ./configure --prefix=${installDir} \
+                    --enable-checking='yes,glyphs' \
                     --enable-check-lisp-object-type \
+                    --with-native-compilation \
+                    --with-tree-sitter \
+                    --with-xwidgets \
+                    --with-modules \
                     CFLAGS='-O0 -g3'
         make -j$(nproc)
       '';
@@ -65,6 +100,15 @@
       '';
     };
 
+    emacs-install = {
+      description = "Install into ${installDir}.";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        make install
+      '';
+    };
+
     emacs-check = {
       description = "Run the test suite (sequential, no -j).";
       exec = ''
@@ -74,11 +118,62 @@
       '';
     };
 
+    emacs-check-file = {
+      description = "Run tests for a single file, e.g. emacs-check-file lisp/foo/bar";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        if [ -z "''${1:-}" ]; then
+          echo "Usage: emacs-check-file <path>"
+          echo "  e.g. emacs-check-file lisp/simple"
+          exit 1
+        fi
+        make -C test "$1-tests"
+      '';
+    };
+
     emacs-run = {
       description = "Launch the locally built Emacs with -Q (no user config).";
       exec = ''
         set -euo pipefail
         "$DEVENV_ROOT/src/emacs" -Q "$@"
+      '';
+    };
+
+    emacs-run-installed = {
+      description = "Launch the installed Emacs with -Q (no user config).";
+      exec = ''
+        set -euo pipefail
+        "${installDir}/bin/emacs" -Q "$@"
+      '';
+    };
+
+    emacs-distclean = {
+      description = "Full clean (remove all build artifacts, requires re-bootstrap).";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        if [ -f Makefile ]; then
+          make distclean
+        else
+          echo "No Makefile found; nothing to clean."
+        fi
+      '';
+    };
+
+    emacs-configure = {
+      description = "Re-run configure with debug flags (no autogen, no make).";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        ./configure --prefix=${installDir} \
+                    --enable-checking='yes,glyphs' \
+                    --enable-check-lisp-object-type \
+                    --with-native-compilation \
+                    --with-tree-sitter \
+                    --with-xwidgets \
+                    --with-modules \
+                    CFLAGS='-O0 -g3'
       '';
     };
   };
