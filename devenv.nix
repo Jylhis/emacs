@@ -73,6 +73,42 @@ in
 
   # https://devenv.sh/scripts/
   scripts = {
+    emacs-min = {
+      description = "Minimal emacs";
+      exec = ''
+        ./configure \
+        -C \
+        --disable-year2038 \
+        --disable-xattr \
+        --disable-acl \
+        --without-selinux \
+        --without-all \
+        --with-x-toolkit=no \
+        --without-cairo \
+        --without-gnutls \
+        --without-xml2 \
+        --without-imagemagick \
+        --without-xpm \
+        --without-jpeg \
+        --without-tiff \
+        --without-gif \
+        --without-png \
+        --without-rsvg \
+        --without-webp \
+        --without-lcms2 \
+        --without-dbus \
+        --without-gconf \
+        --without-gsettings \
+        --without-selinux \
+        --without-sound \
+        --without-tree-sitter \
+        --without-native-compilation \
+        --with-x=no \
+        --disable-largefile \
+        --disable-ns-self-contained \
+        --disable-build-details
+      '';
+    };
     emacs-bootstrap = {
       description = "Full clean build from scratch (autogen + configure + make).";
       exec = ''
