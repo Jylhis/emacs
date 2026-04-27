@@ -391,3 +391,14 @@ exec/config.h.in
 exec/config-mips.m4
 exec/configure
 exec/*.s.s
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
