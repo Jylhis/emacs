@@ -58,6 +58,13 @@ Do not use `make -j` for tests -- parallel test runs cause flaky failures.
 
 See `.claude/rules/` for detailed path-specific rules.
 
+## Research Notes
+
+Investigative notes live in `.claude/notes/`.  When exploring the
+repository documentation, build system, or developer tooling, update
+the relevant note file (or create a new one) so findings persist
+across sessions.  See `.claude/notes/README.md` for the index.
+
 ## Debugging
 
 GDB from `src/` directory (loads `.gdbinit` automatically):

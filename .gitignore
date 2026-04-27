@@ -20,6 +20,7 @@
 
 # Ignore all dot-files except for those under version control.
 .*
+!.claude
 !.clang-format
 !.clangd
 !.dir-locals.el
