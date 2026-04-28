@@ -4,16 +4,21 @@ Inc.
 See the end of the file for license conditions.
 
 
-This file contains general information on building GNU Emacs.  If you
-are building an Emacs release tarball on a Unix or a GNU system, the
-instructions in this file should be sufficient.  For other
-configurations, we have additional specialized files:
+This file contains general information on building GNU Emacs.  This
+tree only supports the following targets:
+
+  . GNU/Linux on x86_64 or aarch64
+  . macOS on x86_64 (Intel) or arm64 (Apple Silicon), via the Cocoa
+    NS port
+  . Android (NDK builds; see java/INSTALL)
+
+For other operating systems or CPU architectures, use upstream GNU
+Emacs.  For other configurations, we have additional specialized
+files:
 
   . INSTALL.REPO if you build from a Git checkout
-  . nt/INSTALL if you build a native (non-Cygwin) Emacs for MS-Windows
-  . nextstep/INSTALL if you build for GNUstep/macOS
+  . nextstep/INSTALL if you build for macOS
   . java/INSTALL if you build for Android
-  . msdos/INSTALL if you build for MS-DOS
 
 
 BASIC INSTALLATION
@@ -136,17 +141,13 @@ On GNU and Unix systems, Emacs needs optional libraries to correctly
 display such complex scripts as Indic and Khmer, and also for scripts
 that require Arabic shaping support (Arabic and Farsi).  If the
 HarfBuzz library is installed, Emacs will build with it and use it for
-this purpose.  HarfBuzz is the preferred shaping engine, both on Posix
-hosts and on MS-Windows, so we recommend installing it before building
-Emacs.  The alternative for GNU/Linux and Posix systems is to use the
-"m17n-db", "libm17n-flt", and "libotf" libraries.  (On some systems,
-particularly GNU/Linux, these libraries may be already present or
-available as additional packages.)  Note that if there is a separate
-'dev' or 'devel' package, for use at compilation time rather than run
-time, you will need that as well as the corresponding run time
-package; typically the dev package will contain header files and a
-library archive.  On MS-Windows, if HarfBuzz is not available, Emacs
-will use the Uniscribe shaping engine that is part of the OS.
+this purpose.  HarfBuzz is the preferred shaping engine, so we
+recommend installing it before building Emacs.  The alternative is to
+use the "m17n-db", "libm17n-flt", and "libotf" libraries.  Note that
+if there is a separate 'dev' or 'devel' package, for use at
+compilation time rather than run time, you will need that as well as
+the corresponding run time package; typically the dev package will
+contain header files and a library archive.
 
 Note that Emacs cannot support complex scripts on a TTY, unless the
 terminal includes such a support.  However, most modern terminal
@@ -193,7 +194,6 @@ can be found (in the unlikely event that your distribution does not
 provide them).  By default, libraries marked with an X are required if
 X11 is being used.
 
-    libXaw3d          https://directory.fsf.org/project/Xaw3d
   X libxpm for XPM:   https://www.x.org/releases/current/src/lib/
   X libpng for PNG:   http://www.libpng.org/
     libz (for PNG):   https://www.zlib.net/
@@ -238,8 +238,6 @@ like 'apt-get build-dep emacs' (on older systems, replace 'emacs' with
 e.g. 'emacs25').  On Red Hat-based systems, the corresponding command is
 'dnf builddep emacs' (on older systems, use 'yum-builddep' instead).
 
-On FreeBSD, the command is 'pkg install -y `pkg rquery %dn emacs-devel`'.
-
 * Alternative window systems
 
 If you want to use Emacs on one of the alternative window systems
@@ -270,9 +268,6 @@ to force GTK+ to run under Broadway, start Emacs like this:
 
 (where '...' denotes any further options you may want to pass to Emacs).
 
-The GNUstep build also supports the Wayland window system.  If that is
-what you want, see nextstep/INSTALL.
-
 * Native compilation of Lisp files
 
 In addition to byte-compiling files of Lisp code, Emacs can also produce
@@ -294,10 +289,8 @@ Lisp code even if your system satisfies the build requirements, use the
 
 DETAILED BUILDING AND INSTALLATION:
 
-(This is for a Unix or Unix-like system (including Cygwin on
-MS-Windows).  For GNUstep and macOS, see nextstep/INSTALL.  For building
-a native Windows Emacs for non-ancient versions of MS Windows, see the
-file nt/INSTALL.  For MS-DOS and MS Windows 3.X, see msdos/INSTALL.)
+(This is for GNU/Linux on x86_64 or aarch64.  For macOS, see
+nextstep/INSTALL.  For Android, see java/INSTALL.)
 
 1) See BASIC INSTALLATION above for getting and configuring Emacs.
 
@@ -307,11 +300,6 @@ optimization options -O3 or -Os, and also recommend not to use the
 compiler option -fsanitize=undefined.  These are known to sometimes cause
 problems with the generated code, and we recommend using them only in
 debugging builds or for testing specific problems in Emacs.
-
-2) In the unlikely event that 'configure' does not detect your system
-type correctly, consult './etc/MACHINES' to see what --host, --build
-options you should pass to 'configure'.  That file also offers hints
-for getting around some possible installation problems.
 
 3) You can build Emacs in the top-level Emacs source directory
 or in a separate directory.
@@ -335,14 +323,11 @@ is able to find them; these options are necessary if you have your X
 Window System files installed in unusual places.  These options also
 accept a list of directories, separated with colons.
 
-To get more attractive menus, you can specify an X toolkit when you
-configure Emacs; use the option '--with-x-toolkit=TOOLKIT', where
-TOOLKIT is 'gtk' (the default), 'athena', or 'motif' ('yes' and
-'lucid' are synonyms for 'athena').  Compiling with Motif causes a
-standard File Selection Dialog to pop up when you invoke file commands
-with the mouse.  You can get fancy 3D-style scroll bars, even without
-Gtk or Motif, if you have the Xaw3d library installed (see
-"Image support libraries" above for Xaw3d availability).
+GTK 3 is the only supported X toolkit.  Use the option
+'--with-x-toolkit=gtk3' (or '=yes', which is a synonym) to enable it
+explicitly, or '--with-x-toolkit=no' to build without an X toolkit.
+The Lucid (Athena/Xaw/Xaw3d) and Motif toolkits are no longer
+supported.
 
 You can tell configure where to search for GTK by giving it the
 argument PKG_CONFIG='/full/name/of/pkg-config'.
@@ -369,8 +354,7 @@ whether Emacs actually uses POP3 is controlled by individual users;
 see the Rmail chapter of the Emacs manual.  Unless --with-mailutils is
 in effect, it is a good idea to configure without POP3 support so that
 users are less likely to inadvertently read email via insecure
-channels.  On native MS-Windows, --with-pop is the default; on other
-platforms, --without-pop is the default.
+channels.  --without-pop is the default.
 
 For image support you may have to download, build, and install the
 appropriate image support libraries for image types other than XBM and
@@ -392,7 +376,7 @@ or more of these options:
 Although ImageMagick support is disabled by default due to security
 and stability concerns, you can enable it with --with-imagemagick.
 
-Use --without-toolkit-scroll-bars to disable Motif or Xaw3d scroll bars.
+Use --without-toolkit-scroll-bars to disable GTK toolkit scroll bars.
 
 Use --without-xim to inhibit the default use of X Input Methods.
 In this case, the X resource useXIM can be used to turn on use of XIM.
