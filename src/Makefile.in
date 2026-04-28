@@ -19,10 +19,6 @@
 # along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 
-# Note that this file is edited by msdos/sed1v2.inp for MSDOS.  That
-# script may need modifying in sync with changes made here.  Try to
-# avoid shell-ism because the DOS build has to use the DOS shell.
-
 SHELL = @SHELL@
 
 # Here are the things that we expect ../configure to edit.
@@ -30,7 +26,6 @@ SHELL = @SHELL@
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
 top_builddir = @top_builddir@
-# MinGW CPPFLAGS may use this.
 abs_top_srcdir=@abs_top_srcdir@
 VPATH = $(srcdir)
 
@@ -94,7 +89,6 @@ C_SWITCH_MACHINE=@C_SWITCH_MACHINE@
 ## System-specific CFLAGS.
 C_SWITCH_SYSTEM=@C_SWITCH_SYSTEM@
 
-GNUSTEP_CFLAGS=@GNUSTEP_CFLAGS@
 PNG_CFLAGS=@PNG_CFLAGS@
 
 ## Define C_SWITCH_X_SITE to contain any special flags your compiler
@@ -184,30 +178,20 @@ GTK_OBJ=@GTK_OBJ@
 ## inotify.o if HAVE_INOTIFY.
 ## kqueue.o if HAVE_KQUEUE.
 ## gfilenotify.o if HAVE_GFILENOTIFY.
-## w32notify.o if HAVE_W32NOTIFY.
 NOTIFY_OBJ = @NOTIFY_OBJ@
 NOTIFY_CFLAGS = @NOTIFY_CFLAGS@
 NOTIFY_LIBS = @NOTIFY_LIBS@
 
 ## -ltermcap, or -lncurses, or -lcurses, or "".
 LIBS_TERMCAP=@LIBS_TERMCAP@
-## terminfo.o if TERMINFO, else (on MS-DOS only: termcap.o +) tparam.o.
+## terminfo.o if TERMINFO, else tparam.o.
 TERMCAP_OBJ=@TERMCAP_OBJ@
-
-LIBXMU=@LIBXMU@
 
 LIBXSM=@LIBXSM@
 
-LIBXTR6=@LIBXTR6@
-
-## $(LIBXMU) -lXt $(LIBXTR6) -lXext if USE_X_TOOLKIT, else $(LIBXSM).
+## $(LIBXSM).
 ## Only used if HAVE_X_WINDOWS.
 LIBXT_OTHER=@LIBXT_OTHER@
-
-## If !HAVE_X11 || USE_GTK, empty.
-## Else if USE_X_TOOLKIT, $(lwlibdir)/liblw.a.
-## Else $(oldXMenudir)/libXMenu11.a.
-LIBXMENU=@LIBXMENU@
 
 ## xmenu.o if HAVE_X_WINDOWS, else empty.
 XMENU_OBJ=@XMENU_OBJ@
@@ -218,22 +202,16 @@ XOBJ=@XOBJ@
 # xgselect.o if linking with GLib, else empty
 XGSELOBJ=@XGSELOBJ@
 
-TOOLKIT_LIBW=@TOOLKIT_LIBW@
-
 ## Only used if HAVE_X11, in LIBX_OTHER.
-LIBXT=$(TOOLKIT_LIBW) $(LIBXT_OTHER)
+LIBXT=$(LIBXT_OTHER)
 
 ## If HAVE_X11, $(LIBXT) $(LIBX_EXTRA), else empty.
 LIBX_OTHER=@LIBX_OTHER@
 
-## LIBXMENU is empty if !HAVE_X_WINDOWS.
 ## LD_SWITCH_X_SITE should not be used if not using X, but nothing
 ## sets it at present, and if something ever does, it should be
 ## configure, which should set it to nil in non-X builds.
-LIBX_BASE=$(LIBXMENU) $(LD_SWITCH_X_SITE)
-
-## Used only for GNUstep.
-LIBS_GNUSTEP=$(patsubst -specs=%-hardened-ld,,@LIBS_GNUSTEP@)
+LIBX_BASE=$(LD_SWITCH_X_SITE)
 
 LIBSOUND= @LIBSOUND@
 CFLAGS_SOUND= @CFLAGS_SOUND@
@@ -294,54 +272,24 @@ XCOMPOSITE_CFLAGS = @XCOMPOSITE_CFLAGS@
 XSHAPE_LIBS = @XSHAPE_LIBS@
 XSHAPE_CFLAGS = @XSHAPE_CFLAGS@
 
-## widget.o if USE_X_TOOLKIT, otherwise empty.
-WIDGET_OBJ=@WIDGET_OBJ@
-
-## cygw32.o if CYGWIN, otherwise empty.
-CYGWIN_OBJ=@CYGWIN_OBJ@
-
 ## fontset.o fringe.o image.o if we have any window system
 WINDOW_SYSTEM_OBJ=@WINDOW_SYSTEM_OBJ@
-
-## dosfns.o msdos.o w16select.o if MSDOS.
-MSDOS_OBJ =
-## w16select.o termcap.o if MSDOS && HAVE_X_WINDOWS.
-MSDOS_X_OBJ =
 
 NS_OBJ=@NS_OBJ@
 ## nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o ns_fontfile if HAVE_NS.
 NS_OBJC_OBJ=@NS_OBJC_OBJ@
-## Used only for GNUstep.
-GNU_OBJC_CFLAGS=$(patsubst -specs=%-hardened-cc1,,@GNU_OBJC_CFLAGS@)
-## w32fns.o w32menu.c w32reg.o fringe.o fontset.o w32font.o w32term.o
-## w32xfns.o w32select.o image.o w32uniscribe.o w32cygwinx.o if HAVE_W32,
-## w32cygwinx.o if CYGWIN but not HAVE_W32, else empty.
-W32_OBJ=@W32_OBJ@
-## -lkernel32 -luser32 -lusp10 -lgdi32 -lole32 -lcomdlg32 -lcomctl32
-## -lwinspool if HAVE_W32,
-## -lkernel32 if CYGWIN but not HAVE_W32, else empty.
-W32_LIBS=@W32_LIBS@
 
 PGTK_OBJ=@PGTK_OBJ@
 PGTK_LIBS=@PGTK_LIBS@
 
-## emacs.res if HAVE_W32
-EMACSRES = @EMACSRES@
-## If HAVE_W32, compiler arguments for including
-## the resource file in the binary.
-## Cygwin: -Wl,emacs.res
-## MinGW: emacs.res
-W32_RES_LINK=@W32_RES_LINK@
-
 ## Empty if !HAVE_X_WINDOWS
-## xfont.o ftfont.o xftfont.o if HAVE_XFT
 ## xfont.o ftfont.o if HAVE_FREETYPE
 ## xfont.o ftfont.o ftcrfont.o if USE_CAIRO
 ## else xfont.o
 ## if HAVE_HARFBUZZ, hbfont.o is added regardless of the rest
 FONT_OBJ=@FONT_OBJ@
 
-## Empty for MinGW and Android, cm.o for the rest.
+## Empty for Android, cm.o otherwise.
 CM_OBJ=@CM_OBJ@
 
 LIBGPM = @LIBGPM@
@@ -375,11 +323,6 @@ RUN_TEMACS = ./temacs
 # Whether builds should contain details. '--no-build-details' or empty.
 BUILD_DETAILS = @BUILD_DETAILS@
 
-HAIKU_OBJ = @HAIKU_OBJ@
-HAIKU_CXX_OBJ = @HAIKU_CXX_OBJ@
-HAIKU_LIBS = @HAIKU_LIBS@
-HAIKU_CFLAGS = @HAIKU_CFLAGS@
-
 ANDROID_OBJ = @ANDROID_OBJ@
 ANDROID_LIBS = @ANDROID_LIBS@
 ANDROID_LDFLAGS = @ANDROID_LDFLAGS@
@@ -390,8 +333,6 @@ LIBGMP_CFLAGS = @LIBGMP_CFLAGS@
 DUMPING=@DUMPING@
 CHECK_STRUCTS = @CHECK_STRUCTS@
 HAVE_PDUMPER = @HAVE_PDUMPER@
-
-HAVE_BE_APP = @HAVE_BE_APP@
 
 ## ARM Macs require that all code have a valid signature.  Since pdump
 ## invalidates the signature, we must re-sign to fix it.
@@ -421,7 +362,7 @@ NON_CXX_CFLAGS = -Wmissing-prototypes -Wnested-externs -Wold-style-definition \
 EMACS_CFLAGS=-Demacs $(MYCPPFLAGS) -I. -I$(srcdir) \
   -I$(lib) -I$(top_srcdir)/lib \
   $(C_SWITCH_MACHINE) $(C_SWITCH_SYSTEM) $(C_SWITCH_X_SITE) \
-  $(GNUSTEP_CFLAGS) $(CFLAGS_SOUND) $(RSVG_CFLAGS) $(IMAGEMAGICK_CFLAGS) \
+  $(CFLAGS_SOUND) $(RSVG_CFLAGS) $(IMAGEMAGICK_CFLAGS) \
   $(PNG_CFLAGS) $(LIBXML2_CFLAGS) $(LIBGCCJIT_CFLAGS) $(DBUS_CFLAGS) \
   $(XRANDR_CFLAGS) $(XINERAMA_CFLAGS) $(XFIXES_CFLAGS) $(XDBE_CFLAGS) \
   $(XINPUT_CFLAGS) $(WEBP_CFLAGS) $(WEBKIT_CFLAGS) $(LCMS2_CFLAGS) \
@@ -429,23 +370,18 @@ EMACS_CFLAGS=-Demacs $(MYCPPFLAGS) -I. -I$(srcdir) \
   $(HARFBUZZ_CFLAGS) $(LIBOTF_CFLAGS) $(M17N_FLT_CFLAGS) $(DEPFLAGS) \
   $(LIBSYSTEMD_CFLAGS) $(XSYNC_CFLAGS) $(TREE_SITTER_CFLAGS) \
   $(LIBGNUTLS_CFLAGS) $(NOTIFY_CFLAGS) $(CAIRO_CFLAGS) \
-  $(WERROR_CFLAGS) $(HAIKU_CFLAGS) $(XCOMPOSITE_CFLAGS) $(XSHAPE_CFLAGS) \
+  $(WERROR_CFLAGS) $(XCOMPOSITE_CFLAGS) $(XSHAPE_CFLAGS) \
   $(ANDROID_BUILD_CFLAGS) $(GIF_CFLAGS) $(JPEG_CFLAGS) $(SQLITE3_CFLAGS) \
   $(LIBGMP_CFLAGS) $(TIFF_CFLAGS) $(LIBSELINUX_CFLAGS)
 ALL_CFLAGS = $(EMACS_CFLAGS) $(WARN_CFLAGS) $(CFLAGS)
 ALL_OBJC_CFLAGS = $(EMACS_CFLAGS) \
-  $(filter-out $(NON_OBJC_CFLAGS),$(WARN_CFLAGS)) $(CFLAGS) \
-  $(GNU_OBJC_CFLAGS)
-ALL_CXX_CFLAGS = $(EMACS_CFLAGS) \
-  $(filter-out $(NON_CXX_CFLAGS),$(WARN_CFLAGS)) $(CXXFLAGS)
+  $(filter-out $(NON_OBJC_CFLAGS),$(WARN_CFLAGS)) $(CFLAGS)
 
-.SUFFIXES: .c .m .cc
+.SUFFIXES: .c .m
 .c.o:
 	$(AM_V_CC)$(CC) -c $(CPPFLAGS) $(ALL_CFLAGS) $(PROFILING_CFLAGS) $<
 .m.o:
 	$(AM_V_CC)$(CC) -c $(CPPFLAGS) $(ALL_OBJC_CFLAGS) $(PROFILING_CFLAGS) $<
-.cc.o:
-	$(AM_V_CXX)$(CXX) -c $(CPPFLAGS) $(ALL_CXX_CFLAGS) $(PROFILING_CFLAGS) $<
 
 base_obj = dispnew.o frame.o scroll.o xdisp.o menu.o $(XMENU_OBJ) window.o     \
 	charset.o coding.o category.o ccl.o character.o chartab.o bidi.o       \
@@ -464,26 +400,24 @@ base_obj = dispnew.o frame.o scroll.o xdisp.o menu.o $(XMENU_OBJ) window.o     \
 	profiler.o decompress.o 					       \
 	thread.o systhread.o sqlite.o  treesit.o			       \
 	itree.o json.o 							       \
-	$(MSDOS_OBJ) $(MSDOS_X_OBJ) $(NS_OBJ) $(CYGWIN_OBJ) $(FONT_OBJ)        \
-	$(W32_OBJ) $(WINDOW_SYSTEM_OBJ) $(XGSELOBJ)			       \
-	$(HAIKU_OBJ) $(PGTK_OBJ) $(ANDROID_OBJ)
+	$(NS_OBJ) $(FONT_OBJ)						       \
+	$(WINDOW_SYSTEM_OBJ) $(XGSELOBJ)				       \
+	$(PGTK_OBJ) $(ANDROID_OBJ)
 doc_obj = $(base_obj) $(NS_OBJC_OBJ)
-obj = $(doc_obj) $(HAIKU_CXX_OBJ)
+obj = $(doc_obj)
 
 ## Object files used on some machine or other.
 ## These go in the DOC file on all machines in case they are needed.
 ## Some of them have no DOC entries, but it does no harm to have them
 ## in the list, in case they ever add any such entries.
-SOME_MACHINE_OBJECTS = dosfns.o msdos.o \
+SOME_MACHINE_OBJECTS = \
   xterm.o xfns.o xmenu.o xselect.o xrdb.o xsmfns.o fringe.o image.o \
-  fontset.o dbusbind.o cygw32.o \
+  fontset.o dbusbind.o \
   nsterm.o nsfns.o nsmenu.o nsselect.o nsimage.o nsfont.o macfont.o \
   nsxwidget.o \
-  w32.o w32console.o w32cygwinx.o w32fns.o w32heap.o w32inevt.o w32notify.o \
-  w32menu.o w32proc.o w32reg.o w32select.o w32term.o w32xfns.o \
-  w16select.o widget.o xfont.o ftfont.o xftfont.o gtkutil.o \
+  xfont.o ftfont.o gtkutil.o \
   xsettings.o xgselect.o termcap.o hbfont.o \
-  haikuterm.o haikufns.o haikumenu.o haikufont.o androidterm.o androidfns.o \
+  androidterm.o androidfns.o \
   androidfont.o androidselect.c androidvfs.c sfntfont-android.c sfntfont.c
 
 ## gmalloc.o if !SYSTEM_MALLOC && !DOUG_LEA_MALLOC, else empty.
@@ -496,17 +430,13 @@ VMLIMIT_OBJ=@VMLIMIT_OBJ@
 RALLOC_OBJ=@RALLOC_OBJ@
 
 ## List of object files that make-docfile should not be told about.
-otherobj= $(TERMCAP_OBJ) $(GMALLOC_OBJ) $(RALLOC_OBJ) $(WIDGET_OBJ) $(LIBOBJS)
+otherobj= $(TERMCAP_OBJ) $(GMALLOC_OBJ) $(RALLOC_OBJ) $(LIBOBJS)
 
 ## All object files linked into temacs.  $(VMLIMIT_OBJ) should be first.
 ALLOBJS = $(VMLIMIT_OBJ) $(obj) $(otherobj)
 
 # Must be first, before dep inclusion!
-ifneq ($(HAVE_BE_APP),yes)
 all: emacs$(EXEEXT) $(pdmp) $(OTHER_FILES)
-else
-all: Emacs Emacs.pdmp $(OTHER_FILES)
-endif
 ifeq ($(HAVE_NATIVE_COMP):$(NATIVE_DISABLED),yes:)
 all: ../native-lisp
 endif
@@ -570,7 +500,7 @@ export LISP_PRELOADED = ${shortlisp}
 lisp = $(addprefix ${lispsource}/,${shortlisp})
 
 ## Construct full set of libraries to be linked.
-LIBES = $(LIBS) $(W32_LIBS) $(LIBS_GNUSTEP) $(PGTK_LIBS) $(LIBX_BASE) $(LIBIMAGE) \
+LIBES = $(LIBS) $(PGTK_LIBS) $(LIBX_BASE) $(LIBIMAGE) \
    $(LIBX_OTHER) $(LIBSOUND) \
    $(RSVG_LIBS) $(IMAGEMAGICK_LIBS) $(LIB_ACL) $(CLOCK_TIME_LIB) \
    $(NANOSLEEP_LIB) $(QCOPY_ACL_LIB) $(WEBKIT_LIBS) \
@@ -582,7 +512,7 @@ LIBES = $(LIBS) $(W32_LIBS) $(LIBS_GNUSTEP) $(PGTK_LIBS) $(LIBX_BASE) $(LIBIMAGE
    $(FREETYPE_LIBS) $(FONTCONFIG_LIBS) $(HARFBUZZ_LIBS) $(LIBOTF_LIBS) $(M17N_FLT_LIBS) \
    $(LIBGNUTLS_LIBS) $(LIB_PTHREAD) $(GETADDRINFO_A_LIBS) $(LCMS2_LIBS) \
    $(NOTIFY_LIBS) $(LIB_MATH) $(LIBZ) $(LIBMODULES) $(LIBSYSTEMD_LIBS) \
-   $(LIBGMP) $(LIBGCCJIT_LIBS) $(XINPUT_LIBS) $(HAIKU_LIBS) \
+   $(LIBGMP) $(LIBGCCJIT_LIBS) $(XINPUT_LIBS) \
    $(TREE_SITTER_LIBS) $(SQLITE3_LIBS) $(XCOMPOSITE_LIBS) $(XSHAPE_LIBS) \
    $(ANDROID_LIBS)
 
@@ -630,22 +560,7 @@ SYSTEM_TYPE = @SYSTEM_TYPE@
 emacs$(EXEEXT): temacs$(EXEEXT) \
                 $(abs_top_builddir)/src/lisp.mk $(etc)/DOC $(lisp) \
                 $(lispsource)/international/charprop.el ${charsets}
-ifeq ($(SYSTEM_TYPE),cygwin)
-	find ${top_builddir} -name '*.eln' | rebase -v -O -T -
-endif
 	rm -f $@ && cp -f temacs$(EXEEXT) $@
-
-## On Haiku, also produce a binary named Emacs with the appropriate
-## icon set.
-
-ifeq ($(HAVE_BE_APP),yes)
-Emacs: emacs$(EXEEXT) $(libsrc)/be-resources
-	$(AM_V_GEN) cp -f emacs$(EXEEXT) $@
-	$(AM_V_at) $(libsrc)/be-resources \
-	  $(etc)/images/icons/hicolor/32x32/apps/emacs.png $@
-Emacs.pdmp: $(pdmp)
-	$(AM_V_GEN) cp -f $(pdmp) $@
-endif
 
 ifeq ($(DUMPING),pdumper)
 $(pdmp): emacs$(EXEEXT) $(lispsource)/loaddefs.el $(lispsource)/loaddefs.elc
@@ -703,17 +618,11 @@ endif
 ## existence when setting Vinstallation_directory (FIXME?).
 ## This goes on to affect various things, and the emacs binary fails
 ## to start if Vinstallation_directory has the wrong value.
-temacs$(EXEEXT): $(LIBXMENU) $(ALLOBJS) $(LIBEGNU_ARCHIVE) $(EMACSRES) \
+temacs$(EXEEXT): $(ALLOBJS) $(LIBEGNU_ARCHIVE) \
   $(charsets) $(charscript) ${emoji-zwj} $(MAKE_PDUMPER_FINGERPRINT)
-ifeq ($(HAVE_BE_APP),yes)
-	$(AM_V_CXXLD)$(CXX) -o $@.tmp \
-	  $(ALL_CFLAGS) $(TEMACS_LDFLAGS) $(LDFLAGS) \
-	  $(ALLOBJS) $(LIBEGNU_ARCHIVE) $(W32_RES_LINK) $(LIBES) -lstdc++
-else
 	$(AM_V_CCLD)$(CC) -o $@.tmp \
 	  $(ALL_CFLAGS) $(CXXFLAGS) $(TEMACS_LDFLAGS) $(LDFLAGS) \
-	  $(ALLOBJS) $(LIBEGNU_ARCHIVE) $(W32_RES_LINK) $(LIBES)
-endif
+	  $(ALLOBJS) $(LIBEGNU_ARCHIVE) $(LIBES)
 ifeq ($(HAVE_PDUMPER),yes)
 	$(AM_V_at)$(MAKE_PDUMPER_FINGERPRINT) $@.tmp
 ifeq ($(DO_CODESIGN),yes)
@@ -747,7 +656,7 @@ build-counter.c: $(abs_top_builddir)/src/lisp.mk $(lisp)
 	$(AM_V_GEN) $(top_srcdir)/build-aux/makecounter.sh $@
 
 libemacs.so: $(ALLOBJS) $(BUILD_COUNTER_OBJ) $(LIBEGNU_ARCHIVE) \
-	     $(EMACSRES) $(MAKE_PDUMPER_FINGERPRINT) \
+	     $(MAKE_PDUMPER_FINGERPRINT) \
 	     $(NDK_BUILD_SHARED) $(NDK_BUILD_STATIC) $(etc)/DOC
 	$(AM_V_CCLD)$(CC) -o $@ $(ALL_CFLAGS) $(TEMACS_LDFLAGS) \
 	  $(ANDROID_LDFLAGS) $(LDFLAGS) -shared $(ALLOBJS) \
