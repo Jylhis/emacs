@@ -95,11 +95,8 @@ EXEEXT=@EXEEXT@
 version=@version@
 
 ### This should be the name of the configuration we're building Emacs
-### for, like 'x86_64-unknown-linux-gnu' or 'powerpc-ibm-aix7.1.2.0'.
+### for, like 'x86_64-unknown-linux-gnu' or 'aarch64-apple-darwin'.
 configuration=@configuration@
-
-### The nt/ subdirectory gets built only for MinGW
-NTDIR=@NTDIR@
 
 top_builddir = @top_builddir@
 -include ${top_builddir}/src/verbose.mk
@@ -109,7 +106,6 @@ FIND_DELETE = @FIND_DELETE@
 USE_STARTUP_NOTIFICATION = @USE_STARTUP_NOTIFICATION@
 
 HAVE_NATIVE_COMP = @HAVE_NATIVE_COMP@
-HAVE_BE_APP = @HAVE_BE_APP@
 HAVE_PGTK = @HAVE_PGTK@
 HAVE_GSETTINGS = @HAVE_GSETTINGS@
 
@@ -117,7 +113,7 @@ ANDROID = @ANDROID@
 
 # ==================== Where To Install Things ====================
 
-# Location to install Emacs.app under GNUstep / macOS.
+# Location to install Emacs.app under macOS.
 # Later values may use these.
 ns_appdir=@ns_appdir@
 ns_appbindir=@ns_appbindir@
@@ -298,11 +294,7 @@ INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_INFO = @INSTALL_INFO@
-ifeq ($(SYSTEM_TYPE),cygwin)
-  INSTALL_ELN = $(INSTALL)
-else
-  INSTALL_ELN = $(INSTALL_DATA)
-endif
+INSTALL_ELN = $(INSTALL_DATA)
 # By default, we uphold the dignity of our programs.
 INSTALL_STRIP =
 MKDIR_P = @MKDIR_P@
@@ -329,7 +321,7 @@ EMACSFULL = `echo emacs-${version} | sed '$(TRANSFORM)'`${EXEEXT}
 EMACS_PDMP = `./src/emacs${EXEEXT} --fingerprint`.pdmp
 
 # Subdirectories to make recursively.
-SUBDIR = $(NTDIR) lib lib-src src lisp
+SUBDIR = lib lib-src src lisp
 
 ifeq ($(ANDROID),yes)
 SUBDIR := $(SUBDIR) java
@@ -341,12 +333,11 @@ SUBDIR_MAKEFILES = $(patsubst ${srcdir}/%,%,${SUBDIR_MAKEFILES_IN:.in=})
 
 # Non-makefile files created by config.status.
 CONFIG_STATUS_FILES_IN = \
- ${srcdir}/nt/emacs.rc.in ${srcdir}/nt/emacsclient.rc.in \
  ${srcdir}/doc/man/emacs.1.in ${srcdir}/src/emacs-module.in.h \
  ${srcdir}/src/module-env-*.h
 
-# Subdirectories to install, and where they'll go.  lib-src's and nt's
-# makefiles know how to install them, so we don't do that here.
+# Subdirectories to install, and where they'll go.  lib-src's
+# makefile knows how to install itself, so we don't do that here.
 # Directories that cannot simply be copied, eg info, are treated
 # separately.
 COPYDIR = ${srcdir}/etc ${srcdir}/lisp
@@ -426,7 +417,7 @@ sanity-check:
 	echo >&2 '***'; \
 	exit 1
 
-.PHONY: all ${SUBDIR} blessmail epaths-force epaths-force-w32 epaths-force-ns-self-contained etc-emacsver
+.PHONY: all ${SUBDIR} blessmail epaths-force epaths-force-ns-self-contained etc-emacsver
 
 # Changes in lisp may require us to reconsider the build in src.  For
 # example, if loaddefs.{el,elc} were built in lisp, we need a new
@@ -479,45 +470,17 @@ epaths-force:
 	  -e 's;\(#define.*PATH_DOC\).*$$;\1 "${etcdocdir}";') &&			\
 	${srcdir}/build-aux/move-if-change epaths.h.$$$$ src/epaths.h
 
-# The w32 build needs a slightly different editing, and it uses
-# nt/epaths.nt as the template.
-#
-# Use the value of ${locallisppath} supplied by 'configure',
-# to support the --enable-locallisppath argument.
-#
-# In this case, the paths written to 'src/epaths.h' must be in native
-# MS-Windows format (e.g. 'c:/foo/bar'), because temacs is a MinGW
-# program that doesn't support MSYS-style paths (e.g. '/c/foo/bar' or
-# '/foo/bar').
-epaths-force-w32:
-	@(w32srcdir=`${srcdir}/build-aux/msys-to-w32 "${abs_srcdir}"`; \
-	  w32prefix=`${srcdir}/build-aux/msys-to-w32 "${prefix}"`; \
-	  w32locallisppath=`${srcdir}/build-aux/msys-to-w32 "${locallisppath}"` ; \
-	  w32locallisppath=$${w32locallisppath//$${w32prefix}/"%emacs_dir%"} ; \
-	  sed < ${srcdir}/nt/epaths.nt > epaths.h.$$$$		\
-	  -e 's;\(#.*PATH_SITELOADSEARCH\).*$$;\1 "'"$${w32locallisppath//;/\\;}"'";' \
-	  -e 's;\(#.*PATH_REL_LOADSEARCH\).*$$;\1 "${lispdirrel}";' \
-	  -e '/^.*#/s/@VER@/${version}/g' 			\
-	  -e '/^.*#/s/@CFG@/${configuration}/g' 		\
-	  -e "/^.*#/s|@SRC@|$${w32srcdir}|g") &&		\
-	${srcdir}/build-aux/move-if-change epaths.h.$$$$ src/epaths.h
-
 # A NextStep style app bundle is relocatable, so instead of
 # hard-coding paths try to generate them at run-time.
 #
-# The paths are mostly the same, and the bundle paths are different
-# between macOS and GNUstep, so just replace any references to the app
-# bundle root itself with the relative path.
+# Replace any references to the app bundle root itself with the
+# relative path.
 epaths-force-ns-self-contained: epaths-force
 	@(sed < src/epaths.h > epaths.h.$$$$		\
 	  -e 's;${ns_appdir}/;;') &&			\
 	${srcdir}/build-aux/move-if-change epaths.h.$$$$ src/epaths.h
 
-ifneq ($(NTDIR),)
-$(NTDIR): lib
-endif
-
-lib-src src: $(NTDIR) lib
+lib-src src: lib
 
 src: lib-src
 
@@ -525,7 +488,7 @@ src: lib-src
 lisp: src
 
 # These targets should be "${SUBDIR} without 'src'".
-lib lib-src lisp nt: Makefile
+lib lib-src lisp: Makefile
 	$(MAKE) -C $@ all
 
 java: lisp info
@@ -587,14 +550,14 @@ $(srcdir)/configure: $(srcdir)/configure.ac $(srcdir)/m4/*.m4
 # ==================== Installation ====================
 
 .PHONY: install install-arch-dep install-arch-indep install-etcdoc install-info
-.PHONY: install-man install-etc install-strip install-$(NTDIR) install-eln
-.PHONY: uninstall uninstall-$(NTDIR)
+.PHONY: install-man install-etc install-strip install-eln
+.PHONY: uninstall
 
 ## If we let lib-src do its own installation, that means we
 ## don't have to duplicate the list of utilities to install in
 ## this Makefile as well.
 
-install: actual-all install-arch-indep install-etcdoc install-arch-dep install-$(NTDIR) install-eln install-gsettings-schemas
+install: actual-all install-arch-indep install-etcdoc install-arch-dep install-eln install-gsettings-schemas
 	@true
 
 ## Ensure that $subdir contains a subdirs.el file.
@@ -615,18 +578,12 @@ write_subdir=if [ -f "$${subdir}/subdirs.el" ]; \
 ### Install the executables that were compiled specifically for this machine.
 ### We do install-arch-indep first because the executable needs the
 ### Lisp files and DOC file to work properly.
-install-arch-dep: src install-arch-indep install-etcdoc install-$(NTDIR)
+install-arch-dep: src install-arch-indep install-etcdoc
 	umask 022; ${MKDIR_P} "$(DESTDIR)${bindir}"
 	$(MAKE) -C lib-src install
 ifeq (${ns_self_contained},no)
 	${INSTALL_PROGRAM} $(INSTALL_STRIP) src/emacs${EXEEXT} "$(DESTDIR)${bindir}/$(EMACSFULL)"
-ifeq (${HAVE_BE_APP},yes)
-	${INSTALL_PROGRAM} $(INSTALL_STRIP) src/Emacs "$(DESTDIR)${prefix}/apps/Emacs"
-endif
 ifeq (${DUMPING},pdumper)
-ifeq (${HAVE_BE_APP},yes)
-	${INSTALL_DATA} src/Emacs.pdmp "$(DESTDIR)${libexecdir}/emacs/${version}/${configuration}"/Emacs.pdmp
-endif
 	${INSTALL_DATA} src/emacs.pdmp "$(DESTDIR)${libexecdir}/emacs/${version}/${configuration}"/emacs-${EMACS_PDMP}
 endif
 	-chmod 755 "$(DESTDIR)${bindir}/$(EMACSFULL)"
@@ -641,12 +598,6 @@ endif
 	subdir=${ns_appresdir}/site-lisp && ${write_subdir}
 	rm -rf ${ns_appresdir}/share
 endif
-
-### Windows-specific install target for installing programs produced
-### in nt/, and its Posix do-nothing shadow.
-install-:
-install-nt: | $(NTDIR)
-	$(MAKE) -C $(NTDIR) install
 
 ## In the share directory, we are deleting:
 ## applications (with emacs.desktop, also found in etc/)
@@ -925,7 +876,7 @@ install-strip:
 ### create (but not the noninstalled files such as 'make all' would create).
 ###
 ### Don't delete the lisp and etc directories if they're in the source tree.
-uninstall: uninstall-$(NTDIR) uninstall-doc uninstall-gsettings-schemas
+uninstall: uninstall-doc uninstall-gsettings-schemas
 	rm -f "$(DESTDIR)$(includedir)/emacs-module.h"
 	$(MAKE) -C lib-src uninstall
 	-unset CDPATH; \
@@ -981,12 +932,6 @@ uninstall: uninstall-$(NTDIR) uninstall-doc uninstall-gsettings-schemas
 	done
   endif
 
-### Windows-specific uninstall target for removing programs produced
-### in nt/, and its Posix do-nothing shadow.
-uninstall-:
-uninstall-nt:
-	$(MAKE) -C $(NTDIR) uninstall
-
 # ==================== Cleaning up and miscellanea ====================
 
 .PHONY: mostlyclean clean distclean bootstrap-clean maintainer-clean extraclean
@@ -1005,7 +950,7 @@ endef
 ###      normally don't want to recompile.  For example, the 'mostlyclean'
 ###      target for GCC does not delete 'libgcc.a', because recompiling it
 ###      is rarely necessary and takes a lot of time.
-mostlyclean_dirs = src oldXMenu lwlib lib lib-src nt doc/emacs doc/misc \
+mostlyclean_dirs = src lib lib-src doc/emacs doc/misc \
   doc/lispref doc/lispintro test
 
 ### Add the libexec directory to mostlyclean_dirs if its Makefile has
