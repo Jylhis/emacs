@@ -3312,55 +3312,31 @@ fi
 HAVE_GTK=no
 GTK_OBJ=
 gtk_term_header=$term_header
-check_gtk2=no
-gtk3_pkg_errors=
-if test "${opsys}" != "mingw32"; then
-  if test "${with_gtk3}" = "yes" || test "${with_gtk}" = "yes" || test "$USE_X_TOOLKIT" = "maybe"; then
-    GLIB_REQUIRED=2.37.5
-    if test "${window_system}" = "x11"; then
-      GTK_REQUIRED=3.10
-    else
-      GTK_REQUIRED=3.22.23
-    fi
-    GTK_MODULES="gtk+-3.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
-
-    dnl Checks for libraries.
-    EMACS_CHECK_MODULES([GTK], [$GTK_MODULES],
-      [pkg_check_gtk=yes], [pkg_check_gtk=no])
-    if test "$pkg_check_gtk" = "no" && test "$with_gtk3" = "yes"; then
-       AC_MSG_ERROR([$GTK_PKG_ERRORS])
-    fi
-    if test "$pkg_check_gtk" = "yes"; then
-       AC_DEFINE([HAVE_GTK3], [1], [Define to 1 if using GTK 3 or later.])
-       GTK_OBJ=emacsgtkfixed.o
-       gtk_term_header=gtkutil.h
-       USE_GTK_TOOLKIT="GTK3"
-       if test "x$ac_enable_gtk_deprecation_warnings" = x; then
-	 AC_DEFINE([GDK_DISABLE_DEPRECATION_WARNINGS], [1],
-	   [Define to 1 to disable GTK+/GDK deprecation warnings.])
-	 AC_DEFINE([GLIB_DISABLE_DEPRECATION_WARNINGS], [1],
-	   [Define to 1 to disable Glib deprecation warnings.])
-       fi
-    else
-       check_gtk2=yes
-       gtk3_pkg_errors="$GTK_PKG_ERRORS "
-    fi
+if test "${with_gtk3}" = "yes" || test "${with_gtk}" = "yes"; then
+  GLIB_REQUIRED=2.37.5
+  if test "${window_system}" = "x11"; then
+    GTK_REQUIRED=3.10
+  else
+    GTK_REQUIRED=3.22.23
   fi
+  GTK_MODULES="gtk+-3.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
 
-  if test "${with_gtk2}" = "yes" || test "$check_gtk2" = "yes"; then
-    GLIB_REQUIRED=2.28
-    GTK_REQUIRED=2.24
-    GTK_MODULES="gtk+-2.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
-
-    dnl Checks for libraries.
-    EMACS_CHECK_MODULES([GTK], [$GTK_MODULES],
-      [pkg_check_gtk=yes], [pkg_check_gtk=no])
-    if test "$pkg_check_gtk" = "no" &&
-       { test "$with_gtk" = yes || test "$with_gtk2" = "yes"; }
-    then
-      AC_MSG_ERROR([$gtk3_pkg_errors$GTK_PKG_ERRORS])
-    fi
-    test "$pkg_check_gtk" = "yes" && USE_GTK_TOOLKIT="GTK2"
+  EMACS_CHECK_MODULES([GTK], [$GTK_MODULES],
+    [pkg_check_gtk=yes], [pkg_check_gtk=no])
+  if test "$pkg_check_gtk" = "no" && test "$with_gtk3" = "yes"; then
+     AC_MSG_ERROR([$GTK_PKG_ERRORS])
+  fi
+  if test "$pkg_check_gtk" = "yes"; then
+     AC_DEFINE([HAVE_GTK3], [1], [Define to 1 if using GTK 3 or later.])
+     GTK_OBJ=emacsgtkfixed.o
+     gtk_term_header=gtkutil.h
+     USE_GTK_TOOLKIT="GTK3"
+     if test "x$ac_enable_gtk_deprecation_warnings" = x; then
+	AC_DEFINE([GDK_DISABLE_DEPRECATION_WARNINGS], [1],
+	  [Define to 1 to disable GTK+/GDK deprecation warnings.])
+	AC_DEFINE([GLIB_DISABLE_DEPRECATION_WARNINGS], [1],
+	  [Define to 1 to disable Glib deprecation warnings.])
+     fi
   fi
 fi
 

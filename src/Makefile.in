@@ -61,6 +61,9 @@ AWK = @AWK@
 # LIBS = @LIBS@
 LIBOBJS = @LIBOBJS@
 
+GTK_LIBS = @GTK_LIBS@
+GTK_CFLAGS = @GTK_CFLAGS@
+
 lispsource = $(top_srcdir)/lisp
 lib = ../lib
 hostlib = $(top_builddir)/lib
@@ -500,7 +503,7 @@ export LISP_PRELOADED = ${shortlisp}
 lisp = $(addprefix ${lispsource}/,${shortlisp})
 
 ## Construct full set of libraries to be linked.
-LIBES = $(LIBS) $(PGTK_LIBS) $(LIBX_BASE) $(LIBIMAGE) \
+LIBES = $(LIBS) $(GTK_LIBS) $(PGTK_LIBS) $(LIBX_BASE) $(LIBIMAGE) \
    $(LIBX_OTHER) $(LIBSOUND) \
    $(RSVG_LIBS) $(IMAGEMAGICK_LIBS) $(LIB_ACL) $(CLOCK_TIME_LIB) \
    $(NANOSLEEP_LIB) $(QCOPY_ACL_LIB) $(WEBKIT_LIBS) \
