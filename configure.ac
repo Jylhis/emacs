@@ -6808,24 +6808,13 @@ LIBS="$LIB_TIMER_TIME $LIBS"
 AC_CHECK_FUNCS([timer_getoverrun])
 LIBS=$OLD_LIBS
 
-if test "${opsys}" = "mingw32"; then
-  CPPFLAGS="$CPPFLAGS -DUSE_CRT_DLL=1 -I \${abs_top_srcdir}/nt/inc"
-  # Remove unneeded switches from the value of CC that goes to Makefiles
-  CC=`AS_ECHO(["$CC"]) | sed -e "s,$GCC_TEST_OPTIONS,,"`
-fi
-
 case "$opsys" in
-
-
   darwin)
    if test "$HAVE_NS" = "yes"; then
-     libs_nsgui="-framework AppKit"
-     if test "$NS_IMPL_COCOA" = "yes"; then
-        libs_nsgui="$libs_nsgui -framework IOKit -framework Carbon \
-                    -framework IOSurface -framework QuartzCore"
-        if test "$emacs_cv_macosx_12_0" = "yes"; then
-	  libs_nsgui="$libs_nsgui -framework UniformTypeIdentifiers"
-	fi
+     libs_nsgui="-framework AppKit -framework IOKit -framework Carbon \
+                 -framework IOSurface -framework QuartzCore"
+     if test "$emacs_cv_macosx_12_0" = "yes"; then
+       libs_nsgui="$libs_nsgui -framework UniformTypeIdentifiers"
      fi
    else
      libs_nsgui=
@@ -6833,31 +6822,16 @@ case "$opsys" in
    LD_SWITCH_SYSTEM_TEMACS=$libs_nsgui
    ## The -headerpad option tells ld (see man page) to leave room at the
    ## end of the header for adding load commands.  Needed for dumping.
-   ## 0x1000 is enough for roughly 52 load commands on the x86_64
-   ## architecture (where they are 78 bytes each). The actual number of
-   ## load commands added is not consistent but normally ranges from
-   ## about 14 to about 34. Setting it high gets us plenty of slop and
-   ## only costs about 1.5K of wasted binary space.
    headerpad_extra=1000
 
-   ## This is here because src/Makefile.in did some extra fiddling around
-   ## with LD_SWITCH_SYSTEM.  It seems cleaner to put this in
-   ## LD_SWITCH_SYSTEM_TEMACS instead,
    test "x$LD_SWITCH_SYSTEM" = "x" && test "x$GCC" != "xyes" && \
      LD_SWITCH_SYSTEM_TEMACS="-X $LD_SWITCH_SYSTEM_TEMACS"
    ;;
 
-  ## LD_SWITCH_X_SITE_RPATH is a -rpath option saying where to
-  ## find X at run-time.
-  ## When handled by cpp, this was in LD_SWITCH_SYSTEM.  However, at the
-  ## point where configure sourced the s/*.h file, LD_SWITCH_X_SITE_RPATH
-  ## had not yet been defined and was expanded to null.  Hence LD_SWITCH_SYSTEM
-  ## had different values in configure (in ac_link) and src/Makefile.in.
-  ## It seems clearer therefore to put this piece in LD_SWITCH_SYSTEM_TEMACS.
-  gnu*) LD_SWITCH_SYSTEM_TEMACS="\$(LD_SWITCH_X_SITE_RPATH)" ;;
-
-     *) LD_SWITCH_SYSTEM_TEMACS="-Wl,-stack,0x00800000 -Wl,-heap,0x00100000 -Wl,-image-base,0x01000000 -Wl,-entry,__start -Wl,-Map,./temacs.map" ;;
-   esac
+  gnu-linux)
+   ## LD_SWITCH_X_SITE_RPATH is a -rpath option saying where to
+   ## find X at run-time.
+   LD_SWITCH_SYSTEM_TEMACS="\$(LD_SWITCH_X_SITE_RPATH)"
    ;;
 
   *) LD_SWITCH_SYSTEM_TEMACS= ;;
@@ -6865,7 +6839,7 @@ esac
 
 if test x$ac_enable_profiling != x ; then
   case $opsys in
-    *freebsd | gnu-linux) ;;
+    gnu-linux) ;;
     *) LD_SWITCH_SYSTEM_TEMACS="$LD_SWITCH_SYSTEM_TEMACS -pg" ;;
   esac
 fi
