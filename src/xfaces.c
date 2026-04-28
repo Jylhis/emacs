@@ -481,29 +481,6 @@ x_free_colors (struct frame *f, unsigned long *pixels, int npixels)
 }
 
 
-#ifdef USE_X_TOOLKIT
-
-/* Free colors used on display DPY.  PIXELS is an array of NPIXELS pixel
-   color values.  Interrupt input must be blocked when this function
-   is called.  */
-
-void
-x_free_dpy_colors (Display *dpy, Screen *screen, Colormap cmap,
-		   unsigned long *pixels, int npixels)
-{
-  struct x_display_info *dpyinfo = x_dpyinfo (dpy);
-
-  /* If display has an immutable color map, freeing colors is not
-     necessary and some servers don't allow it.  So don't do it.  */
-  if (x_mutable_colormap (&dpyinfo->visual_info))
-    {
-#ifdef DEBUG_X_COLORS
-      unregister_colors (pixels, npixels);
-#endif
-      XFreeColors (dpy, cmap, pixels, npixels, 0);
-    }
-}
-#endif /* USE_X_TOOLKIT */
 
 /* Create and return a GC for use on frame F.  GC values and mask
    are given by XGCV and MASK.  */
@@ -5927,10 +5904,6 @@ realize_basic_faces (struct frame *f)
       if (FRAME_FACE_CACHE (f)->menu_face_changed_p)
 	{
 	  FRAME_FACE_CACHE (f)->menu_face_changed_p = false;
-#ifdef USE_X_TOOLKIT
-	  if (FRAME_WINDOW_P (f))
-	    x_update_menu_appearance (f);
-#endif
 	}
 
       success_p = true;

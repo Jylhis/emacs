@@ -45,9 +45,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "fontset.h"
 #endif
 #include "cm.h"
-#ifdef USE_X_TOOLKIT
-#include "widget.h"
-#endif
 #include "pdumper.h"
 
 /* The currently selected frame.  */
@@ -2845,9 +2842,6 @@ delete_frame (Lisp_Object frame, Lisp_Object force)
   fset_buried_buffer_list (f, Qnil);
 
   free_font_driver_list (f);
-#if defined (USE_X_TOOLKIT) || defined (HAVE_NTGUI)
-  xfree (f->namebuf);
-#endif
   xfree (f->decode_mode_spec_buffer);
   xfree (FRAME_INSERT_COST (f));
   xfree (FRAME_DELETEN_COST (f));
@@ -5381,10 +5375,6 @@ gui_report_frame_params (struct frame *f, Lisp_Object *alistptr)
   store_in_alist (alistptr, Qwindow_id,
 		  make_formatted_string ("%"PRIuMAX, w));
 #ifdef HAVE_X_WINDOWS
-#ifdef USE_X_TOOLKIT
-  /* Tooltip frame may not have this widget.  */
-  if (FRAME_X_OUTPUT (f)->widget)
-#endif
     w = (uintptr_t) FRAME_OUTER_WINDOW (f);
   store_in_alist (alistptr, Qouter_window_id,
 		  make_formatted_string ("%"PRIuMAX, w));

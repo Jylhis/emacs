@@ -303,17 +303,7 @@ struct frame
   /* Number of elements in `menu_bar_vector' that have meaningful data.  */
   int menu_bar_items_used;
 
-#if defined (USE_X_TOOLKIT) || defined (HAVE_NTGUI)
-  /* A buffer to hold the frame's name.  Since this is used by the
-     window system toolkit, we can't use the Lisp string's pointer
-     (`name', above) because it might get relocated.  */
-  char *namebuf;
-#endif
 
-#ifdef USE_X_TOOLKIT
-  /* Used to pass geometry parameters to toolkit functions.  */
-  char *shell_position;
-#endif
 
   /* Glyph pool and matrix.  */
   struct glyph_pool *current_pool;
@@ -1857,9 +1847,7 @@ extern void free_frame_menubar (struct frame *);
 
 #if defined HAVE_X_WINDOWS
 extern void x_wm_set_icon_position (struct frame *, int, int);
-#if !defined USE_X_TOOLKIT
 extern const char *x_get_resource_string (const char *, const char *);
-#endif
 #endif /* HAVE_X_WINDOWS */
 
 #if !defined (HAVE_NS) && !defined (HAVE_PGTK)

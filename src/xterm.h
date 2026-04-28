@@ -52,18 +52,6 @@ typedef XID XserverRegion;
 #include <X11/extensions/XInput2.h>
 #endif
 
-#ifdef USE_X_TOOLKIT
-#include <X11/StringDefs.h>
-#include <X11/IntrinsicP.h>	/* CoreP.h needs this */
-#include <X11/CoreP.h>		/* foul, but we need this to use our own
-				   window inside a widget instead of one
-				   that Xt creates... */
-#ifdef X_TOOLKIT_EDITRES
-#include <X11/Xmu/Editres.h>
-#endif
-
-typedef Widget xt_or_gtk_widget;
-#endif
 
 #ifdef USE_GTK
 #include <gtk/gtk.h>
@@ -1067,17 +1055,6 @@ struct x_output
      (see the explicit_parent field, below).  */
   Window parent_desc;
 
-#ifdef USE_X_TOOLKIT
-  /* The widget of this screen.  This is the window of a "shell" widget.  */
-  Widget widget;
-  /* The XmPanedWindows...  */
-  Widget column_widget;
-  /* The widget of the edit portion of this screen; the window in
-     "window_desc" is inside of this.  */
-  Widget edit_widget;
-
-  Widget menubar_widget;
-#endif
 
 #ifndef USE_GTK
   /* A window used to store the user time property.  May be None or
@@ -1199,9 +1176,6 @@ struct x_output
   XEvent *saved_menu_event;
 
   /* This is the widget id used for this frame's menubar in lwlib.  */
-#ifdef USE_X_TOOLKIT
-  int id;
-#endif
 
   /* True means hourglass cursor is currently displayed.  */
   bool_bf hourglass_p : 1;
@@ -1422,11 +1396,6 @@ extern void x_mark_frame_dirty (struct frame *f);
 #endif
 
 /* Return the outermost X window associated with the frame F.  */
-#ifdef USE_X_TOOLKIT
-#define FRAME_OUTER_WINDOW(f) ((f)->output_data.x->widget ?             \
-                               XtWindow ((f)->output_data.x->widget) :  \
-                               FRAME_X_WINDOW (f))
-#else
 #ifdef USE_GTK
 
 #ifdef HAVE_GTK3
@@ -1454,7 +1423,6 @@ extern void x_mark_frame_dirty (struct frame *f);
 #else /* !USE_GTK */
 #define FRAME_OUTER_WINDOW(f) FRAME_X_WINDOW (f)
 #endif /* !USE_GTK */
-#endif
 
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK)
 #define FRAME_MENUBAR_HEIGHT(f) ((f)->output_data.x->menubar_height)
@@ -1602,24 +1570,6 @@ struct scroll_bar
 /* Turning a lisp vector value into a pointer to a struct scroll_bar.  */
 #define XSCROLL_BAR(vec) ((struct scroll_bar *) XVECTOR (vec))
 
-#ifdef USE_X_TOOLKIT
-
-/* Extract the X widget of the scroll bar from a struct scroll_bar.
-   XtWindowToWidget should be fast enough since Xt uses a hash table
-   to map windows to widgets.  */
-
-#define SCROLL_BAR_X_WIDGET(dpy, ptr) \
-  XtWindowToWidget (dpy, ptr->x_window)
-
-/* Store a widget id in a struct scroll_bar.  */
-
-#define SET_SCROLL_BAR_X_WIDGET(ptr, w)		\
-  do {						\
-    Window window = XtWindow (w);		\
-    ptr->x_window = window;			\
-  } while (false)
-
-#endif /* USE_X_TOOLKIT */
 
 /* Return the inside width of a vertical scroll bar, given the outside
    width.  */
@@ -1782,10 +1732,6 @@ extern bool x_embed_frame (struct x_display_info *, struct frame *);
 extern void x_delete_terminal (struct terminal *);
 extern Cursor x_create_font_cursor (struct x_display_info *, int);
 extern unsigned long x_copy_color (struct frame *, unsigned long);
-#ifdef USE_X_TOOLKIT
-extern XtAppContext Xt_app_con;
-extern void x_activate_timeout_atimer (void);
-#endif
 extern bool x_alloc_nearest_color (struct frame *, Colormap, XColor *);
 extern void x_query_colors (struct frame *f, XColor *, int);
 extern void x_clear_area (struct frame *f, int, int, int, int);
@@ -1965,10 +1911,6 @@ extern char *xic_create_fontsetname (const char *, bool);
 
 /* Defined in xfaces.c */
 
-#ifdef USE_X_TOOLKIT
-extern void x_free_dpy_colors (Display *, Screen *, Colormap,
-                               unsigned long *, int);
-#endif /* USE_X_TOOLKIT */
 
 /* Defined in xmenu.c */
 

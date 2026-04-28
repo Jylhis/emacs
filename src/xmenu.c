@@ -69,18 +69,9 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 /*  Defining HAVE_MULTILINGUAL_MENU would mean that the toolkit menu
     code accepts the Emacs internal encoding.  */
 #undef HAVE_MULTILINGUAL_MENU
-#ifdef USE_X_TOOLKIT
-#include "widget.h"
-#include <X11/Xlib.h>
-#include <X11/IntrinsicP.h>
-#include <X11/CoreP.h>
-#include <X11/StringDefs.h>
-#include <X11/Shell.h>
-#else /* not USE_X_TOOLKIT */
 #ifndef USE_GTK
 #include "../oldXMenu/XMenu.h"
 #endif
-#endif /* not USE_X_TOOLKIT */
 #endif /* HAVE_X_WINDOWS */
 
 #ifdef USE_GTK
@@ -102,30 +93,6 @@ int popup_activated_flag;
 #endif
 
 
-#ifdef USE_X_TOOLKIT
-
-static LWLIB_ID next_menubar_widget_id;
-
-/* Return the frame whose ->output_data.x->id equals ID, or 0 if none.  */
-
-static struct frame *
-menubar_id_to_frame (LWLIB_ID id)
-{
-  Lisp_Object tail, frame;
-  struct frame *f;
-
-  FOR_EACH_FRAME (tail, frame)
-    {
-      f = XFRAME (frame);
-      if (!FRAME_WINDOW_P (f))
-	continue;
-      if (f->output_data.x->id == id)
-	return f;
-    }
-  return 0;
-}
-
-#endif
 
 
 #if defined USE_GTK || defined USE_MOTIF
@@ -139,10 +106,6 @@ x_menu_set_in_use (bool in_use)
 
   menu_items_inuse = in_use;
   popup_activated_flag = in_use;
-#ifdef USE_X_TOOLKIT
-  if (popup_activated_flag)
-    x_activate_timeout_atimer ();
-#endif
 
   /* Don't let frames in `above' z-group obscure popups.  */
   FOR_EACH_FRAME (frames, frame)
@@ -291,238 +254,6 @@ x_menu_dispatch_event (XEvent *event)
 
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK)
 
-#ifdef USE_X_TOOLKIT
-
-/* Loop in Xt until the menu pulldown or dialog popup has been
-   popped down (deactivated).  This is used for x-popup-menu
-   and x-popup-dialog; it is not used for the menu bar.
-
-   NOTE: All calls to popup_get_selection should be protected
-   with BLOCK_INPUT, UNBLOCK_INPUT wrappers.  */
-
-static void
-popup_get_selection (XEvent *initial_event, struct x_display_info *dpyinfo,
-		     LWLIB_ID id, bool do_timers)
-{
-  XEvent event;
-  XEvent copy;
-#ifdef HAVE_XINPUT2
-  bool cookie_claimed_p = false;
-  XIDeviceEvent *xev;
-  struct xi_device_t *device;
-#endif
-
-  while (popup_activated_flag)
-    {
-      if (initial_event)
-        {
-          copy = event = *initial_event;
-          initial_event = 0;
-        }
-      else
-        {
-          if (do_timers) x_menu_wait_for_event (0);
-          XtAppNextEvent (Xt_app_con, &event);
-	  copy = event;
-        }
-
-      /* Make sure we don't consider buttons grabbed after menu goes.
-         And make sure to deactivate for any ButtonRelease,
-         even if XtDispatchEvent doesn't do that.  */
-      if (event.type == ButtonRelease
-          && dpyinfo->display == event.xbutton.display)
-        {
-          dpyinfo->grabbed &= ~(1 << event.xbutton.button);
-	  copy = event;
-        }
-      /* Pop down on C-g and Escape.  */
-      else if (event.type == KeyPress
-               && dpyinfo->display == event.xbutton.display)
-        {
-          KeySym keysym = XLookupKeysym (&event.xkey, 0);
-
-          if ((keysym == XK_g && (event.xkey.state & ControlMask) != 0)
-              || keysym == XK_Escape) /* Any escape, ignore modifiers.  */
-            popup_activated_flag = 0;
-
-	  copy = event;
-        }
-#ifdef HAVE_XINPUT2
-      else if (event.type == GenericEvent
-	       && dpyinfo->supports_xi2
-	       && event.xgeneric.display == dpyinfo->display
-	       && event.xgeneric.extension == dpyinfo->xi2_opcode)
-	{
-	  if (!event.xcookie.data
-	      && XGetEventData (dpyinfo->display, &event.xcookie))
-	    cookie_claimed_p = true;
-
-	  if (event.xcookie.data)
-	    {
-	      switch (event.xgeneric.evtype)
-		{
-		case XI_ButtonRelease:
-		  {
-		    xev = (XIDeviceEvent *) event.xcookie.data;
-		    device = xi_device_from_id (dpyinfo, xev->deviceid);
-
-		    dpyinfo->grabbed &= ~(1 << xev->detail);
-		    device->grab &= ~(1 << xev->detail);
-
-		    copy.xbutton.type = ButtonRelease;
-		    copy.xbutton.serial = xev->serial;
-		    copy.xbutton.send_event = xev->send_event;
-		    copy.xbutton.display = dpyinfo->display;
-		    copy.xbutton.window = xev->event;
-		    copy.xbutton.root = xev->root;
-		    copy.xbutton.subwindow = xev->child;
-		    copy.xbutton.time = xev->time;
-		    copy.xbutton.x = lrint (xev->event_x);
-		    copy.xbutton.y = lrint (xev->event_y);
-		    copy.xbutton.x_root = lrint (xev->root_x);
-		    copy.xbutton.y_root = lrint (xev->root_y);
-		    copy.xbutton.state = xi_convert_event_state (xev);
-		    copy.xbutton.button = xev->detail;
-		    copy.xbutton.same_screen = True;
-
-
-		    break;
-		  }
-		case XI_KeyPress:
-		  {
-		    KeySym keysym;
-
-		    xev = (XIDeviceEvent *) event.xcookie.data;
-
-		    copy.xkey.type = KeyPress;
-		    copy.xkey.serial = xev->serial;
-		    copy.xkey.send_event = xev->send_event;
-		    copy.xkey.display = dpyinfo->display;
-		    copy.xkey.window = xev->event;
-		    copy.xkey.root = xev->root;
-		    copy.xkey.subwindow = xev->child;
-		    copy.xkey.time = xev->time;
-		    copy.xkey.x = lrint (xev->event_x);
-		    copy.xkey.y = lrint (xev->event_y);
-		    copy.xkey.x_root = lrint (xev->root_x);
-		    copy.xkey.y_root = lrint (xev->root_y);
-		    copy.xkey.state = xi_convert_event_state (xev);
-		    copy.xkey.keycode = xev->detail;
-		    copy.xkey.same_screen = True;
-
-		    keysym = XLookupKeysym (&copy.xkey, 0);
-
-		    if ((keysym == XK_g
-			 && (copy.xkey.state & ControlMask) != 0)
-			|| keysym == XK_Escape) /* Any escape, ignore modifiers.  */
-		      popup_activated_flag = 0;
-
-		    break;
-		  }
-		}
-	    }
-	}
-
-      if (cookie_claimed_p)
-	XFreeEventData (dpyinfo->display, &event.xcookie);
-#endif
-
-      x_dispatch_event (&copy, copy.xany.display);
-    }
-}
-
-DEFUN ("x-menu-bar-open-internal", Fx_menu_bar_open_internal, Sx_menu_bar_open_internal, 0, 1, "i",
-       doc: /* SKIP: real doc in USE_GTK definition in xmenu.c.  */)
-  (Lisp_Object frame)
-{
-  XEvent ev;
-  struct frame *f = decode_window_system_frame (frame);
-#ifdef HAVE_XINPUT2
-  struct x_display_info *dpyinfo = FRAME_DISPLAY_INFO (f);
-#endif
-  Widget menubar;
-  block_input ();
-
-  if (FRAME_EXTERNAL_MENU_BAR (f))
-    set_frame_menubar (f, true);
-
-  menubar = FRAME_X_OUTPUT (f)->menubar_widget;
-  if (menubar)
-    {
-      Window child;
-      bool error_p = false;
-
-#ifdef HAVE_XINPUT2
-      /* Clear the XI2 grab so Motif or lwlib can set a core grab.
-	 Otherwise some versions of Motif will emit a warning and hang,
-	 and lwlib will fail to destroy the menu window.  */
-
-      if (dpyinfo->supports_xi2
-	  && xi_frame_selected_for (f, XI_ButtonPress))
-	{
-	  for (int i = 0; i < dpyinfo->num_devices; ++i)
-	    {
-	      /* The keyboard grab matters too, in this specific
-		 case.  */
-	      if (dpyinfo->devices[i].grab)
-		{
-		  XIUngrabDevice (dpyinfo->display,
-				  dpyinfo->devices[i].device_id,
-				  CurrentTime);
-		  dpyinfo->devices[i].grab = 0;
-		}
-	    }
-	}
-#endif
-
-      x_catch_errors (FRAME_X_DISPLAY (f));
-      memset (&ev, 0, sizeof ev);
-      ev.xbutton.display = FRAME_X_DISPLAY (f);
-      ev.xbutton.window = XtWindow (menubar);
-      ev.xbutton.root = FRAME_DISPLAY_INFO (f)->root_window;
-#ifndef HAVE_XINPUT2
-      ev.xbutton.time = XtLastTimestampProcessed (FRAME_X_DISPLAY (f));
-#else
-      ev.xbutton.time = ((dpyinfo->supports_xi2
-			  && xi_frame_selected_for (f, XI_KeyPress))
-			 ? dpyinfo->last_user_time
-			 : XtLastTimestampProcessed (dpyinfo->display));
-#endif
-      ev.xbutton.button = Button1;
-      ev.xbutton.x = ev.xbutton.y = FRAME_MENUBAR_HEIGHT (f) / 2;
-      ev.xbutton.same_screen = True;
-
-
-      XTranslateCoordinates (FRAME_X_DISPLAY (f),
-                             /* From-window, to-window.  */
-                             ev.xbutton.window, ev.xbutton.root,
-
-                             /* From-position, to-position.  */
-                             ev.xbutton.x, ev.xbutton.y,
-                             &ev.xbutton.x_root, &ev.xbutton.y_root,
-
-                             /* Child of win.  */
-                             &child);
-      error_p = x_had_errors_p (FRAME_X_DISPLAY (f));
-      x_uncatch_errors_after_check ();
-
-      if (! error_p)
-        {
-          ev.type = ButtonPress;
-          ev.xbutton.state = 0;
-
-          XtDispatchEvent (&ev);
-          ev.xbutton.type = ButtonRelease;
-          ev.xbutton.state = Button1Mask;
-          XtDispatchEvent (&ev);
-        }
-    }
-
-  unblock_input ();
-
-  return Qnil;
-}
-#endif /* USE_X_TOOLKIT */
 
 
 #ifdef USE_GTK
@@ -848,9 +579,6 @@ void
 set_frame_menubar (struct frame *f, bool deep_p)
 {
   xt_or_gtk_widget menubar_widget, old_widget;
-#ifdef USE_X_TOOLKIT
-  LWLIB_ID id;
-#endif
   Lisp_Object items;
   widget_value *wv, *first_wv, *prev_wv = 0;
   int i;
@@ -864,11 +592,6 @@ set_frame_menubar (struct frame *f, bool deep_p)
 
   XSETFRAME (Vmenu_updating_frame, f);
 
-#ifdef USE_X_TOOLKIT
-  if (f->output_data.x->id == 0)
-    f->output_data.x->id = next_menubar_widget_id++;
-  id = f->output_data.x->id;
-#endif
 
   if (! menubar_widget)
     deep_p = true;
@@ -2741,9 +2464,4 @@ syms_of_xmenu (void)
 static void
 syms_of_xmenu_for_pdumper (void)
 {
-#ifdef USE_X_TOOLKIT
-  enum { WIDGET_ID_TICK_START = 1 << 16 };
-  widget_id_tick = WIDGET_ID_TICK_START;
-  next_menubar_widget_id = 1;
-#endif
 }
