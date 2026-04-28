@@ -1135,12 +1135,6 @@ uniprop_table_uncompress (Lisp_Object table, int idx)
     }
 /* It seems that we don't need this function because C code won't need
    to get a property that is compressed in this form.  */
-#if 0
-  else if (*p == 0)
-    {
-      /* WORD-LIST TABLE */
-    }
-#endif
   return sub;
 }
 

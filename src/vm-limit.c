@@ -20,10 +20,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <unistd.h> /* for 'environ', on AIX */
 #include "lisp.h"
 
-#ifdef MSDOS
-#include "dosfns.h"
-extern int etext;
-#endif
 
 /* Some systems need this before <sys/resource.h>.  */
 #include <sys/types.h>

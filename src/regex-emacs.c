@@ -3685,22 +3685,6 @@ static bool bcmp_translate (re_char *, re_char *, ptrdiff_t,
    AT_WORD_BOUNDARY, so this code is disabled.  Expanding the
    macro and introducing temporary variables works around the bug.  */
 
-#if 0
-/* Test if D points to a character which is word-constituent.  We have
-   two special cases to check for: if past the end of string1, look at
-   the first character in string2; and if before the beginning of
-   string2, look at the last character in string1.  */
-#define WORDCHAR_P(d)							\
-  (SYNTAX ((d) == end1 ? *string2					\
-	   : (d) == string2 - 1 ? *(end1 - 1) : *(d))			\
-   == Sword)
-
-/* Test if the character before D and the one at D differ with respect
-   to being word-constituent.  */
-#define AT_WORD_BOUNDARY(d)						\
-  (AT_STRINGS_BEG (d) || AT_STRINGS_END (d)				\
-   || WORDCHAR_P (d - 1) != WORDCHAR_P (d))
-#endif
 
 
 /* Optimization routines.  */

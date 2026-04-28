@@ -28,127 +28,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "dispextern.h"
 #include "buffer.h"
 
-#ifdef HAVE_NTGUI
-
-#include "w32common.h"
-
-/* The w32 implementation calls HarfBuzz functions via function
-   pointers.  We use the below to declare the function pointers and
-   redirect function names to those pointers.  */
-DEF_DLL_FN (hb_unicode_funcs_t *, hb_unicode_funcs_create,
-	    (hb_unicode_funcs_t *));
-DEF_DLL_FN (hb_unicode_funcs_t *, hb_unicode_funcs_get_default, (void));
-DEF_DLL_FN (void, hb_unicode_funcs_set_combining_class_func,
-	    (hb_unicode_funcs_t *, hb_unicode_combining_class_func_t,
-	     void *, hb_destroy_func_t));
-DEF_DLL_FN (void, hb_unicode_funcs_set_general_category_func,
-	    (hb_unicode_funcs_t *, hb_unicode_general_category_func_t,
-	     void *, hb_destroy_func_t));
-DEF_DLL_FN (void, hb_unicode_funcs_set_mirroring_func,
-	    (hb_unicode_funcs_t *, hb_unicode_mirroring_func_t,
-	     void *, hb_destroy_func_t));
-DEF_DLL_FN (hb_buffer_t *, hb_buffer_create, (void));
-DEF_DLL_FN (void, hb_buffer_set_unicode_funcs,
-	    (hb_buffer_t *, hb_unicode_funcs_t *));
-DEF_DLL_FN (void, hb_buffer_clear_contents, (hb_buffer_t *));
-DEF_DLL_FN (hb_bool_t, hb_buffer_pre_allocate, (hb_buffer_t *, unsigned int));
-DEF_DLL_FN (void, hb_buffer_add, (hb_buffer_t *, hb_codepoint_t, unsigned int));
-DEF_DLL_FN (void, hb_buffer_set_content_type,
-	    (hb_buffer_t *, hb_buffer_content_type_t));
-DEF_DLL_FN (void, hb_buffer_set_cluster_level,
-	    (hb_buffer_t *, hb_buffer_cluster_level_t));
-DEF_DLL_FN (void, hb_buffer_set_direction, (hb_buffer_t *, hb_direction_t));
-DEF_DLL_FN (void, hb_buffer_set_language, (hb_buffer_t *, hb_language_t));
-DEF_DLL_FN (hb_language_t, hb_language_from_string, (const char *, int));
-DEF_DLL_FN (void, hb_buffer_guess_segment_properties, (hb_buffer_t *));
-DEF_DLL_FN (hb_bool_t, hb_shape_full,
-	    (hb_font_t *, hb_buffer_t *, const hb_feature_t *,
-	     unsigned int, const char * const *));
-DEF_DLL_FN (unsigned int, hb_buffer_get_length, (hb_buffer_t *));
-DEF_DLL_FN (hb_direction_t, hb_buffer_get_direction, (hb_buffer_t *));
-DEF_DLL_FN (void, hb_buffer_reverse_clusters, (hb_buffer_t *));
-DEF_DLL_FN (hb_glyph_info_t *, hb_buffer_get_glyph_infos,
-	    (hb_buffer_t *, unsigned int *));
-DEF_DLL_FN (hb_glyph_position_t *, hb_buffer_get_glyph_positions,
-	    (hb_buffer_t *, unsigned int *));
-DEF_DLL_FN (void, hb_tag_to_string, (hb_tag_t, char *));
-DEF_DLL_FN (hb_face_t *, hb_font_get_face, (hb_font_t *font));
-DEF_DLL_FN (unsigned int, hb_ot_layout_table_get_script_tags,
-	    (hb_face_t *, hb_tag_t, unsigned int, unsigned int *, hb_tag_t *));
-DEF_DLL_FN (unsigned int, hb_ot_layout_table_get_feature_tags,
-	    (hb_face_t *, hb_tag_t, unsigned int, unsigned int *, hb_tag_t *));
-DEF_DLL_FN (unsigned int, hb_ot_layout_script_get_language_tags,
-	    (hb_face_t *, hb_tag_t, unsigned int, unsigned int, unsigned int *,
-	     hb_tag_t *));
-DEF_DLL_FN (unsigned int, hb_ot_layout_language_get_feature_tags,
-	    (hb_face_t *, hb_tag_t, unsigned int, unsigned int, unsigned int,
-	     unsigned int *, hb_tag_t *));
-
-#define hb_unicode_funcs_create fn_hb_unicode_funcs_create
-#define hb_unicode_funcs_get_default fn_hb_unicode_funcs_get_default
-#define hb_unicode_funcs_set_combining_class_func fn_hb_unicode_funcs_set_combining_class_func
-#define hb_unicode_funcs_set_general_category_func fn_hb_unicode_funcs_set_general_category_func
-#define hb_unicode_funcs_set_mirroring_func fn_hb_unicode_funcs_set_mirroring_func
-#define hb_buffer_create fn_hb_buffer_create
-#define hb_buffer_set_unicode_funcs fn_hb_buffer_set_unicode_funcs
-#define hb_buffer_clear_contents fn_hb_buffer_clear_contents
-#define hb_buffer_pre_allocate fn_hb_buffer_pre_allocate
-#define hb_buffer_add fn_hb_buffer_add
-#define hb_buffer_set_content_type fn_hb_buffer_set_content_type
-#define hb_buffer_set_cluster_level fn_hb_buffer_set_cluster_level
-#define hb_buffer_set_direction fn_hb_buffer_set_direction
-#define hb_buffer_set_language fn_hb_buffer_set_language
-#define hb_language_from_string fn_hb_language_from_string
-#define hb_buffer_guess_segment_properties fn_hb_buffer_guess_segment_properties
-#define hb_shape_full fn_hb_shape_full
-#define hb_buffer_get_length fn_hb_buffer_get_length
-#define hb_buffer_get_direction fn_hb_buffer_get_direction
-#define hb_buffer_reverse_clusters fn_hb_buffer_reverse_clusters
-#define hb_buffer_get_glyph_infos fn_hb_buffer_get_glyph_infos
-#define hb_buffer_get_glyph_positions fn_hb_buffer_get_glyph_positions
-#define hb_tag_to_string fn_hb_tag_to_string
-#define hb_font_get_face fn_hb_font_get_face
-#define hb_ot_layout_table_get_script_tags fn_hb_ot_layout_table_get_script_tags
-#define hb_ot_layout_table_get_feature_tags fn_hb_ot_layout_table_get_feature_tags
-#define hb_ot_layout_script_get_language_tags fn_hb_ot_layout_script_get_language_tags
-#define hb_ot_layout_language_get_feature_tags fn_hb_ot_layout_language_get_feature_tags
-
-/* This function is called from syms_of_w32uniscribe_for_pdumper to
-   initialize the above function pointers.  */
-bool
-hbfont_init_w32_funcs (HMODULE library)
-{
-  LOAD_DLL_FN (library, hb_unicode_funcs_create);
-  LOAD_DLL_FN (library, hb_unicode_funcs_get_default);
-  LOAD_DLL_FN (library, hb_unicode_funcs_set_combining_class_func);
-  LOAD_DLL_FN (library, hb_unicode_funcs_set_general_category_func);
-  LOAD_DLL_FN (library, hb_unicode_funcs_set_mirroring_func);
-  LOAD_DLL_FN (library, hb_buffer_create);
-  LOAD_DLL_FN (library, hb_buffer_set_unicode_funcs);
-  LOAD_DLL_FN (library, hb_buffer_clear_contents);
-  LOAD_DLL_FN (library, hb_buffer_pre_allocate);
-  LOAD_DLL_FN (library, hb_buffer_add);
-  LOAD_DLL_FN (library, hb_buffer_set_content_type);
-  LOAD_DLL_FN (library, hb_buffer_set_cluster_level);
-  LOAD_DLL_FN (library, hb_buffer_set_direction);
-  LOAD_DLL_FN (library, hb_buffer_set_language);
-  LOAD_DLL_FN (library, hb_language_from_string);
-  LOAD_DLL_FN (library, hb_buffer_guess_segment_properties);
-  LOAD_DLL_FN (library, hb_shape_full);
-  LOAD_DLL_FN (library, hb_buffer_get_length);
-  LOAD_DLL_FN (library, hb_buffer_get_direction);
-  LOAD_DLL_FN (library, hb_buffer_reverse_clusters);
-  LOAD_DLL_FN (library, hb_buffer_get_glyph_infos);
-  LOAD_DLL_FN (library, hb_buffer_get_glyph_positions);
-  LOAD_DLL_FN (library, hb_tag_to_string);
-  LOAD_DLL_FN (library, hb_font_get_face);
-  LOAD_DLL_FN (library, hb_ot_layout_table_get_script_tags);
-  LOAD_DLL_FN (library, hb_ot_layout_table_get_feature_tags);
-  LOAD_DLL_FN (library, hb_ot_layout_script_get_language_tags);
-  LOAD_DLL_FN (library, hb_ot_layout_language_get_feature_tags);
-  return true;
-}
-#endif	/* HAVE_NTGUI */
 
 static Lisp_Object
 hbfont_otf_features (hb_face_t *face, hb_tag_t table_tag)
@@ -455,9 +334,6 @@ hbfont_shape (Lisp_Object lgstring, Lisp_Object direction)
 
   /* Leave the script determination to HarfBuzz, until Emacs has a
      better idea of the script of LGSTRING.  FIXME. */
-#if 0
-  hb_buffer_set_script (hb_buffer, XXX);
-#endif
 
   /* FIXME: This can only handle the single global language, which
      normally comes from the locale.  In addition, if

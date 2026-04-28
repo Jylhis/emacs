@@ -8690,33 +8690,6 @@ sfnt_store_zp2 (struct sfnt_interpreter *interpreter,
   interpreter->glyph_zone->flags[number] |= flags;
 }
 
-#if 0
-
-/* Convert the line between the points X1, Y1 and X2, Y2 to standard
-   form.
-
-   Return the two coefficients in *A0 and *B0, and the constant in
-   *C.  */
-
-static void
-sfnt_line_to_standard_form (sfnt_f26dot6 x1, sfnt_f26dot6 y1,
-			    sfnt_f26dot6 x2, sfnt_f26dot6 y2,
-			    sfnt_f26dot6 *a, sfnt_f26dot6 *b,
-			    sfnt_f26dot6 *c)
-{
-  sfnt_f26dot6 a_temp, b_temp, c_temp;
-
-  a_temp = sfnt_sub (y2, y1);
-  b_temp = sfnt_sub (x1, x2);
-  c_temp = sfnt_sub (sfnt_mul_f26dot6 (x1, y2),
-		     sfnt_mul_f26dot6 (x2, y1));
-
-  *a = a_temp;
-  *b = b_temp;
-  *c = c_temp;
-}
-
-#endif
 
 /* Check that the specified POINT lies within the zone addressed by
    INTERPRETER's ZP2 register.  Trap if it does not.  */
@@ -9211,15 +9184,9 @@ sfnt_interpret_isect (struct sfnt_interpreter *interpreter,
 {
   sfnt_f26dot6 a0x, a0y, a1x, a1y;
   sfnt_f26dot6 b0x, b0y, b1x, b1y;
-#if 0
-  sfnt_f26dot6 determinant, dx, dy;
-  sfnt_f26dot6 a0, b0, a1, b1;
-  sfnt_f26dot6 c0, c1, px, py;
-#else
   sfnt_f26dot6 dx, dy, dax, day, dbx, dby;
   sfnt_f26dot6 discriminant, val, dot_product;
   sfnt_f26dot6 px, py;
-#endif
 
   /* Load points.  */
   sfnt_address_zp0 (interpreter, point_a0, &a0x, &a0y, NULL, NULL);
@@ -9227,67 +9194,6 @@ sfnt_interpret_isect (struct sfnt_interpreter *interpreter,
   sfnt_address_zp1 (interpreter, point_b0, &b0x, &b0y, NULL, NULL);
   sfnt_address_zp1 (interpreter, point_b1, &b1x, &b1y, NULL, NULL);
 
-#if 0
-  /* The system is determined from the standard form (look this up) of
-     both lines.
-
-     (the variables below have no relation to C identifiers
-      unless otherwise specified.)
-
-       a0*x + b0*y = c0
-       a1*x + b1*y = c1
-
-     The coefficient matrix is thus
-
-       [ a0 b0
-         a1 b1 ]
-
-     the vector of constants (also just dubbed the ``column vector''
-     by some people)
-
-       [ c0
-         c1 ]
-
-     and the solution vector becomes
-
-       [ x
-         y ]
-
-     Since there are exactly two equations and two unknowns, Cramer's
-     rule applies, and there is no need for any Gaussian elimination.
-
-     The determinant for the coefficient matrix is:
-
-       D = a0*b1 - b0*a1
-
-     the first and second determinants are:
-
-       Dx = c0*b1 - a0*c1
-       Dy = a1*c1 - c0*b1
-
-     and x = Dx / D, y = Dy / D.
-
-     If the system is indeterminate, D will be 0.  */
-
-  sfnt_line_to_standard_form (a0x, a0y, a1x, a1y,
-			      &a0, &b0, &c0);
-  sfnt_line_to_standard_form (b0x, b0y, b1x, b1y,
-			      &a1, &b1, &c1);
-
-
-  /* Compute determinants.  */
-  determinant = sfnt_sub (sfnt_mul_fixed (a0, b1),
-			  sfnt_mul_fixed (b0, a1));
-  dx = sfnt_sub (sfnt_mul_fixed (c0, b1),
-		 sfnt_mul_fixed (a1, c1));
-  dy = sfnt_sub (sfnt_mul_fixed (a0, c1),
-		 sfnt_mul_fixed (c0, b0));
-
-  /* Detect degenerate cases.  */
-
-  if (determinant == 0)
-    goto degenerate_case;
-#else
   /* The algorithm above would work with floating point, but overflows
      too easily with fixed point numbers.
 
@@ -9323,15 +9229,9 @@ sfnt_interpret_isect (struct sfnt_interpreter *interpreter,
 						   discriminant));
   dy = sfnt_add (a0y, sfnt_multiply_divide_signed (val, day,
 						   discriminant));
-#endif
 
   sfnt_store_zp2 (interpreter, p,
-#if 0
-		  sfnt_div_fixed (dx, determinant),
-		  sfnt_div_fixed (dy, determinant),
-#else
 		  dx, dy,
-#endif
 		  SFNT_POINT_TOUCHED_BOTH);
   return;
 
@@ -16827,7 +16727,6 @@ static void
 sfnt_test_span (struct sfnt_edge *edge, sfnt_fixed y,
 		void *dcontext)
 {
-#if 1
   printf ("/* span at %g */\n", sfnt_coerce_fixed (y));
   for (; edge; edge = edge->next)
     {
@@ -16848,30 +16747,6 @@ sfnt_test_span (struct sfnt_edge *edge, sfnt_fixed y,
 		sfnt_coerce_fixed (edge->bottom),
 		edge->top, y, edge->winding);
     }
-#elif 0
-  int winding;
-  short x, dx;
-
-  winding = 0;
-  x = 0;
-
-  for (; edge; edge = edge->next)
-    {
-      dx = (edge->x >> 16) - x;
-      x = edge->x >> 16;
-
-      for (; dx > 0; --dx)
-	putc (winding ? '.' : ' ', stdout);
-
-      winding = !winding;
-    }
-
-  putc ('\n', stdout);
-#elif 0
-  for (; edge; edge = edge->next)
-    printf ("%g-", sfnt_coerce_fixed (edge->x));
-  puts ("");
-#endif
 }
 
 static void

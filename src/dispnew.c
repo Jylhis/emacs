@@ -57,9 +57,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <fpending.h>
 
-#ifdef WINDOWSNT
-#include "w32.h"
-#endif
 
 /* Structure to pass dimensions around.  Used for character bounding
    boxes, glyph matrix dimensions and alike.  */
@@ -104,19 +101,6 @@ static void set_window_update_flags (struct window *w, bool on_p);
 static void tty_set_cursor (struct frame *f);
 
 
-#if 0 /* Please leave this in as a debugging aid.  */
-static void
-check_rows (struct frame *f)
-{
-  for (int y = 0; y < f->desired_matrix->nrows; ++y)
-    if (MATRIX_ROW_ENABLED_P (f->desired_matrix, y))
-      {
-	struct glyph_row *row = MATRIX_ROW (f->desired_matrix, y);
-	for (int x = 0; x < row->used[TEXT_AREA]; ++x)
-	  eassert (row->glyphs[TEXT_AREA][x].frame != 0);
-      }
-}
-#endif
 
 /* True means SIGWINCH happened when not safe.  */
 
@@ -961,45 +945,6 @@ increment_row_positions (struct glyph_row *row,
 }
 
 
-#if 0
-/* Swap glyphs between two glyph rows A and B.  This exchanges glyph
-   contents, i.e. glyph structure contents are exchanged between A and
-   B without changing glyph pointers in A and B.  */
-
-static void
-swap_glyphs_in_rows (struct glyph_row *a, struct glyph_row *b)
-{
-  int area;
-
-  for (area = 0; area < LAST_AREA; ++area)
-    {
-      /* Number of glyphs to swap.  */
-      int max_used = max (a->used[area], b->used[area]);
-
-      /* Start of glyphs in area of row A.  */
-      struct glyph *glyph_a = a->glyphs[area];
-
-      /* End + 1 of glyphs in area of row A.  */
-      struct glyph *glyph_a_end = a->glyphs[max_used];
-
-      /* Start of glyphs in area of row B.  */
-      struct glyph *glyph_b = b->glyphs[area];
-
-      while (glyph_a < glyph_a_end)
-	{
-	  /* Non-ISO HP/UX compiler doesn't like auto struct
-             initialization.  */
-	  struct glyph temp;
-	  temp = *glyph_a;
-	  *glyph_a = *glyph_b;
-	  *glyph_b = temp;
-	  ++glyph_a;
-	  ++glyph_b;
-	}
-    }
-}
-
-#endif /* 0 */
 
 /* Exchange pointers to glyph memory between glyph rows A and B.  Also
    exchange the used[] array and the hash values of the rows, because
@@ -1079,29 +1024,6 @@ glyph_row_slice_p (struct glyph_row *window_row, struct glyph_row *frame_row)
 
 #endif /* GLYPH_DEBUG */
 
-#if 0
-
-/* Find the row in the window glyph matrix WINDOW_MATRIX being a slice
-   of ROW in the frame matrix FRAME_MATRIX.  Value is null if no row
-   in WINDOW_MATRIX is found satisfying the condition.  */
-
-static struct glyph_row *
-find_glyph_row_slice (struct glyph_matrix *window_matrix,
-		      struct glyph_matrix *frame_matrix, int row)
-{
-  int i;
-
-  eassert (row >= 0 && row < frame_matrix->nrows);
-
-  for (i = 0; i < window_matrix->nrows; ++i)
-    if (glyph_row_slice_p (window_matrix->rows + i,
-			   frame_matrix->rows + row))
-      break;
-
-  return i < window_matrix->nrows ? window_matrix->rows + i : 0;
-}
-
-#endif /* 0 */
 
 /* Prepare ROW for display in windows W.  Desired rows are cleared
    lazily, i.e. they are only marked as to be cleared by setting their
@@ -1475,9 +1397,6 @@ matrix_row (struct glyph_matrix *matrix, int row)
   /* That's really too slow for normal testing because this function
      is called almost everywhere.  Although---it's still astonishingly
      fast, so it is valuable to have for debugging purposes.  */
-#if 0
-  check_matrix_pointer_lossage (matrix);
-#endif
 
   return matrix->rows + row;
 }
@@ -4179,12 +4098,6 @@ update_frame_with_menu (struct frame *f, int row, int col)
 
   /* Check window matrices for lost pointers.  */
 #if GLYPH_DEBUG
-#if 0
-      /* We cannot possibly survive the matrix pointers check, since
-	 we have overwritten parts of the frame glyph matrix without
-	 making any updates to the window matrices.  */
-  check_window_matrix_pointers (root_window);
-#endif
   add_frame_display_history (f, false);
 #endif
 
@@ -5314,10 +5227,6 @@ scrolling_window (struct window *w, int tab_line_p)
   /* Can't scroll the display of w32 GUI frames when position of point
      is indicated by the system caret, because scrolling the display
      will then "copy" the pixels used by the caret.  */
-#ifdef HAVE_NTGUI
-  if (w32_use_visible_system_caret)
-    return 0;
-#endif
 
   /* Give up if some rows in the desired matrix are not enabled.  */
   if (! MATRIX_ROW_ENABLED_P (desired_matrix, i))
@@ -7227,9 +7136,7 @@ init_display_interactive (void)
 	 the GUI frame is created.)  */
       if (dumped_with_pdumper_p ())
         init_faces_initial ();
-#ifndef WINDOWSNT
       return;
-#endif
     }
 
   /* If the user wants to use a window system, we shouldn't bother
@@ -7278,13 +7185,6 @@ init_display_interactive (void)
     }
 #endif
 
-#ifdef HAVE_NTGUI
-  if (!inhibit_window_system)
-    {
-      Vinitial_window_system = Qw32;
-      return;
-    }
-#endif /* HAVE_NTGUI */
 
 #ifdef HAVE_NS
   if (!inhibit_window_system && !will_dump_p ())
@@ -7302,23 +7202,12 @@ init_display_interactive (void)
     }
 #endif
 
-#ifdef HAVE_HAIKU
-  if (!inhibit_window_system && !will_dump_p ())
-    {
-      Vinitial_window_system = Qhaiku;
-      return;
-    }
-#endif
 
   /* If no window system has been specified, try to use the terminal.  */
   if (! isatty (STDIN_FILENO))
     fatal ("standard input is not a tty");
 
-#ifdef WINDOWSNT
-  terminal_type = (char *)"w32console";
-#else
   terminal_type = getenv ("TERM");
-#endif
   if (!terminal_type)
     {
       char const *msg
@@ -7349,13 +7238,8 @@ init_display_interactive (void)
     f->terminal = t;
 
     t->reference_count++;
-#ifdef MSDOS
-    f->output_data.tty = &the_only_tty_output;
-    f->output_data.tty->display_info = &the_only_display_info;
-#else
     if (FRAME_TERMCAP_P (f))
       create_tty_output (f);
-#endif
     t->display_info.tty->top_frame = selected_frame;
     change_frame_size (XFRAME (selected_frame),
                        FrameCols (t->display_info.tty),

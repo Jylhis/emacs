@@ -4176,16 +4176,6 @@ types.  */)
 
     char *filename_1;
     SAFE_ALLOCA_STRING (filename_1, filename);
-#ifdef MSDOS
-    /* Rewrite references to .pdmp to refer to .dmp files on DOS.  */
-    size_t len = strlen (filename_1);
-    if (len >= 5
-	&& !strcmp (filename_1 + len - 5, ".pdmp"))
-      {
-	strcpy (filename_1 + len - 5, ".dmp");
-	filename = DECODE_FILE (build_unibyte_string (filename_1));
-      }
-#endif /* MSDOS */
     ctx->fd = emacs_open (filename_1, O_RDWR | O_TRUNC | O_CREAT, 0666);
     SAFE_FREE ();
   }
@@ -4949,9 +4939,6 @@ dump_mmap_contiguous_vm (struct dump_memory_map *maps, int nr_maps,
           mem += spec.size;
 	  if (need_retry && map->mapping == NULL
 	      && (errno == EBUSY
-#ifdef CYGWIN
-		  || errno == EINVAL
-#endif
 		  ))
             {
               retry = true;
@@ -5843,15 +5830,7 @@ Value is nil if this session was not started using a dump file.*/)
     return Qnil;
 
   Lisp_Object dump_fn;
-#ifdef WINDOWSNT
-  char dump_fn_utf8[MAX_UTF8_PATH];
-  if (filename_from_ansi (dump_private.dump_filename, dump_fn_utf8) == 0)
-    dump_fn = DECODE_FILE (build_unibyte_string (dump_fn_utf8));
-  else
-    dump_fn = build_unibyte_string (dump_private.dump_filename);
-#else
   dump_fn = DECODE_FILE (build_unibyte_string (dump_private.dump_filename));
-#endif
 
   dump_fn = Fexpand_file_name (dump_fn, Qnil);
 

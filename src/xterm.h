@@ -1786,11 +1786,6 @@ extern unsigned long x_copy_color (struct frame *, unsigned long);
 extern XtAppContext Xt_app_con;
 extern void x_activate_timeout_atimer (void);
 #endif
-#ifdef USE_LUCID
-extern bool x_alloc_lighter_color_for_widget (Widget, Display *, Colormap,
-					      unsigned long *,
-					      double, int);
-#endif
 extern bool x_alloc_nearest_color (struct frame *, Colormap, XColor *);
 extern void x_query_colors (struct frame *f, XColor *, int);
 extern void x_clear_area (struct frame *f, int, int, int, int);
@@ -1907,10 +1902,6 @@ extern void x_change_tool_bar_height (struct frame *, int);
 extern void x_implicitly_set_name (struct frame *, Lisp_Object, Lisp_Object);
 extern void x_set_scroll_bar_default_width (struct frame *);
 extern void x_set_scroll_bar_default_height (struct frame *);
-#ifdef USE_LUCID
-extern void xlw_monitor_dimensions_at_pos (Display *, Screen *, int, int,
-					   int *, int *, int *, int *);
-#endif
 
 /* Defined in xselect.c.  */
 

@@ -45,10 +45,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "fontset.h"
 #endif
 #include "cm.h"
-#ifdef MSDOS
-#include "msdos.h"
-#include "dosfns.h"
-#endif
 #ifdef USE_X_TOOLKIT
 #include "widget.h"
 #endif
@@ -940,9 +936,6 @@ adjust_frame_size (struct frame *f, int new_text_width, int new_text_height,
 		  || inhibit == 0 || inhibit == 2))))
     {
       if (inhibit == 2
-#ifdef USE_MOTIF
-	  && !EQ (parameter, Qmenu_bar_lines)
-#endif
 	  && (f->new_width >= 0 || f->new_height >= 0))
 	/* For implied resizes with inhibit 2 (external menu and tool
 	   bar) pick up any new sizes the display engine has not
@@ -1027,20 +1020,6 @@ adjust_frame_size (struct frame *f, int new_text_width, int new_text_height,
 
   block_input ();
 
-#ifdef MSDOS
-  if (!FRAME_PARENT_FRAME (f))
-    {
-      /* We only can set screen dimensions to certain values supported
-	 by our video hardware.  Try to find the smallest size greater
-	 or equal to the requested dimensions, while accounting for the
-	 fact that the menu-bar lines are not counted in the frame
-	 height.  */
-      int dos_new_text_lines = new_text_lines + FRAME_TOP_MARGIN (f);
-
-      dos_set_window_size (&dos_new_text_lines, &new_text_cols);
-      new_text_lines = dos_new_text_lines - FRAME_TOP_MARGIN (f);
-    }
-#endif
 
   if (new_inner_width != old_inner_width)
     {
@@ -1189,9 +1168,7 @@ make_frame (bool mini_p)
   f->horizontal_scroll_bars = false;
   f->want_fullscreen = FULLSCREEN_NONE;
   f->undecorated = false;
-#ifndef HAVE_NTGUI
   f->override_redirect = false;
-#endif
   f->skip_taskbar = false;
   f->no_focus_on_map = false;
   f->no_accept_focus = false;
@@ -1565,21 +1542,10 @@ make_terminal_frame (struct terminal *terminal, Lisp_Object parent,
 
   f->terminal = terminal;
   f->terminal->reference_count++;
-#ifdef MSDOS
-  f->output_data.tty = &the_only_tty_output;
-  f->output_data.tty->display_info = &the_only_display_info;
-  if (!inhibit_window_system
-      && (!FRAMEP (selected_frame) || !FRAME_LIVE_P (XFRAME (selected_frame))
-	  || FRAME_MSDOS_P (XFRAME (selected_frame))))
-    f->output_method = output_msdos_raw;
-  else
-    f->output_method = output_termcap;
-#else /* not MSDOS */
   f->output_method = output_termcap;
   create_tty_output (f);
   FRAME_FOREGROUND_PIXEL (f) = FACE_TTY_DEFAULT_FG_COLOR;
   FRAME_BACKGROUND_PIXEL (f) = FACE_TTY_DEFAULT_BG_COLOR;
-#endif /* not MSDOS */
 
   struct tty_display_info *tty = terminal->display_info.tty;
 
@@ -1759,16 +1725,7 @@ affects all frames on the same terminal device.  */)
   struct terminal *t = NULL;
   struct frame *sf = SELECTED_FRAME ();
 
-#ifdef MSDOS
-  if (!is_tty_frame (sf))
-    emacs_abort ();
-#else /* not MSDOS */
 
-#ifdef WINDOWSNT                           /* This should work now! */
-  if (!FRAME_TERMCAP_P (sf))
-    error ("Not using an ASCII terminal now; cannot make a new ASCII frame");
-#endif
-#endif /* not MSDOS */
 
   {
     Lisp_Object terminal;
@@ -1779,13 +1736,6 @@ affects all frames on the same terminal device.  */)
         terminal = XCDR (terminal);
         t = decode_live_terminal (terminal);
       }
-#ifdef MSDOS
-    if (t && t != the_only_display_info.terminal)
-      /* msdos.c assumes a single tty_display_info object.  */
-      error ("Multiple terminals are not supported on this platform");
-    if (!t)
-      t = the_only_display_info.terminal;
-# endif
   }
 
   if (!t)
@@ -2555,14 +2505,6 @@ other_frames (struct frame *f, bool invisible, bool force)
 	     However, please keep an alternative implementation
 	     available for use when Emacs is built without XCB.  */
 
-#if 0
-	  /* Verify that we can still talk to the frame's X window, and
-	     note any recent change in visibility.  */
-#ifdef HAVE_X_WINDOWS
-	  if (FRAME_WINDOW_P (f1))
-	    x_sync (f1);
-#endif
-#endif
 
 	  if (!FRAME_TOOLTIP_P (f1)
 	      /* Tooltips and child frames count neither for
@@ -2622,10 +2564,6 @@ delete_frame (Lisp_Object frame, Lisp_Object force)
 #ifdef HAVE_X_WINDOWS
   else if ((x_dnd_in_progress && f == x_dnd_frame)
 	   || (x_dnd_waiting_for_finish && f == x_dnd_finish_frame))
-    error ("Attempt to delete the drop source frame");
-#endif
-#ifdef HAVE_HAIKU
-  else if (f == haiku_dnd_frame)
     error ("Attempt to delete the drop source frame");
 #endif
 
@@ -3433,13 +3371,6 @@ before calling this function on it, like this.
       frame_set_mouse_position (XFRAME (frame), xval, yval);
 #endif /* HAVE_WINDOW_SYSTEM */
     }
-#ifdef MSDOS
-  else if (FRAME_MSDOS_P (XFRAME (frame)))
-    {
-      Fselect_frame (frame, Qnil);
-      mouse_moveto (xval, yval);
-    }
-#endif /* MSDOS */
   else
     {
       Fselect_frame (frame, Qnil);
@@ -3478,13 +3409,6 @@ before calling this function on it, like this.
       frame_set_mouse_pixel_position (XFRAME (frame), xval, yval);
 #endif /* HAVE_WINDOW_SYSTEM */
     }
-#ifdef MSDOS
-  else if (FRAME_MSDOS_P (XFRAME (frame)))
-    {
-      Fselect_frame (frame, Qnil);
-      mouse_moveto (xval, yval);
-    }
-#endif /* MSDOS */
   else
     {
       Fselect_frame (frame, Qnil);
@@ -4261,11 +4185,6 @@ list, but are otherwise ignored.  */)
 #ifdef HAVE_WINDOW_SYSTEM
   if (FRAME_WINDOW_P (f))
     gui_set_frame_parameters (f, alist);
-  else
-#endif
-#ifdef MSDOS
-  if (FRAME_MSDOS_P (f))
-    IT_set_frame_parameters (f, alist);
   else
 #endif
 
@@ -7822,10 +7741,6 @@ the same terminal.  */);
   defsubr (&Smouse_pixel_position);
   defsubr (&Sset_mouse_position);
   defsubr (&Sset_mouse_pixel_position);
-#if 0
-  defsubr (&Sframe_configuration);
-  defsubr (&Srestore_frame_configuration);
-#endif
   defsubr (&Smake_frame_visible);
   defsubr (&Smake_frame_invisible);
   defsubr (&Siconify_frame);

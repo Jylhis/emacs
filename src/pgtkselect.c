@@ -38,10 +38,6 @@ static void pgtk_decline_selection_request (struct selection_input_event *);
 static bool pgtk_convert_selection (Lisp_Object, Lisp_Object, GdkAtom, bool,
 				    struct pgtk_display_info *);
 static bool waiting_for_other_props_on_window (GdkDisplay *, GdkWindow *);
-#if 0
-static struct prop_location *expect_property_change (GdkDisplay *, GdkWindow *,
-                                                     GdkAtom, int);
-#endif
 static void unexpect_property_change (struct prop_location *);
 static void wait_for_property_change (struct prop_location *);
 static Lisp_Object pgtk_get_window_property_as_lisp_data (struct pgtk_display_info *,
@@ -432,11 +428,6 @@ struct prop_location
   struct prop_location *next;
 };
 
-#if 0
-
-static int prop_location_identifier;
-
-#endif
 
 static Lisp_Object property_change_reply;
 
@@ -861,25 +852,6 @@ waiting_for_other_props_on_window (GdkDisplay *display, GdkWindow *window)
 /* Currently unused -- uncomment later if we decide to implement INCR
    transfer for X.  */
 
-#if 0
-
-static struct prop_location *
-expect_property_change (GdkDisplay *display, GdkWindow *window,
-                        GdkAtom property, int state)
-{
-  struct prop_location *pl = xmalloc (sizeof *pl);
-  pl->identifier = ++prop_location_identifier;
-  pl->display = display;
-  pl->window = window;
-  pl->property = property;
-  pl->desired_state = state;
-  pl->next = property_change_wait_list;
-  pl->arrived = false;
-  property_change_wait_list = pl;
-  return pl;
-}
-
-#endif
 
 /* Delete an entry from the list of property changes we are waiting for.
    IDENTIFIER is the number that uniquely identifies the entry.  */

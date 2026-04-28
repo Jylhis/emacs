@@ -42,9 +42,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #ifdef HAVE_WINDOW_SYSTEM
 #include TERM_HEADER
 #endif /* HAVE_WINDOW_SYSTEM */
-#ifdef MSDOS
-#include "msdos.h"
-#endif
 #include "pdumper.h"
 
 static ptrdiff_t count_windows (struct window *);

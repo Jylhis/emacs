@@ -21,14 +21,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include "regex-emacs.h"
 
-#ifdef WINDOWSNT
-#include <sys/socket.h>
-#endif
 
-#ifdef MSDOS
-#include <time.h>               /* struct rpl_timespec */
-#include <signal.h>		/* sigset_t */
-#endif
 
 #ifdef HAVE_ANDROID
 #ifndef ANDROID_STUBIFY

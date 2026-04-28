@@ -5122,10 +5122,8 @@ extern void init_frame_once (void);
 extern void syms_of_frame (void);
 
 /* Defined in emacs.c.  */
-#ifndef WINDOWSNT
 extern char **initial_argv;
 extern int initial_argc;
-#endif
 extern char *initial_argv0;
 extern char const *emacs_wd;
 #if defined (HAVE_X_WINDOWS) || defined (HAVE_PGTK) || defined (HAVE_NS)
@@ -5134,9 +5132,6 @@ extern bool display_arg;
 extern Lisp_Object decode_env_path (const char *, const char *, bool);
 extern Lisp_Object empty_unibyte_string, empty_multibyte_string;
 extern AVOID terminate_due_to_signal (int, int);
-#ifdef WINDOWSNT
-extern Lisp_Object Vlibrary_cache;
-#endif
 void fixup_locale (void);
 void synchronize_system_messages_locale (void);
 void synchronize_system_time_locale (void);
@@ -5155,15 +5150,9 @@ extern bool build_details;
 /* 0 not a daemon, 1 new-style (foreground), 2 old-style (background).
    A negative value means the daemon initialization was already done.  */
 extern int daemon_type;
-#ifndef WINDOWSNT
 #define IS_DAEMON (daemon_type != 0)
 /* Non-zero means daemon-initialized has not yet been called.  */
 #define DAEMON_RUNNING (daemon_type >= 0)
-#else  /* WINDOWSNT */
-extern void *w32_daemon_event;
-#define IS_DAEMON (w32_daemon_event != NULL)
-#define DAEMON_RUNNING (w32_daemon_event != INVALID_HANDLE_VALUE)
-#endif
 
 /* True if handling a fatal error already.  */
 extern bool fatal_error_in_progress;
@@ -5201,11 +5190,7 @@ extern void syms_of_process (void);
 extern void setup_process_coding_systems (Lisp_Object);
 
 /* Defined in callproc.c.  */
-#ifdef DOS_NT
-# define CHILD_SETUP_ERROR_DESC "Spawning child process"
-#else
 # define CHILD_SETUP_ERROR_DESC "Doing vfork"
-#endif
 
 extern int emacs_spawn (pid_t *, int, int, int, char **, char **,
                         const char *, const char *, bool, bool,
@@ -5399,15 +5384,7 @@ extern void globals_of_gfilenotify (void);
 extern void syms_of_gfilenotify (void);
 #endif
 
-#ifdef HAVE_W32NOTIFY
-/* Defined on w32notify.c.  */
-extern void syms_of_w32notify (void);
-#endif
 
-#if defined HAVE_NTGUI || defined CYGWIN
-/* Defined in w32cygwinx.c.  */
-extern void syms_of_w32cygwinx (void);
-#endif
 
 /* Defined in xfaces.c.  */
 extern Lisp_Object Vface_alternative_font_family_alist;
@@ -5469,10 +5446,6 @@ extern void syms_of_profiler (void);
 extern void mark_profiler (void);
 
 
-#ifdef DOS_NT
-/* Defined in msdos.c, w32.c.  */
-extern char *emacs_root_dir (void);
-#endif /* DOS_NT */
 
 #ifdef HAVE_TEXT_CONVERSION
 /* Defined in textconv.c.  */

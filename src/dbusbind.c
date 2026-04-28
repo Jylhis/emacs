@@ -1101,14 +1101,6 @@ xd_remove_watch (DBusWatch *watch, void *data)
     return;
 
   /* Unset session environment.  */
-#if 0
-  /* This is buggy, since unsetenv is not thread-safe.  */
-  if (XSYMBOL (QCsession) == data) || (XSYMBOL (QCsession_private) == data)
-    {
-      XD_DEBUG_MESSAGE ("unsetenv DBUS_SESSION_BUS_ADDRESS");
-      unsetenv ("DBUS_SESSION_BUS_ADDRESS");
-    }
-#endif
 
   if (flags & DBUS_WATCH_WRITABLE)
     delete_write_fd (fd);

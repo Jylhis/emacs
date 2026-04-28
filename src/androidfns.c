@@ -1012,14 +1012,6 @@ DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
   gui_default_parameter (f, parms, Qno_special_glyphs, Qnil,
                          NULL, NULL, RES_TYPE_BOOLEAN);
 
-#if 0
-  android_default_scroll_bar_color_parameter (f, parms, Qscroll_bar_foreground,
-					      "scrollBarForeground",
-					      "ScrollBarForeground", true);
-  android_default_scroll_bar_color_parameter (f, parms, Qscroll_bar_background,
-					      "scrollBarBackground",
-					      "ScrollBarBackground", false);
-#endif
 
   /* Init faces before gui_default_parameter is called for the
      scroll-bar-width parameter because otherwise we end up in
@@ -2590,9 +2582,6 @@ DEFUN ("x-hide-tip", Fx_hide_tip, Sx_hide_tip, 0, 0, 0,
   /* Fx_hide_tip is called from pre-command-hook (in turn called from
      the tests.)  Since signaling here prevents any tests from being
      run, refrain from protesting if this stub is called.  */
-#if 0
-  error ("Android cross-compilation stub called!");
-#endif /* 0 */
   return Qnil;
 #else /* !ANDROID_STUBIFY */
   return android_hide_tip (!tooltip_reuse_hidden_frame);

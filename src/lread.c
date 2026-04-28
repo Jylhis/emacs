@@ -46,9 +46,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "pdumper.h"
 #include <c-ctype.h>
 
-#ifdef MSDOS
-#include "msdos.h"
-#endif
 
 #ifdef HAVE_NS
 #include "nsterm.h"
@@ -1245,22 +1242,6 @@ Return t if the file exists and loads successfully.  */)
 	handler = Ffind_file_name_handler (found, Qload);
       if (! NILP (handler))
 	return calln (handler, Qload, found, noerror, nomessage, Qt);
-#ifdef DOS_NT
-      /* Tramp has to deal with semi-broken packages that prepend
-	 drive letters to remote files.  For that reason, Tramp
-	 catches file operations that test for file existence, which
-	 makes openp think X:/foo.elc files are remote.  However,
-	 Tramp does not catch `load' operations for such files, so we
-	 end up with a nil as the `load' handler above.  If we would
-	 continue with fd = -2, we will behave wrongly, and in
-	 particular try reading a .elc file in the "rt" mode instead
-	 of "rb".  See bug #9311 for the results.  To work around
-	 this, we try to open the file locally, and go with that if it
-	 succeeds.  */
-      fd = emacs_open (SSDATA (ENCODE_FILE (found)), O_RDONLY, 0);
-      if (fd == -1)
-	fd = -2;
-#endif
     }
 
 #if !defined USE_ANDROID_ASSETS
@@ -1427,12 +1408,6 @@ Return t if the file exists and loads successfully.  */)
     }
   else if (!is_module && !is_native_elisp)
     {
-#ifdef WINDOWSNT
-      emacs_close (fd);
-      clear_unwind_protect (fd_index);
-      efound = ENCODE_FILE (found);
-      stream = emacs_fopen (SSDATA (efound), fmode);
-#else
 #if !defined USE_ANDROID_ASSETS
       stream = emacs_fdopen (fd, fmode);
 #else
@@ -1441,7 +1416,6 @@ Return t if the file exists and loads successfully.  */)
 	 unused.  */
       ((void) fmode);
       stream = fd;
-#endif
 #endif
     }
 
@@ -1934,11 +1908,6 @@ openp (Lisp_Object path, Lisp_Object str, Lisp_Object suffixes,
                     file exists is cheaper to do than actually opening
                     it.  Only open the file when we are sure that it
                     exists.  */
-#ifdef WINDOWSNT
-                if (sys_faccessat (AT_FDCWD, pfn, R_OK, AT_EACCESS))
-                  fd = -1;
-                else
-#endif
 		  {
 #if !defined USE_ANDROID_ASSETS
 		    fd = emacs_open (pfn, O_RDONLY, 0);
@@ -5640,15 +5609,11 @@ to the specified file name if a suffix is allowed or required.  */);
   DEFVAR_LISP ("dynamic-library-suffixes", Vdynamic_library_suffixes,
 	       doc: /* A list of suffixes for loadable dynamic libraries.  */);
 
-#ifndef MSDOS
   Vdynamic_library_suffixes
     = Fcons (build_string (DYNAMIC_LIB_SECONDARY_SUFFIX), Qnil);
   Vdynamic_library_suffixes
     = Fcons (build_string (DYNAMIC_LIB_SUFFIX),
 	     Vdynamic_library_suffixes);
-#else
-  Vdynamic_library_suffixes = Qnil;
-#endif
 
   DEFVAR_LISP ("load-file-rep-suffixes", Vload_file_rep_suffixes,
 	       doc: /* List of suffixes that indicate representations of \

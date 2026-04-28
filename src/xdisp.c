@@ -14632,10 +14632,6 @@ display_tab_bar (struct window *w)
   int i;
 
   /* Don't do all this for graphical frames.  */
-#ifdef HAVE_NTGUI
-  if (FRAME_W32_P (f))
-    return;
-#endif
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK)
   if (FRAME_X_P (f))
     return;
@@ -17339,10 +17335,6 @@ redisplay_internal (void)
     return;
 #endif
 
-#if defined (HAVE_HAIKU)
-  if (popup_activated_p)
-    return;
-#endif
 
   redisplay_counter++;
 
@@ -21781,10 +21773,6 @@ try_window_reusing_current_matrix (struct window *w)
   /* Can't scroll the display of w32 GUI frames when position of point
      is indicated by the system caret, because scrolling the display
      will then "copy" the pixels used by the caret.  */
-#ifdef HAVE_NTGUI
-  if (w32_use_visible_system_caret)
-    return false;
-#endif
 
   /* The variable new_start now holds the new window start.  The old
      start `start' can be determined from the current matrix.  */
@@ -22790,10 +22778,6 @@ try_window_id (struct window *w)
      position of point is indicated by the system caret, because
      scrolling the display will then "copy" the pixels used by the
      caret.  */
-#ifdef HAVE_NTGUI
-  if (FRAME_W32_P (f) && w32_use_visible_system_caret)
-    GIVE_UP (25);
-#endif
 
   /* Compute the position at which we have to start displaying new
      lines.  Some of the lines at the top of the window might be
@@ -27551,10 +27535,6 @@ display_menu_bar (struct window *w)
   int i;
 
   /* Don't do all this for graphical frames.  */
-#ifdef HAVE_NTGUI
-  if (FRAME_W32_P (f))
-    return;
-#endif
 #if defined (HAVE_PGTK)
   if (FRAME_PGTK_P (f))
     return;
@@ -27570,10 +27550,6 @@ display_menu_bar (struct window *w)
     return;
 #endif /* HAVE_NS */
 
-#ifdef HAVE_HAIKU
-  if (FRAME_HAIKU_P (f))
-    return;
-#endif /* HAVE_HAIKU */
 
   /* Don't do all this if the frame's menu bar is not yet set.  */
   if (NILP (FRAME_MENU_BAR_ITEMS (f)))
@@ -29578,9 +29554,7 @@ decode_mode_spec (struct window *w, register int c, int field_width,
       obj = Fget_buffer_process (Fcurrent_buffer ());
       if (NILP (obj))
 	return "no process";
-#ifndef MSDOS
       obj = Fsymbol_name (Fprocess_status (obj));
-#endif
       break;
 
     case '@':
@@ -30475,38 +30449,17 @@ dump_glyph_string (struct glyph_string *s)
    index of the first glyph structure covered by S.  HL is a
    face-override for drawing S.  */
 
-#ifdef HAVE_NTGUI
-/* We set inhibit-quit here due to paranoia: get_frame_dc acquires the
-   critical section, and we cannot QUIT while we hold the critical
-   section.  If any of the code run by callers of ALLOCATE_HDC happens
-   to call Lisp (might be possible due to all the hooks lying around),
-   we must prevent it from quitting.  */
-# define ALLOCATE_HDC(hdc, f)			\
-  Lisp_Object prev_quit = Vinhibit_quit;	\
-  Vinhibit_quit = Qt;				\
-  HDC hdc = get_frame_dc (f)
-# define RELEASE_HDC(hdc, f)			\
-  release_frame_dc (f, hdc);			\
-  Vinhibit_quit = prev_quit
-#else
 # define ALLOCATE_HDC(hdc, f)
 # define RELEASE_HDC(hdc, f)
-#endif
 
 static void
 init_glyph_string (struct glyph_string *s,
-#ifdef HAVE_NTGUI
-		   HDC hdc,
-#endif
 		   unsigned *char2b, struct window *w, struct glyph_row *row,
 		   enum glyph_row_area area, int start, enum draw_glyphs_face hl)
 {
   memset (s, 0, sizeof *s);
   s->w = w;
   s->f = XFRAME (w->frame);
-#ifdef HAVE_NTGUI
-  s->hdc = hdc;
-#endif
   s->char2b = char2b;
   s->hl = hl;
   s->row = row;
@@ -31429,15 +31382,8 @@ compute_overhangs_and_x (struct glyph_string *s, int x, bool backward_p)
    as well as the following local variables:
      `s', `f', and `hdc' (in W32)  */
 
-#ifdef HAVE_NTGUI
-/* On W32, silently add local `hdc' variable to argument list of
-   init_glyph_string.  */
-#define INIT_GLYPH_STRING(s, char2b, w, row, area, start, hl) \
-  init_glyph_string (s, hdc, char2b, w, row, area, start, hl)
-#else
 #define INIT_GLYPH_STRING(s, char2b, w, row, area, start, hl) \
   init_glyph_string (s, char2b, w, row, area, start, hl)
-#endif
 
 /* Add a glyph string for a stretch glyph to the list of strings
    between HEAD and TAIL.  START is the index of the stretch glyph in
@@ -36624,10 +36570,6 @@ note_fringe_highlight (struct frame *f, Lisp_Object window, int x, int y,
     return;
 #endif /* HAVE_X_WINDOWS || HAVE_NS || MSDOS || HAVE_ANDROID */
 
-#if defined HAVE_HAIKU
-  if (popup_activated_p)
-    return;
-#endif /* HAVE_HAIKU */
 
   /* Find a message to display through the help-echo mechanism whenever
      the mouse hovers over a fringe indicator.  Both text properties and
@@ -36711,10 +36653,6 @@ note_mouse_highlight (struct frame *f, int x, int y)
     return;
 #endif
 
-#if defined (HAVE_HAIKU)
-  if (popup_activated_p)
-    return;
-#endif
 
   if (!f->glyphs_initialized_p
       || f->pointer_invisible)
@@ -39314,11 +39252,6 @@ cancel_hourglass (void)
 	  if (FRAME_LIVE_P (f) && FRAME_WINDOW_P (f)
 	      && FRAME_RIF (f)->hide_hourglass)
 	    FRAME_RIF (f)->hide_hourglass (f);
-#ifdef HAVE_NTGUI
-	  /* No cursors on non GUI frames - restore to stock arrow cursor.  */
-	  else if (!FRAME_W32_P (f))
-	    w32_arrow_cursor ();
-#endif
 	}
 
       hourglass_shown_p = false;

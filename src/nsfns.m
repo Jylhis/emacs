@@ -899,7 +899,6 @@ ns_implicitly_set_icon_type (struct frame *f)
 
   if (image == nil)
     {
-#ifndef NS_IMPL_GNUSTEP
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= 120000
 #if MAC_OS_X_VERSION_MIN_REQUIRED < 120000
       if ([workspace respondsToSelector: @selector (iconForContentType:)])
@@ -908,7 +907,6 @@ ns_implicitly_set_icon_type (struct frame *f)
 			      [UTType typeWithIdentifier: @"text"]] retain];
 #if MAC_OS_X_VERSION_MIN_REQUIRED < 120000
       else
-#endif
 #endif
 #endif
 #if MAC_OS_X_VERSION_MIN_REQUIRED < 120000
@@ -1359,11 +1357,7 @@ DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
   /* default vertical scrollbars on right on Mac */
   {
       Lisp_Object spos
-#ifdef NS_IMPL_GNUSTEP
-          = Qt;
-#else
           = Qright;
-#endif
       gui_default_parameter (f, parms, Qvertical_scroll_bars, spos,
                              "verticalScrollBars", "VerticalScrollBars",
                              RES_TYPE_SYMBOL);
@@ -1716,10 +1710,6 @@ static struct
 {
   id panel;
   BOOL ret;
-#ifdef NS_IMPL_GNUSTEP
-  NSString *dirS, *initS;
-  BOOL no_types;
-#endif
 } ns_fd_data;
 
 void
@@ -1959,11 +1949,7 @@ DEFUN ("x-server-vendor", Fx_server_vendor, Sx_server_vendor, 0, 1, 0,
   (Lisp_Object terminal)
 {
   check_ns_display_info (terminal);
-#ifdef NS_IMPL_GNUSTEP
-  return build_string ("GNU");
-#else
   return build_string ("Apple");
-#endif
 }
 
 
@@ -3867,13 +3853,8 @@ If PROGRESS is nil, remove the progress indicator.  */)
 						  width, height)];
 	[level_indicator setWantsLayer: YES]; /* Performance.  */
 	[level_indicator setEnabled: NO]; /* Ignore mouse input.  */
-#ifdef NS_IMPL_GNUSTEP
-	[level_indicator setLevelIndicatorStyle:
-			   NSContinuousCapacityLevelIndicatorStyle];
-#else
 	[level_indicator setLevelIndicatorStyle:
 			   NSLevelIndicatorStyleContinuousCapacity];
-#endif
 	/* Match NSProgressIndicator color.  */
 	[level_indicator setFillColor: [NSColor controlAccentColor]];
 	[level_indicator setMinValue: 0.0];

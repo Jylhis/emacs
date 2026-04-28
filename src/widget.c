@@ -207,18 +207,6 @@ get_wm_shell (Widget w)
   return (WMShellWidget) wmshell;
 }
 
-#if 0 /* Currently not used.  */
-
-static void
-mark_shell_size_user_specified (Widget wmshell)
-{
-  if (! XtIsWMShell (wmshell)) emacs_abort ();
-  /* This is kind of sleazy, but I can't see how else to tell it to make it
-     mark the WM_SIZE_HINTS size as user specified when appropriate. */
-  ((WMShellWidget) wmshell)->wm.size_hints.flags |= USSize;
-}
-
-#endif
 
 
 static void

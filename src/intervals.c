@@ -1640,12 +1640,6 @@ graft_intervals_into_buffer (INTERVAL source, ptrdiff_t position,
          for the moment.  Someone please tell me the truth (K.Handa).  */
       INTERVAL prev = previous_interval (under);
       (void) prev;
-#if 0
-      /* But, this code surely has no effect.  And, anyway,
-         END_NONSTICKY_P is unreliable now.  */
-      if (prev && !END_NONSTICKY_P (prev))
-	prev = 0;
-#endif /* 0 */
     }
 
   /* Insertion is now at beginning of UNDER.  */

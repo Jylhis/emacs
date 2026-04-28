@@ -249,15 +249,6 @@ skip_invisible (ptrdiff_t pos, ptrdiff_t *next_boundary_p, ptrdiff_t to, Lisp_Ob
       tmp = Fnext_single_property_change (position, Qinvisible,
 					  buffer, proplimit);
       end = XFIXNAT (tmp);
-#if 0
-      /* Don't put the boundary in the middle of multibyte form if
-         there is no actual property change.  */
-      if (end == pos + 100
-	  && !NILP (current_buffer->enable_multibyte_characters)
-	  && end < ZV)
-	while (pos < end && !CHAR_HEAD_P (POS_ADDR (end)))
-	  end--;
-#endif
       *next_boundary_p = end;
     }
   /* if the `invisible' property is set, we can skip to
@@ -860,84 +851,6 @@ current_column_1 (void)
 }
 
 
-#if 0 /* Not used.  */
-
-/* Return the width in columns of the part of STRING from BEG to END.
-   If BEG is nil, that stands for the beginning of STRING.
-   If END is nil, that stands for the end of STRING.  */
-
-static double
-string_display_width (Lisp_Object string, Lisp_Object beg, Lisp_Object end)
-{
-  int col;
-  unsigned char *ptr, *stop;
-  bool tab_seen;
-  int post_tab;
-  int c;
-  int tab_width = SANE_TAB_WIDTH (current_buffer);
-  bool ctl_arrow = !NILP (current_buffer->ctl_arrow);
-  struct Lisp_Char_Table *dp = buffer_display_table ();
-  int b, e;
-
-  if (NILP (end))
-    e = SCHARS (string);
-  else
-    {
-      CHECK_FIXNUM (end);
-      e = XFIXNUM (end);
-    }
-
-  if (NILP (beg))
-    b = 0;
-  else
-    {
-      CHECK_FIXNUM (beg);
-      b = XFIXNUM (beg);
-    }
-
-  /* Make a pointer for decrementing through the chars before point.  */
-  ptr = SDATA (string) + e;
-  /* Make a pointer to where consecutive chars leave off,
-     going backwards from point.  */
-  stop = SDATA (string) + b;
-
-  col = 0, tab_seen = 0, post_tab = 0;
-
-  while (1)
-    {
-      if (ptr == stop)
-	break;
-
-      c = *--ptr;
-      if (dp != 0 && VECTORP (DISP_CHAR_VECTOR (dp, c)))
-	col += ASIZE (DISP_CHAR_VECTOR (dp, c));
-      else if (c >= 040 && c < 0177)
-	col++;
-      else if (c == '\n')
-	break;
-      else if (c == '\t')
-	{
-	  if (tab_seen)
-	    col = ((col + tab_width) / tab_width) * tab_width;
-
-	  post_tab += col;
-	  col = 0;
-	  tab_seen = 1;
-	}
-      else
-	col += (ctl_arrow && c < 0200) ? 2 : 4;
-    }
-
-  if (tab_seen)
-    {
-      col = ((col + tab_width) / tab_width) * tab_width;
-      col += post_tab;
-    }
-
-  return col;
-}
-
-#endif /* 0 */
 
 
 DEFUN ("indent-to", Findent_to, Sindent_to, 1, 2, "NIndent to column: ",

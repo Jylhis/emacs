@@ -21,21 +21,12 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 /* Include the proper files.  */
 
-#ifndef DOS_NT
 #include <termios.h>
 #include <fcntl.h>
-#endif /* not DOS_NT */
 
 #include <sys/ioctl.h>
 
-#ifdef HPUX
-#include <sys/bsdtty.h>
-#include <sys/ptyio.h>
-#endif
 
-#ifdef AIX
-#include <sys/pty.h>
-#endif /* AIX */
 
 #include <unistd.h>
 
@@ -76,11 +67,7 @@ struct emacs_tty {
 
 /* There is always one of the following elements, so there is no need
    for dummy get and set definitions.  */
-#ifndef DOS_NT
   struct termios main;
-#else /* DOS_NT */
-  unsigned main;
-#endif /* DOS_NT */
 };
 
 /* From sysdep.c or w32.c  */

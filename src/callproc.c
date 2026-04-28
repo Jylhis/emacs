@@ -25,9 +25,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <sys/types.h>
 #include <unistd.h>
 
-#ifdef MSDOS
-extern char **environ;
-#endif
 
 #include <sys/file.h>
 #include <fcntl.h>
@@ -56,17 +53,7 @@ extern char **environ;
 # include <sys/stropts.h>
 #endif
 
-#ifdef WINDOWSNT
-#include <sys/socket.h>	/* for fcntl */
-#include <windows.h>
-#include "w32.h"
-#define _P_NOWAIT 1	/* from process.h */
-#endif
 
-#ifdef MSDOS	/* Demacs 1.1.1 91/10/16 HIRANO Satoshi */
-#include <sys/stat.h>
-#include <sys/param.h>
-#endif /* MSDOS */
 
 #include "commands.h"
 #include "buffer.h"
@@ -80,9 +67,6 @@ extern char **environ;
 #include "systty.h"
 #include "keyboard.h"
 
-#ifdef MSDOS
-#include "msdos.h"
-#endif
 
 #ifdef HAVE_NS
 #include "nsterm.h"
@@ -113,11 +97,7 @@ static Lisp_Object Vtemp_file_name_pattern;
 static pid_t synch_process_pid;
 
 /* If a string, the name of a temp file that has not been removed.  */
-#ifdef MSDOS
-static Lisp_Object synch_process_tempfile;
-#else
 # define synch_process_tempfile make_fixnum (0)
-#endif
 
 /* Indexes of file descriptors that need closing on call_process_kill.  */
 enum
@@ -135,11 +115,7 @@ enum
 
 static Lisp_Object call_process (ptrdiff_t, Lisp_Object *, int, specpdl_ref);
 
-#ifdef DOS_NT
-# define CHILD_SETUP_TYPE int
-#else
 # define CHILD_SETUP_TYPE _Noreturn void
-#endif
 
 static CHILD_SETUP_TYPE child_setup (int, int, int, char **, char **,
 				     const char *);
@@ -195,7 +171,6 @@ get_current_directory (bool encode)
 void
 record_kill_process (struct Lisp_Process *p, Lisp_Object tempfile)
 {
-#ifndef MSDOS
   sigset_t oldset;
   block_child_signal (&oldset);
 
@@ -207,7 +182,6 @@ record_kill_process (struct Lisp_Process *p, Lisp_Object tempfile)
     }
 
   unblock_child_signal (&oldset);
-#endif	/* !MSDOS */
 }
 
 /* Clean up files, file descriptors and processes created by Fcall_process.  */
@@ -247,7 +221,6 @@ call_process_cleanup (Lisp_Object buffer)
 {
   Fset_buffer (buffer);
 
-#ifndef MSDOS
   if (synch_process_pid)
     {
       kill (-synch_process_pid, SIGINT);
@@ -260,14 +233,9 @@ call_process_cleanup (Lisp_Object buffer)
 		? "Waiting for process to die...done"
 		: "Waiting for process to die...internal error");
     }
-#endif	/* !MSDOS */
 }
 
-#ifdef DOS_NT
-static mode_t const default_output_mode = S_IREAD | S_IWRITE;
-#else
 static mode_t const default_output_mode = 0666;
-#endif
 
 DEFUN ("call-process", Fcall_process, Scall_process, 1, MANY, 0,
        doc: /* Call PROGRAM synchronously in separate process.
@@ -369,12 +337,8 @@ call_process (ptrdiff_t nargs, Lisp_Object *args, int filefd,
      t means use same as standard output.  */
   Lisp_Object error_file;
   Lisp_Object output_file = Qnil;
-#ifdef MSDOS	/* Demacs 1.1.1 91/10/16 HIRANO Satoshi */
-  char *tempfile = NULL;
-#else
   sigset_t oldset;
   pid_t pid = -1;
-#endif
   int child_errno;
   int fd_output, fd_error;
   struct coding_system process_coding; /* coding-system of process output */
@@ -511,9 +475,6 @@ call_process (ptrdiff_t nargs, Lisp_Object *args, int filefd,
 
   for (i = 0; i < CALLPROC_FDS; i++)
     callproc_fd[i] = -1;
-#ifdef MSDOS
-  synch_process_tempfile = make_fixnum (0);
-#endif
   record_unwind_protect_ptr (call_process_kill, callproc_fd);
 
   /* Search for program; barf if not found.  */
@@ -554,24 +515,6 @@ call_process (ptrdiff_t nargs, Lisp_Object *args, int filefd,
 
   discard_output = FIXNUMP (buffer) || (NILP (buffer) && NILP (output_file));
 
-#ifdef MSDOS
-  if (! discard_output && ! STRINGP (output_file))
-    {
-      char const *tmpdir = egetenv ("TMPDIR");
-      char const *outf = tmpdir ? tmpdir : "";
-      tempfile = alloca (strlen (outf) + 20);
-      strcpy (tempfile, outf);
-      dostounix_filename (tempfile);
-      if (*tempfile == '\0' || tempfile[strlen (tempfile) - 1] != '/')
-	strcat (tempfile, "/");
-      strcat (tempfile, "emXXXXXX");
-      mktemp (tempfile);
-      if (!*tempfile)
-	report_file_error ("Opening process output file", Qnil);
-      output_file = build_string (tempfile);
-      synch_process_tempfile = output_file;
-    }
-#endif
 
   if (discard_output)
     {
@@ -625,50 +568,12 @@ call_process (ptrdiff_t nargs, Lisp_Object *args, int filefd,
 
   char **env = make_environment_block (current_dir);
 
-#ifdef MSDOS /* MW, July 1993 */
-  status = child_setup (filefd, fd_output, fd_error, new_argv, env,
-                        SSDATA (current_dir));
-
-  if (status < 0)
-    {
-      child_errno = errno;
-      unbind_to (count, Qnil);
-      synchronize_system_messages_locale ();
-      return
-	code_convert_string_norecord (build_string (strerror (child_errno)),
-				      Vlocale_coding_system, 0);
-    }
-
-  for (i = 0; i < CALLPROC_FDS; i++)
-    if (0 <= callproc_fd[i])
-      {
-	emacs_close (callproc_fd[i]);
-	callproc_fd[i] = -1;
-      }
-  emacs_close (filefd);
-  clear_unwind_protect (specpdl_ref_add (count, -1));
-
-  if (tempfile)
-    {
-      /* Since CRLF is converted to LF within `decode_coding', we
-	 can always open a file with binary mode.  */
-      callproc_fd[CALLPROC_PIPEREAD] = emacs_open (tempfile, O_RDONLY, 0);
-      if (callproc_fd[CALLPROC_PIPEREAD] < 0)
-	{
-	  int open_errno = errno;
-	  report_file_errno ("Cannot re-open temporary file",
-			     build_string (tempfile), open_errno);
-	}
-    }
-
-#endif /* MSDOS */
 
   /* Do the unwind-protect now, even though the pid is not known, so
      that no storage allocation is done in the critical section.
      The actual PID will be filled in during the critical section.  */
   record_unwind_protect (call_process_cleanup, Fcurrent_buffer ());
 
-#ifndef MSDOS
 
   child_signal_init ();
   block_input ();
@@ -714,7 +619,6 @@ call_process (ptrdiff_t nargs, Lisp_Object *args, int filefd,
   emacs_close (filefd);
   clear_unwind_protect (specpdl_ref_add (count, -1));
 
-#endif /* not MSDOS */
 
   if (FIXNUMP (buffer))
     return unbind_to (count, Qnil);
@@ -919,10 +823,8 @@ call_process (ptrdiff_t nargs, Lisp_Object *args, int filefd,
     }
 
   bool wait_ok = true;
-#ifndef MSDOS
   /* Wait for it to terminate, unless it already has.  */
   wait_ok = wait_for_termination (pid, &status, fd0 < 0);
-#endif
 
   /* Don't kill any children that the subprocess may have left behind
      when exiting.  */
@@ -972,37 +874,14 @@ create_temp_file (ptrdiff_t nargs, Lisp_Object *args,
   else
     {
       char *outf;
-#ifndef DOS_NT
       outf = getenv ("TMPDIR");
       tmpdir = build_string (outf ? outf : "/tmp/");
-#else /* DOS_NT */
-      if ((outf = egetenv ("TMPDIR"))
-	  || (outf = egetenv ("TMP"))
-	  || (outf = egetenv ("TEMP")))
-	tmpdir = build_string (outf);
-      else
-	tmpdir = Ffile_name_as_directory (build_string ("c:/temp"));
-#endif
     }
 
   {
     Lisp_Object pattern = Fexpand_file_name (Vtemp_file_name_pattern, tmpdir);
     char *tempfile;
 
-#ifdef WINDOWSNT
-    /* Cannot use the result of Fexpand_file_name, because it
-       downcases the XXXXXX part of the pattern, and mktemp then
-       doesn't recognize it.  */
-    if (!NILP (Vw32_downcase_file_names))
-      {
-	Lisp_Object dirname = Ffile_name_directory (pattern);
-
-	if (NILP (dirname))
-	  pattern = Vtemp_file_name_pattern;
-	else
-	  pattern = concat2 (dirname, Vtemp_file_name_pattern);
-      }
-#endif
 
     filename_string = Fcopy_sequence (ENCODE_FILE (pattern));
     tempfile = SSDATA (filename_string);
@@ -1194,7 +1073,6 @@ add_env (char **env, char **new_env, char *string)
   return new_env;
 }
 
-#ifndef DOS_NT
 
 /* 'exec' failed inside a child running NAME, with error number ERR.
    Possibly a vforked child needed to allocate a large vector on the
@@ -1215,7 +1093,6 @@ exec_failed (char const *name, int err)
   _exit (err == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE);
 }
 
-#endif
 
 /* This is the last thing run in a newly forked inferior
    either synchronous or asynchronous.
@@ -1236,17 +1113,7 @@ static CHILD_SETUP_TYPE
 child_setup (int in, int out, int err, char **new_argv, char **env,
 	     const char *current_dir)
 {
-#ifdef MSDOS
-  char *pwd_var;
-  char *temp;
-  ptrdiff_t i;
-#endif
-#ifdef WINDOWSNT
-  int cpid;
-  HANDLE handles[3];
-#else
   pid_t pid = getpid ();
-#endif /* WINDOWSNT */
 
   /* Note that use of alloca is always safe here.  It's obvious for systems
      that do not have true vfork or that have true (stack) alloca.
@@ -1255,7 +1122,6 @@ child_setup (int in, int out, int err, char **new_argv, char **env,
      static variables as if the superior had done alloca and will be
      cleaned up in the usual way. */
 
-#ifndef DOS_NT
     /* We can't signal an Elisp error here; we're in a vfork.  Since
        the callers check the current directory before forking, this
        should only return an error if the directory's permissions
@@ -1263,19 +1129,8 @@ child_setup (int in, int out, int err, char **new_argv, char **env,
        at least check.  */
     if (chdir (current_dir) < 0)
       _exit (EXIT_CANCELED);
-#endif
 
-#ifdef WINDOWSNT
-  prepare_standard_handles (in, out, err, handles);
-  set_process_dir (current_dir);
-  /* Spawn the child.  (See w32proc.c:sys_spawnve).  */
-  cpid = spawnve (_P_NOWAIT, new_argv[0], new_argv, env);
-  reset_standard_handles (in, out, err, handles);
-  return cpid;
 
-#else  /* not WINDOWSNT */
-
-#ifndef MSDOS
 
   restore_nofile_limit ();
 
@@ -1292,31 +1147,6 @@ child_setup (int in, int out, int err, char **new_argv, char **env,
   int errnum = emacs_exec_file (new_argv[0], new_argv, env);
   exec_failed (new_argv[0], errnum);
 
-#else /* MSDOS */
-  i = strlen (current_dir);
-  pwd_var = xmalloc (i + 5);
-  temp = pwd_var + 4;
-  memcpy (pwd_var, "PWD=", 4);
-  stpcpy (temp, current_dir);
-
-  if (i > 2 && IS_DEVICE_SEP (temp[1]) && IS_DIRECTORY_SEP (temp[2]))
-    {
-      temp += 2;
-      i -= 2;
-    }
-
-  /* Strip trailing slashes for PWD, but leave "/" and "//" alone.  */
-  while (i > 2 && IS_DIRECTORY_SEP (temp[i - 1]))
-    temp[--i] = 0;
-
-  pid = run_msdos_command (new_argv, pwd_var + 4, in, out, err, env);
-  xfree (pwd_var);
-  if (pid == -1)
-    /* An error occurred while trying to run the subprocess.  */
-    report_file_error ("Spawning child process", Qnil);
-  return pid;
-#endif  /* MSDOS */
-#endif  /* not WINDOWSNT */
 }
 
 #if USABLE_POSIX_SPAWN
@@ -1510,7 +1340,6 @@ emacs_spawn (pid_t *newpid, int std_in, int std_out, int std_err,
     }
 #endif
 
-#ifndef WINDOWSNT
   /* vfork, and prevent local vars from being clobbered by the vfork.  */
   pid_t *volatile newpid_volatile = newpid;
   const char *volatile cwd_volatile = cwd;
@@ -1549,7 +1378,6 @@ emacs_spawn (pid_t *newpid, int std_in, int std_out, int std_err,
   oldset = oldset_volatile;
 
   if (pid == 0)
-#endif /* not WINDOWSNT */
     {
       /* Make the pty be the controlling terminal of the process.  */
 #ifdef HAVE_PTYS
@@ -1652,11 +1480,7 @@ emacs_spawn (pid_t *newpid, int std_in, int std_out, int std_err,
 
       if (std_err < 0)
 	std_err = std_out;
-#ifdef WINDOWSNT
-      pid = child_setup (std_in, std_out, std_err, argv, envp, cwd);
-#else  /* not WINDOWSNT */
       child_setup (std_in, std_out, std_err, argv, envp, cwd);
-#endif /* not WINDOWSNT */
     }
 
   /* Back in the parent process.  */
@@ -1686,12 +1510,7 @@ getenv_internal_1 (const char *var, ptrdiff_t varlen, char **value,
       Lisp_Object entry = XCAR (env);
       if (STRINGP (entry)
 	  && SBYTES (entry) >= varlen
-#ifdef WINDOWSNT
-	  /* NT environment variables are case insensitive.  */
-	  && ! strnicmp (SSDATA (entry), var, varlen)
-#else  /* not WINDOWSNT */
 	  && ! memcmp (SDATA (entry), var, varlen)
-#endif /* not WINDOWSNT */
 	  )
 	{
 	  if (SBYTES (entry) > varlen && SREF (entry, varlen) == '=')
@@ -1723,17 +1542,6 @@ getenv_internal (const char *var, ptrdiff_t varlen, char **value,
 
   /* On Windows we make some modifications to Emacs's environment
      without recording them in Vprocess_environment.  */
-#ifdef WINDOWSNT
-  {
-    char *tmpval = getenv (var);
-    if (tmpval)
-      {
-        *value = tmpval;
-        *valuelen = strlen (tmpval);
-        return 1;
-      }
-  }
-#endif
 
   /* Setting DISPLAY under Android hinders attempts to display other
      programs within X servers that are available for Android.  */
@@ -1829,14 +1637,6 @@ make_environment_block (Lisp_Object current_dir)
     memcpy (pwd_var, "PWD=", 4);
     lispstpcpy (temp, current_dir);
 
-#ifdef DOS_NT
-    /* Get past the drive letter, so that d:/ is left alone.  */
-    if (i > 2 && IS_DEVICE_SEP (temp[1]) && IS_DIRECTORY_SEP (temp[2]))
-      {
-	temp += 2;
-	i -= 2;
-      }
-#endif /* DOS_NT */
 
     /* Strip trailing slashes for PWD, but leave "/" and "//" alone.  */
     while (i > 2 && IS_DIRECTORY_SEP (temp[i - 1]))
@@ -1979,7 +1779,6 @@ init_callproc (void)
       Lisp_Object tem;
       tem = Fexpand_file_name (build_string ("lib-src"),
 			       Vinstallation_directory);
-#ifndef MSDOS
 	  /* MSDOS uses wrapped binaries, so don't do this.  */
       if (NILP (Fmember (tem, Vexec_path)))
 	{
@@ -1989,7 +1788,6 @@ init_callproc (void)
 	}
 
       Vexec_directory = Ffile_name_as_directory (tem);
-#endif /* not MSDOS */
 
       /* Maybe use ../etc as well as ../lib-src.  */
       if (data_dir == 0)
@@ -2047,19 +1845,10 @@ init_callproc (void)
   if (PATH_GAME)
     {
       const char *cpath_game = PATH_GAME;
-#ifdef WINDOWSNT
-      /* On MS-Windows, PATH_GAME normally starts with a literal
-	 "%emacs_dir%", so it will never work without some tweaking.  */
-      cpath_game = w32_relocate (cpath_game);
-#endif
       Lisp_Object path_game = build_unibyte_string (cpath_game);
       if (file_accessible_directory_p (path_game))
 	gamedir = path_game;
       else if (errno != ENOENT && errno != ENOTDIR
-#ifdef DOS_NT
-	       /* DOS/Windows sometimes return EACCES for bad file names  */
-	       && errno != EACCES
-#endif
 	       )
 	dir_warning ("game dir", path_game);
     }
@@ -2081,17 +1870,9 @@ set_initial_environment (void)
 void
 syms_of_callproc (void)
 {
-#ifndef DOS_NT
   Vtemp_file_name_pattern = build_string ("emacsXXXXXX");
-#else  /* DOS_NT */
-  Vtemp_file_name_pattern = build_string ("emXXXXXX");
-#endif
   staticpro (&Vtemp_file_name_pattern);
 
-#ifdef MSDOS
-  synch_process_tempfile = make_fixnum (0);
-  staticpro (&synch_process_tempfile);
-#endif
 
   DEFVAR_LISP ("shell-file-name", Vshell_file_name,
 	       doc: /* File name to load inferior shells from.

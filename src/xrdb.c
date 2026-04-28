@@ -391,19 +391,6 @@ x_load_resources (Display *display, const char *xrm_string,
 #endif
   rdb = XrmGetStringDatabase ("");
 
-#ifdef USE_MOTIF
-  /* Set double click time of list boxes in the file selection
-     dialog from `double-click-time'.  */
-  if (FIXNUMP (Vdouble_click_time) && XFIXNUM (Vdouble_click_time) > 0)
-    {
-      sprintf (line, "%s*fsb*DirList.doubleClickInterval: %"pI"d",
-	       myclass, XFIXNAT (Vdouble_click_time));
-      XrmPutLineResource (&rdb, line);
-      sprintf (line, "%s*fsb*ItemsList.doubleClickInterval: %"pI"d",
-	       myclass, XFIXNAT (Vdouble_click_time));
-      XrmPutLineResource (&rdb, line);
-    }
-#else /* not USE_MOTIF */
   /* Add some font defaults.  If the font `helv' doesn't exist,
      widgets will use some other default font.  */
   sprintf (line, "Emacs.dialog*.background: grey75");
@@ -422,7 +409,6 @@ x_load_resources (Display *display, const char *xrm_string,
   XrmPutLineResource (&rdb, line);
   sprintf (line, "Emacs*horizontalScrollBar.background: grey75");
   XrmPutLineResource (&rdb, line);
-#endif /* not USE_MOTIF */
 
   user_database = get_user_db (display);
 

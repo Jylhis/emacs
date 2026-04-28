@@ -1372,17 +1372,6 @@ xg_frame_set_char_size (struct frame *f, int width, int height)
 /* Handle height/width changes (i.e. add/remove/move menu/toolbar).
    The policy is to keep the number of editable lines.  */
 
-#if 0
-static void
-xg_height_or_width_changed (struct frame *f)
-{
-  gtk_window_resize (GTK_WINDOW (FRAME_GTK_OUTER_WIDGET (f)),
-                     FRAME_TOTAL_PIXEL_WIDTH (f),
-                     FRAME_TOTAL_PIXEL_HEIGHT (f));
-  f->output_data.xp->hint_flags = 0;
-  x_wm_set_size_hint (f, 0, 0);
-}
-#endif
 
 /** Move and resize the outer window of frame F.  WIDTH and HEIGHT are
     the new native pixel sizes of F.  */

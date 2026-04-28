@@ -51,53 +51,6 @@ cmputc (int c)
 }
 
 /* NEXT TWO ARE DONE WITH MACROS */
-#if 0
-/*
- * Assume the cursor is at row row, column col.  Normally used only after
- * clearing the screen, when the cursor is at (0, 0), but what the heck,
- * let's let the guy put it anywhere.
- */
-
-static
-at (tty, row, col) {
-  curY (tty) = row;
-  curX (tty)  = col;
-}
-
-/*
- * Add n columns to the current cursor position.
- */
-
-static
-addcol (tty, n) {
-  curX (tty) += n;
-
-    /*
-     * If cursor hit edge of screen, what happened?
-     * N.B.: DO NOT!! write past edge of screen.  If you do, you
-     * deserve what you get.  Furthermore, on terminals with
-     * autowrap (but not magicwrap), don't write in the last column
-     * of the last line.
-     */
-
-  if (curX (tty) == tty->Wcm->cm_cols) {
-	/*
-	 * Well, if magicwrap, still there, past the edge of the
-	 * screen (!).  If autowrap, on the col 0 of the next line.
-	 * Otherwise on last column.
-	 */
-
-	if (tty->Wcm->cm_magicwrap)
-	    ;			/* "limbo" */
-	else if (tty->Wcm->cm_autowrap) {
-          curX (tty) = 0;
-          curY (tty) ++;		/* Beware end of screen! */
-	}
-	else
-          curX (tty)--;
-    }
-}
-#endif
 
 /*
  * Terminals with magicwrap (xn) don't all behave identically.
@@ -311,13 +264,6 @@ done:
     return totalcost;
 }
 
-#if 0
-void
-losecursor (void)
-{
-  curY = -1;
-}
-#endif
 
 #define	USEREL	0
 #define	USEHOME	1
@@ -448,10 +394,6 @@ Wcm_clear (struct tty_display_info *tty)
 int
 Wcm_init (struct tty_display_info *tty)
 {
-#if 0
-  if (tty->Wcm->cm_abs && !tty->Wcm->cm_ds)
-    return 0;
-#endif
   if (tty->Wcm->cm_abs)
     return 0;
   /* Require up and left, and, if no absolute, down and right */

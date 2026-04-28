@@ -43,9 +43,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 # include <sys/syscall.h>
 #endif
 
-#ifdef CYGWIN
-# include <cygwin/fs.h>
-#endif
 
 #if defined DARWIN_OS || defined __FreeBSD__ || defined __OpenBSD__
 # include <sys/sysctl.h>
@@ -74,14 +71,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <netdb.h>
 #endif /* HAVE_SOCKETS */
 
-#ifdef WINDOWSNT
-#define read sys_read
-#define write sys_write
-#ifndef STDERR_FILENO
-#define STDERR_FILENO fileno(GetStdHandle(STD_ERROR_HANDLE))
-#endif
-#include "w32.h"
-#endif /* WINDOWSNT */
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -92,9 +81,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <sys/systeminfo.h>
 #endif
 
-#ifdef MSDOS	/* Demacs 1.1.2 91/10/20 Manabu Higashida, MW Aug 1993 */
-#include "msdos.h"
-#endif
 
 #include <sys/param.h>
 #include <sys/file.h>
@@ -122,15 +108,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "process.h"
 #include "cm.h"
 
-#ifdef WINDOWSNT
-# include <direct.h>
-/* In process.h which conflicts with the local copy.  */
-# define _P_WAIT 0
-int _cdecl _spawnlp (int, const char *, const char *, ...);
-/* The following is needed for O_CLOEXEC, F_SETFD, FD_CLOEXEC, and
-   several prototypes of functions called below.  */
-# include <sys/socket.h>
-#endif
 
 #ifdef HAVE_ANDROID
 #include "android.h"
@@ -202,7 +179,6 @@ maybe_disable_address_randomization (int argc, char **argv)
 }
 #endif
 
-#ifndef WINDOWSNT
 /* Execute the program in FILE, with argument vector ARGV and environ
    ENVP.  Return an error number if unsuccessful.  This is like execve
    except it reenables ASLR in the executed program if necessary, and
@@ -219,7 +195,6 @@ emacs_exec_file (char const *file, char *const *argv, char *const *envp)
   return errno;
 }
 
-#endif	/* !WINDOWSNT */
 
 /* If FD is not already open, arrange for it to be open with FLAGS.  */
 static void
@@ -360,16 +335,11 @@ emacs_get_current_dir_name (void)
 void
 discard_tty_input (void)
 {
-#ifndef WINDOWSNT
   struct emacs_tty buf;
 
   if (noninteractive)
     return;
 
-#ifdef MSDOS    /* Demacs 1.1.1 91/10/16 HIRANO Satoshi */
-  while (dos_keyread () != -1)
-    ;
-#else /* not MSDOS */
   {
     struct tty_display_info *tty;
     for (tty = tty_list; tty; tty = tty->next)
@@ -381,8 +351,6 @@ discard_tty_input (void)
           }
       }
   }
-#endif /* not MSDOS */
-#endif /* not WINDOWSNT */
 }
 
 
@@ -419,15 +387,11 @@ init_baud_rate (int fd)
     emacs_ospeed = 0;
   else
     {
-#ifdef DOS_NT
-    emacs_ospeed = 15;
-#else  /* not DOS_NT */
       struct termios sg;
 
       sg.c_cflag = B9600;
       tcgetattr (fd, &sg);
       emacs_ospeed = cfgetospeed (&sg);
-#endif /* not DOS_NT */
     }
 
   baud_rate = (emacs_ospeed < ARRAYELTS (baud_convert)
@@ -438,7 +402,6 @@ init_baud_rate (int fd)
 
 
 
-#ifndef MSDOS
 
 /* Wait for the subprocess with process id CHILD to terminate or change status.
    CHILD must be a child process that has not been reaped.
@@ -526,7 +489,6 @@ child_status_changed (pid_t child, int *status, int options)
 void
 child_setup_tty (int out)
 {
-#ifndef WINDOWSNT
   struct emacs_tty s;
 
   emacs_get_tty (out, &s);
@@ -559,9 +521,6 @@ child_setup_tty (int out)
   s.main.c_cc[VERASE] = CDISABLE;	/* disable erase processing */
   s.main.c_cc[VKILL] = CDISABLE;	/* disable kill processing */
 
-#ifdef HPUX
-  s.main.c_cflag = (s.main.c_cflag & ~CBAUD) | B9600; /* baud rate sanity */
-#endif /* HPUX */
 
 #ifdef SIGNALS_VIA_CHARACTERS
   /* the QUIT and INTR character are used in process_send_signal
@@ -572,16 +531,6 @@ child_setup_tty (int out)
     s.main.c_cc[VINTR] = 'C'&037;	/* Control-C */
 #endif /* not SIGNALS_VIA_CHARACTERS */
 
-#ifdef AIX
-  /* Also, PTY overloads NUL and BREAK.
-     don't ignore break, but don't signal either, so it looks like NUL.  */
-  s.main.c_iflag &= ~IGNBRK;
-  s.main.c_iflag &= ~BRKINT;
-  /* rms: Formerly it set s.main.c_cc[VINTR] to 0377 here
-     unconditionally.  Then a SIGNALS_VIA_CHARACTERS conditional
-     would force it to 0377.  That looks like duplicated code.  */
-  s.main.c_cflag = (s.main.c_cflag & ~CBAUD) | B9600; /* baud rate sanity */
-#endif /* AIX */
 
   /* We originally enabled ICANON (and set VEOF to 04), and then had
      process.c send additional EOF chars to flush the output when faced
@@ -602,15 +551,9 @@ child_setup_tty (int out)
 
   s.main.c_lflag |= ICANON;	/* Enable line editing and eof processing */
   s.main.c_cc[VEOF] = 'D'&037;	/* Control-D */
-#if 0	    /* These settings only apply to non-ICANON mode. */
-  s.main.c_cc[VMIN] = 1;
-  s.main.c_cc[VTIME] = 0;
-#endif
 
   emacs_set_tty (out, &s, 0);
-#endif /* not WINDOWSNT */
 }
-#endif	/* not MSDOS */
 
 
 /* Record a signal code and the action for it.  */
@@ -628,15 +571,7 @@ static void restore_signal_handlers (struct save_signal *);
 void
 sys_suspend (void)
 {
-#ifndef DOS_NT
   kill (0, SIGTSTP);
-#else
-/* On a system where suspending is not implemented,
-   instead fork a subshell and let it talk directly to the terminal
-   while we wait.  */
-  sys_subshell ();
-
-#endif
 }
 
 /* Fork a subshell.  */
@@ -644,29 +579,16 @@ sys_suspend (void)
 void
 sys_subshell (void)
 {
-#ifdef DOS_NT	/* Demacs 1.1.2 91/10/20 Manabu Higashida */
-#ifdef MSDOS
-  int st;
-  char oldwd[MAXPATHLEN+1]; /* Fixed length is safe on MSDOS.  */
-#else
-  char oldwd[MAX_UTF8_PATH];
-#endif	/* MSDOS */
-#else	/* !DOS_NT */
   int status;
-#endif
   pid_t pid;
   struct save_signal saved_handlers[5];
   char *str = SSDATA (get_current_directory (true));
 
-#ifdef DOS_NT
-  pid = 0;
-#else
   {
     char *volatile str_volatile = str;
     pid = VFORK ();
     str = str_volatile;
   }
-#endif
 
   if (pid < 0)
     error ("Can't spawn subshell");
@@ -684,19 +606,11 @@ sys_subshell (void)
   saved_handlers[3].code = 0;
 #endif
 
-#ifdef DOS_NT
-  save_signal_handlers (saved_handlers);
-#endif
 
   if (pid == 0)
     {
       const char *sh = 0;
 
-#ifdef DOS_NT    /* MW, Aug 1993 */
-      getcwd (oldwd, sizeof oldwd);
-      if (sh == 0)
-	sh = egetenv ("SUSPEND");	/* KFS, 1994-12-14 */
-#endif
       if (sh == 0)
 	sh = egetenv ("SHELL");
       if (sh == 0)
@@ -705,51 +619,19 @@ sys_subshell (void)
       /* Use our buffer's default directory for the subshell.  */
       if (chdir (str) != 0)
 	{
-#ifndef DOS_NT
 	  emacs_perror (str);
 	  _exit (EXIT_CANCELED);
-#endif
 	}
 
-#ifdef MSDOS    /* Demacs 1.1.2 91/10/20 Manabu Higashida */
-      {
-	char *epwd = getenv ("PWD");
-	char old_pwd[MAXPATHLEN+1+4];
-
-	/* If PWD is set, pass it with corrected value.  */
-	if (epwd)
-	  {
-	    strcpy (old_pwd, epwd);
-	    setenv ("PWD", str, 1);
-	  }
-	st = system (sh);
-	chdir (oldwd);	/* FIXME: Do the right thing on chdir failure.  */
-	if (epwd)
-	  putenv (old_pwd);	/* restore previous value */
-      }
-#else /* not MSDOS */
-#ifdef  WINDOWSNT
-      /* Waits for process completion */
-      pid = _spawnlp (_P_WAIT, sh, sh, NULL);
-      chdir (oldwd);	/* FIXME: Do the right thing on chdir failure.  */
-      if (pid == -1)
-	write (1, "Can't execute subshell", 22);
-#else   /* not WINDOWSNT */
       execlp (sh, sh, (char *) 0);
       emacs_perror (sh);
       _exit (errno == ENOENT ? EXIT_ENOENT : EXIT_CANNOT_INVOKE);
-#endif  /* not WINDOWSNT */
-#endif /* not MSDOS */
     }
 
   /* Do this now if we did not do it before.  */
-#ifndef MSDOS
   save_signal_handlers (saved_handlers);
-#endif
 
-#ifndef DOS_NT
   wait_for_termination (pid, &status, 0);
-#endif
   restore_signal_handlers (saved_handlers);
 }
 
@@ -790,7 +672,6 @@ init_sigio (int fd)
 }
 
 #ifndef HAVE_ANDROID
-#ifndef DOS_NT
 #ifdef F_SETOWN
 static void
 reset_sigio (int fd)
@@ -800,7 +681,6 @@ reset_sigio (int fd)
 #endif
 }
 #endif /* F_SETOWN */
-#endif
 #endif
 
 void
@@ -850,7 +730,6 @@ unrequest_sigio (void)
 #endif
 }
 
-#ifndef MSDOS
 /* Block SIGCHLD.  */
 
 void
@@ -871,7 +750,6 @@ unblock_child_signal (sigset_t const *oldset)
   pthread_sigmask (SIG_SETMASK, oldset, 0);
 }
 
-#endif	/* !MSDOS */
 
 /* Block SIGINT.  */
 void
@@ -996,22 +874,8 @@ emacs_get_tty (int fd, struct emacs_tty *settings)
 {
   /* Retrieve the primary parameters - baud rate, character size, etcetera.  */
   memset (&settings->main, 0, sizeof (settings->main));
-#ifdef DOS_NT
-#ifdef WINDOWSNT
-  HANDLE h = (HANDLE)_get_osfhandle (fd);
-  DWORD console_mode;
-
-  if (h && h != INVALID_HANDLE_VALUE && GetConsoleMode (h, &console_mode))
-    {
-      settings->main = console_mode;
-      return 0;
-    }
-#endif	/* WINDOWSNT */
-  return -1;
-#else	/* !DOS_NT */
   /* We have those nifty POSIX tcmumbleattr functions.  */
   return tcgetattr (fd, &settings->main);
-#endif
 }
 
 
@@ -1023,22 +887,6 @@ int
 emacs_set_tty (int fd, struct emacs_tty *settings, bool flushp)
 {
   /* Set the primary parameters - baud rate, character size, etcetera.  */
-#ifdef DOS_NT
-#ifdef WINDOWSNT
-  HANDLE h = (HANDLE)_get_osfhandle (fd);
-
-  if (h && h != INVALID_HANDLE_VALUE)
-    {
-      DWORD new_mode;
-
-      /* Assume the handle is open for input.  */
-      if (flushp)
-	FlushConsoleInputBuffer (h);
-      new_mode = settings->main;
-      SetConsoleMode (h, new_mode);
-    }
-#endif	/* WINDOWSNT */
-#else  /* !DOS_NT */
   int i;
   /* We have those nifty POSIX tcmumbleattr functions.
      William J. Smith <wjs@wiis.wang.com> writes:
@@ -1076,7 +924,6 @@ emacs_set_tty (int fd, struct emacs_tty *settings, bool flushp)
 	else
 	  continue;
       }
-#endif
 
   /* We have survived the tempest.  */
   return 0;
@@ -1105,9 +952,7 @@ void
 init_sys_modes (struct tty_display_info *tty_out)
 {
   struct emacs_tty tty;
-#ifndef DOS_NT
   Lisp_Object terminal;
-#endif
 
   Vtty_erase_char = Qnil;
 
@@ -1126,7 +971,6 @@ init_sys_modes (struct tty_display_info *tty_out)
 
   tty = *tty_out->old_tty;
 
-#if !defined (DOS_NT)
   XSETINT (Vtty_erase_char, tty.main.c_cc[VERASE]);
 
   tty.main.c_iflag |= (IGNBRK);	/* Ignore break condition */
@@ -1241,34 +1085,7 @@ init_sys_modes (struct tty_display_info *tty_out)
 #endif /* VSTOP */
     }
 
-#ifdef AIX
-  tty.main.c_cc[VSTRT] = CDISABLE;
-  tty.main.c_cc[VSTOP] = CDISABLE;
-  tty.main.c_cc[VSUSP] = CDISABLE;
-  tty.main.c_cc[VDSUSP] = CDISABLE;
-  if (tty_out->flow_control)
-    {
-#ifdef VSTART
-      tty.main.c_cc[VSTART] = '\021';
-#endif /* VSTART */
-#ifdef VSTOP
-      tty.main.c_cc[VSTOP] = '\023';
-#endif /* VSTOP */
-    }
-  /* Also, PTY overloads NUL and BREAK.
-     don't ignore break, but don't signal either, so it looks like NUL.
-     This really serves a purpose only if running in an XTERM window
-     or via TELNET or the like, but does no harm elsewhere.  */
-  tty.main.c_iflag &= ~IGNBRK;
-  tty.main.c_iflag &= ~BRKINT;
-#endif
-#endif /* not DOS_NT */
 
-#ifdef MSDOS	/* Demacs 1.1.2 91/10/20 Manabu Higashida, MW Aug 1993 */
-  if (!tty_out->term_initted)
-    internal_terminal_init ();
-  dos_ttraw (tty_out);
-#endif
 
   emacs_set_tty (fileno (tty_out->input), &tty, 0);
 
@@ -1285,10 +1102,8 @@ init_sys_modes (struct tty_display_info *tty_out)
   if (!tty_out->flow_control) ioctl (fileno (tty_out->input), TIOCSTART, 0);
 #endif
 
-#if !defined (DOS_NT)
 #ifdef TCOON
   if (!tty_out->flow_control) tcflow (fileno (tty_out->input), TCOON);
-#endif
 #endif
 
 #ifdef F_GETOWN
@@ -1359,15 +1174,11 @@ tabs_safe_p (int fd)
   struct emacs_tty etty;
 
   emacs_get_tty (fd, &etty);
-#ifndef DOS_NT
 #ifdef TABDLY
   return ((etty.main.c_oflag & TABDLY) != TAB3);
 #else /* not TABDLY */
   return 1;
 #endif /* not TABDLY */
-#else /* DOS_NT */
-  return 0;
-#endif /* DOS_NT */
 }
 
 /* Discard echoing.  */
@@ -1378,13 +1189,8 @@ suppress_echo_on_tty (int fd)
   struct emacs_tty etty;
 
   emacs_get_tty (fd, &etty);
-#ifdef DOS_NT
-  /* Set raw input mode.  */
-  etty.main = 0;
-#else
   etty.main.c_lflag &= ~ICANON;	/* Disable buffering */
   etty.main.c_lflag &= ~ECHO;	/* Disable echoing */
-#endif /* ! WINDOWSNT */
   emacs_set_tty (fd, &etty, 0);
 }
 
@@ -1536,7 +1342,6 @@ reset_sys_modes (struct tty_display_info *tty_out)
   while (tcdrain (fileno (tty_out->output)) != 0 && errno == EINTR)
     continue;
 
-#ifndef DOS_NT
 # ifdef F_SETOWN
   if (interrupt_input)
     {
@@ -1547,16 +1352,12 @@ reset_sys_modes (struct tty_display_info *tty_out)
 # endif /* F_SETOWN */
   fcntl (fileno (tty_out->input), F_SETFL,
          fcntl (fileno (tty_out->input), F_GETFL, 0) & ~O_NONBLOCK);
-#endif
 
   if (tty_out->old_tty)
     while (emacs_set_tty (fileno (tty_out->input),
                           tty_out->old_tty, 0) < 0 && errno == EINTR)
       ;
 
-#ifdef MSDOS	/* Demacs 1.1.2 91/10/20 Manabu Higashida */
-  dos_ttcooked ();
-#endif
 
   widen_foreground_group (fileno (tty_out->input));
 #endif
@@ -2229,13 +2030,8 @@ init_random (void)
 
   /* First, try seeding the PRNG from the operating system's entropy
      source.  This approach is both fast and secure.  */
-#ifdef WINDOWSNT
-  /* FIXME: Perhaps getrandom can be used here too?  */
-  success = w32_init_random (&v, sizeof v) == 0;
-#else
   static_assert (sizeof v <= 256);
   success = getrandom (&v, sizeof v, 0) == sizeof v;
-#endif
 
   /* If that didn't work, just use the current time value and PID.
      It's at least better than XKCD 221.  */
@@ -2386,10 +2182,6 @@ renameat_noreplace (int srcfd, char const *src, int dstfd, char const *dst)
 #elif defined RENAME_EXCL
   return renameatx_np (srcfd, src, dstfd, dst, RENAME_EXCL);
 #else
-# ifdef WINDOWSNT
-  if (srcfd == AT_FDCWD && dstfd == AT_FDCWD)
-    return sys_rename_replace (src, dst, 0);
-# endif
   errno = ENOSYS;
   return -1;
 #endif
@@ -2565,11 +2357,7 @@ emacs_fopen (char const *file, char const *mode)
 int
 emacs_pipe (int fd[2])
 {
-#ifdef MSDOS
-  return pipe (fd);
-#else  /* !MSDOS */
   return pipe2 (fd, O_BINARY | O_CLOEXEC);
-#endif	/* !MSDOS */
 }
 
 /* Approximate posix_close and POSIX_CLOSE_RESTART well enough for Emacs.
@@ -2747,13 +2535,6 @@ static_assert (SYS_BUFSIZE_MAX <= PTRDIFF_MAX);
 static_assert (SYS_BUFSIZE_MAX <= SIZE_MAX);
 static_assert (SYS_BUFSIZE_MAX <= SSIZE_MAX);
 
-#ifdef WINDOWSNT
-/* Verify that Emacs read requests cannot cause trouble, even in
-   64-bit builds.  The last argument of 'read' is 'unsigned int', and
-   the return value's type (see 'sys_read') is 'int'.  */
-static_assert (SYS_BUFSIZE_MAX <= INT_MAX);
-static_assert (SYS_BUFSIZE_MAX <= UINT_MAX);
-#endif
 
 /* Read from FD to a buffer BUF with size NBYTE.
    If interrupted, process any quits and pending signals immediately
@@ -2928,12 +2709,6 @@ errputc (int c)
 {
   fputc_unlocked (c, errstream ());
 
-#ifdef WINDOWSNT
-  /* Flush stderr after outputting a newline since stderr is fully
-     buffered when redirected to a pipe, contrary to POSIX.  */
-  if (c == '\n')
-    fflush_unlocked (stderr);
-#endif
 }
 
 void
@@ -2974,7 +2749,6 @@ close_output_streams (void)
 #endif /* __ANDROID__ */
 }
 
-#ifndef DOS_NT
 /* For make-serial-process  */
 int
 serial_open (Lisp_Object port)
@@ -3307,7 +3081,6 @@ serial_configure (struct Lisp_Process *p,
   childp2 = plist_put (childp2, QCsummary, build_string (summary));
   pset_childp (p, childp2);
 }
-#endif /* not DOS_NT  */
 
 /* System depended enumeration of and access to system processes a-la ps(1).  */
 
@@ -3710,25 +3483,6 @@ system_process_attributes (Lisp_Object pid)
     }
   unbind_to (count, Qnil);
 
-# ifdef CYGWIN
-  /* ttname */
-  strcpy (procfn_end, "/ctty");
-  fd = emacs_open (fn, O_RDONLY, 0);
-  if (fd < 0)
-    nread = 0;
-  else
-    {
-      record_unwind_protect_int (close_file_unwind, fd);
-      nread = emacs_read_quit (fd, procbuf, sizeof procbuf);
-    }
-  /* /proc/<pid>/ctty should always end in newline. */
-  if (0 < nread && procbuf[nread - 1] == '\n')
-    procbuf[nread - 1] = '\0';
-  else
-    procbuf[0] = '\0';
-  attrs = Fcons (Fcons (Qttname, build_string (procbuf)), attrs);
-  unbind_to (count, Qnil);
-# endif	/* CYGWIN */
 
   /* args */
   strcpy (procfn_end, "/cmdline");
@@ -4501,11 +4255,7 @@ does the same thing as `current-time'.  */)
     }
   return make_lisp_s_us (secs, usecs);
 #else /* ! HAVE_GETRUSAGE  */
-#ifdef WINDOWSNT
-  return w32_get_internal_run_time ();
-#else /* ! WINDOWSNT  */
   return Fcurrent_time ();
-#endif /* WINDOWSNT  */
 #endif /* HAVE_GETRUSAGE  */
 }
 
@@ -4689,24 +4439,6 @@ str_collate (Lisp_Object s1, Lisp_Object s2,
 }
 #endif  /* __STDC_ISO_10646__ */
 
-#ifdef WINDOWSNT
-int
-str_collate (Lisp_Object s1, Lisp_Object s2,
-	     Lisp_Object locale, Lisp_Object ignore_case)
-{
-
-  char *loc = STRINGP (locale) ? SSDATA (locale) : NULL;
-  int res, err = errno;
-
-  errno = 0;
-  res = w32_compare_strings (SSDATA (s1), SSDATA (s2), loc, !NILP (ignore_case));
-  if (errno)
-    error ("Invalid string for collation: %s", strerror (errno));
-
-  errno = err;
-  return res;
-}
-#endif	/* WINDOWSNT */
 
 void
 syms_of_sysdep (void)

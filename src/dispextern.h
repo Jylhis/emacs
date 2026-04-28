@@ -97,9 +97,6 @@ typedef struct android_gc_values Emacs_GC;
 
 #endif /* HAVE_X_WINDOWS */
 
-#ifdef MSDOS
-#include "msdos.h"
-#endif
 
 INLINE_HEADER_BEGIN
 
@@ -133,12 +130,6 @@ typedef Emacs_Pix_Container Emacs_Pixmap;
 typedef Emacs_Pix_Container Emacs_Pix_Context;
 #endif
 
-#ifdef HAVE_NTGUI
-#include "w32gui.h"
-typedef struct w32_display_info Display_Info;
-typedef XImage *Emacs_Pix_Container;
-typedef HDC Emacs_Pix_Context;
-#endif
 
 #ifdef HAVE_NS
 #include "nsgui.h"
@@ -156,12 +147,6 @@ typedef Emacs_Pixmap XImagePtr;
 typedef XImagePtr XImagePtr_or_DC;
 #endif /* HAVE_PGTK */
 
-#ifdef HAVE_HAIKU
-#include "haikugui.h"
-typedef struct haiku_display_info Display_Info;
-typedef Emacs_Pixmap Emacs_Pix_Container;
-typedef Emacs_Pixmap Emacs_Pix_Context;
-#endif
 
 #ifdef HAVE_ANDROID
 #include "androidgui.h"
@@ -1453,10 +1438,6 @@ struct glyph_string
   GC gc;
 #elif defined HAVE_ANDROID
   struct android_gc *gc;
-#endif
-#if defined (HAVE_NTGUI)
-  Emacs_GC *gc;
-  HDC hdc;
 #endif
 #if defined (HAVE_PGTK)
   Emacs_GC xgcv;
@@ -3233,21 +3214,6 @@ struct image
      synchronized to Pixmap.  */
   struct android_image *ximg, *mask_img;
 #endif /* HAVE_ANDROID */
-#ifdef HAVE_NTGUI
-  XFORM xform;
-  bool smoothing;
-#endif
-#ifdef HAVE_HAIKU
-  /* The affine transformation to apply to this image.  */
-  double transform[3][3];
-
-  /* The original width and height of the image.  */
-  int original_width, original_height;
-
-  /* Whether or not bilinear filtering should be used to "smooth" the
-     image.  */
-  bool use_bilinear_filtering;
-#endif
 
   /* Colors allocated for this image, if any.  Allocated via xmalloc.  */
   unsigned long *colors;
@@ -3690,9 +3656,6 @@ void gui_init_fringe (struct redisplay_interface *);
 extern int max_used_fringe_bitmap;
 void gui_define_fringe_bitmap (struct frame *, int);
 
-#ifdef HAVE_NTGUI
-void w32_reset_fringes (void);
-#endif
 
 extern unsigned row_hash (struct glyph_row *);
 
@@ -3740,9 +3703,6 @@ Lisp_Object image_spec_value (Lisp_Object, Lisp_Object, bool *);
 #define RGB_PIXEL_COLOR unsigned long
 #endif
 
-#ifdef HAVE_NTGUI
-#define RGB_PIXEL_COLOR COLORREF
-#endif
 
 RGB_PIXEL_COLOR image_background (struct image *, struct frame *,
                                   Emacs_Pix_Context img);
@@ -3778,10 +3738,6 @@ bool parse_color_spec (const char *,
 
 Lisp_Object tty_color_name (struct frame *, int);
 void clear_face_cache (bool);
-#ifdef MSDOS
-unsigned long load_color (struct frame *, struct face *, Lisp_Object,
-                          enum lface_attribute_index);
-#endif
 char *choose_face_font (struct frame *, Lisp_Object *, Lisp_Object,
                         int *);
 #ifdef HAVE_WINDOW_SYSTEM
@@ -3815,12 +3771,6 @@ extern char unspecified_fg[], unspecified_bg[];
 
 #ifdef HAVE_X_WINDOWS
 void gamma_correct (struct frame *, XColor *);
-#endif
-#ifdef HAVE_NTGUI
-void gamma_correct (struct frame *, COLORREF *);
-#endif
-#ifdef HAVE_HAIKU
-void gamma_correct (struct frame *, Emacs_Color *);
 #endif
 #ifdef HAVE_ANDROID
 extern void gamma_correct (struct frame *, Emacs_Color *);

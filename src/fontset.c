@@ -952,20 +952,6 @@ face_for_char (struct frame *f, struct face *face, int c,
 	    return face->ascii_face->id;
 	}
 
-#if 0
-      /* Try the current face.  Disabled because it can cause
-	 counter-intuitive results, whereby the font used for some
-	 character depends on the characters that precede it on
-	 display.  See the discussion of bug #15138.  Note that the
-	 original bug reported in #15138 was in a situation where face
-	 == face->ascii_face, so the above code solves that situation
-	 without risking the undesirable consequences.  */
-      if (face->font)
-	{
-	  XSETFONT (font_object, face->font);
-	  if (font_has_char (f, font_object, c)) return face->id;
-	}
-#endif
     }
 
   /* If the parent face has no fontset we could work with, and has no
@@ -1303,34 +1289,6 @@ free_realized_fontsets (Lisp_Object base)
 {
   int id;
 
-#if 0
-  /* For the moment, this doesn't work because free_realized_face
-     doesn't remove FACE from a cache.  Until we find a solution, we
-     suppress this code, and simply use Fclear_face_cache even though
-     that is not efficient.  */
-  block_input ();
-  for (id = 0; id < ASIZE (Vfontset_table); id++)
-    {
-      Lisp_Object this = AREF (Vfontset_table, id);
-
-      if (EQ (FONTSET_BASE (this), base))
-	{
-	  Lisp_Object tail;
-
-	  for (tail = FONTSET_FACE_ALIST (this); CONSP (tail);
-	       tail = XCDR (tail))
-	    {
-	      struct frame *f = XFRAME (FONTSET_FRAME (this));
-	      int face_id = XFIXNUM (XCDR (XCAR (tail)));
-	      struct face *face = FACE_FROM_ID_OR_NULL (f, face_id);
-
-	      /* Face THIS itself is also freed by the following call.  */
-	      free_realized_face (f, face);
-	    }
-	}
-    }
-  unblock_input ();
-#else  /* not 0 */
   /* But, we don't have to call Fclear_face_cache if no fontset has
      been realized from BASE.  */
   for (id = 0; id < ASIZE (Vfontset_table); id++)
@@ -1348,7 +1306,6 @@ free_realized_fontsets (Lisp_Object base)
 	  break;
 	}
     }
-#endif /* not 0 */
 }
 
 

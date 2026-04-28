@@ -40,9 +40,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "buffer.h"
 #include "coding.h"
 
-#ifdef MSDOS
-#include "msdos.h"	/* for fstatat */
-#endif
 
 #if !(defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
 typedef DIR emacs_dir;
@@ -59,9 +56,6 @@ typedef struct android_vdir emacs_dir;
 #define emacs_closedir android_closedir
 #endif
 
-#ifdef WINDOWSNT
-extern int is_slow_fs (const char *);
-#endif
 
 static ptrdiff_t scmp (const char *, const char *, ptrdiff_t);
 static Lisp_Object file_attributes (int, char const *, Lisp_Object,
@@ -166,13 +160,6 @@ open_directory (Lisp_Object dirname, Lisp_Object encoded_dirname, int *fdp)
   return d;
 }
 
-#ifdef WINDOWSNT
-static void
-directory_files_internal_w32_unwind (Lisp_Object arg)
-{
-  Vw32_get_true_file_attributes = arg;
-}
-#endif
 
 static void
 directory_files_internal_unwind (void *d)
@@ -195,14 +182,6 @@ read_dirent (emacs_dir *dir, Lisp_Object dirname)
 	return dp;
       if (! (errno == EAGAIN || errno == EINTR))
 	{
-#ifdef WINDOWSNT
-	  /* The MS-Windows implementation of 'opendir' doesn't
-	     actually open a directory until the first call to
-	     'readdir'.  If 'readdir' fails to open the directory, it
-	     sets errno to ENOENT or EACCES, see w32.c.  */
-	  if (errno == ENOENT || errno == EACCES)
-	    report_file_error ("Opening directory", dirname);
-#endif
 	  report_file_error ("Reading directory", dirname);
 	}
       maybe_quit ();
@@ -253,26 +232,6 @@ directory_files_internal (Lisp_Object directory, Lisp_Object full,
   specpdl_ref count = SPECPDL_INDEX ();
   record_unwind_protect_ptr (directory_files_internal_unwind, d);
 
-#ifdef WINDOWSNT
-  Lisp_Object w32_save = Qnil;
-  if (attrs)
-    {
-      /* Do this only once to avoid doing it (in w32.c:stat) for each
-	 file in the directory, when we call file_attributes below.  */
-      record_unwind_protect (directory_files_internal_w32_unwind,
-			     Vw32_get_true_file_attributes);
-      w32_save = Vw32_get_true_file_attributes;
-      if (EQ (Vw32_get_true_file_attributes, Qlocal))
-	{
-	  /* w32.c:stat will notice these bindings and avoid calling
-	     GetDriveType for each file.  */
-	  if (is_slow_fs (SSDATA (encoded_dirfilename)))
-	    Vw32_get_true_file_attributes = Qnil;
-	  else
-	    Vw32_get_true_file_attributes = Qt;
-	}
-    }
-#endif
 
   if (!NILP (full) && !STRING_MULTIBYTE (directory))
     { /* We will be concatenating 'directory' with local file name.
@@ -290,9 +249,6 @@ directory_files_internal (Lisp_Object directory, Lisp_Object full,
 
   /* Windows users want case-insensitive wildcards.  */
   Lisp_Object case_table = Qnil;
-#ifdef WINDOWSNT
-  case_table = BVAR (&buffer_defaults, case_canon_table);
-#endif
 
   /* Read directory entries and accumulate them into LIST.  */
   Lisp_Object list = Qnil;
@@ -356,10 +312,6 @@ directory_files_internal (Lisp_Object directory, Lisp_Object full,
     }
 
   emacs_closedir (d);
-#ifdef WINDOWSNT
-  if (attrs)
-    Vw32_get_true_file_attributes = w32_save;
-#endif
 
   /* Discard the unwind protect.  */
   specpdl_ptr = specpdl_ref_to_ptr (count);
@@ -626,18 +578,6 @@ file_name_completion (Lisp_Object file, Lisp_Object dirname, bool all_flag,
 	  ptrdiff_t skip;
 	  Lisp_Object cmp_len = make_fixnum (name_len);
 
-#if 0 /* FIXME: The `scmp' call compares an encoded and a decoded string. */
-	  /* If this entry matches the current bestmatch, the only
-	     thing it can do is increase matchcount, so don't bother
-	     investigating it any further.  */
-	  if (!completion_ignore_case
-	      /* The return result depends on whether it's the sole match.  */
-	      && matchcount > 1
-	      && !includeall /* This match may allow includeall to 0.  */
-	      && len >= bestmatchsize
-	      && 0 > scmp (dp->d_name, SSDATA (bestmatch), bestmatchsize))
-	    continue;
-#endif
 
 	  if (directoryp)
 	    {
@@ -923,31 +863,23 @@ file_name_completion_dirp (int fd, struct dirent *dp, ptrdiff_t len)
 static char *
 stat_uname (struct stat *st)
 {
-#ifdef WINDOWSNT
-  return st->st_uname;
-#else
   struct passwd *pw = getpwuid (st->st_uid);
 
   if (pw)
     return pw->pw_name;
   else
     return NULL;
-#endif
 }
 
 static char *
 stat_gname (struct stat *st)
 {
-#ifdef WINDOWSNT
-  return st->st_gname;
-#else
   struct group *gr = getgrgid (st->st_gid);
 
   if (gr)
     return gr->gr_name;
   else
     return NULL;
-#endif
 }
 
 DEFUN ("file-attributes", Ffile_attributes, Sfile_attributes, 1, 2, 0,
@@ -1067,17 +999,7 @@ file_attributes (int fd, char const *name,
 
   if (err == EINVAL)
     {
-#ifdef WINDOWSNT
-      /* We usually don't request accurate owner and group info,
-	 because it can be expensive on Windows to get that, and most
-	 callers of 'lstat' don't need that.  But here we do want that
-	 information to be accurate.  */
-      w32_stat_get_owner_group = 1;
-#endif
       err = emacs_fstatat (fd, name, &s, AT_SYMLINK_NOFOLLOW) == 0 ? 0 : errno;
-#ifdef WINDOWSNT
-      w32_stat_get_owner_group = 0;
-#endif
     }
 
   if (err != 0)

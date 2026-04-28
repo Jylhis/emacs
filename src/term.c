@@ -45,10 +45,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "blockinput.h"
 #include "syssignal.h"
 #include "sysstdio.h"
-#ifdef MSDOS
-#include "msdos.h"
-static int been_here = -1;
-#endif
 
 #ifdef USE_X_TOOLKIT
 #include "../lwlib/lwlib.h"
@@ -58,9 +54,6 @@ static int been_here = -1;
 #include "menu.h"
 
 /* The name of the default console device.  */
-#ifdef WINDOWSNT
-#include "w32term.h"
-#endif
 
 #ifndef HAVE_ANDROID
 
@@ -347,11 +340,7 @@ tty_hide_cursor (struct tty_display_info *tty)
   if (tty->cursor_hidden == 0)
     {
       tty->cursor_hidden = 1;
-#ifdef WINDOWSNT
-      w32con_hide_cursor ();
-#else
       OUTPUT_IF (tty, tty->TS_cursor_invisible);
-#endif
     }
 }
 
@@ -364,13 +353,9 @@ tty_show_cursor (struct tty_display_info *tty)
   if (tty->cursor_hidden)
     {
       tty->cursor_hidden = 0;
-#ifdef WINDOWSNT
-      w32con_show_cursor ();
-#else
       OUTPUT_IF (tty, tty->TS_cursor_normal);
       if (visible_cursor)
         OUTPUT_IF (tty, tty->TS_cursor_visible);
-#endif
     }
 }
 
@@ -816,7 +801,6 @@ tty_write_glyphs_1 (struct frame *f, struct glyph *string, int len)
   cmcheckmagic (tty);
 }
 
-#ifndef DOS_NT
 
 static void
 tty_write_glyphs_with_face (struct frame *f, struct glyph *string,
@@ -874,7 +858,6 @@ tty_write_glyphs_with_face (struct frame *f, struct glyph *string,
   cmcheckmagic (tty);
 }
 
-#endif
 
 /* An implementation of insert_glyphs for termcap frames. */
 
@@ -2310,26 +2293,6 @@ tty_setup_colors (struct tty_display_info *tty, int mode)
 	tty->TN_max_colors = 8;
 	tty->TN_no_color_video = 0;
 	break;
-#ifdef WINDOWSNT
-      case 16:
-	tty->TN_max_colors = 16;
-	tty->TS_set_foreground = "\x1b[%lum";
-	tty->TS_set_background = "\x1b[%lum";
-	tty->TN_no_color_video = 0;
-	break;
-      case 256:
-	tty->TN_max_colors = 256;
-	tty->TS_set_foreground = "\x1b[38;5;%lum";
-	tty->TS_set_background = "\x1b[48;5;%lum";
-	tty->TN_no_color_video = 0;
-	break;
-      case 16777216:
-	tty->TN_max_colors = 16777216;
-	tty->TS_set_foreground = "\x1b[38;2;%lu;%lu;%lum";
-	tty->TS_set_background = "\x1b[48;2;%lu;%lu;%lum";
-	tty->TN_no_color_video = 0;
-	break;
-#endif
     }
 }
 
@@ -2479,11 +2442,9 @@ A suspended tty may be resumed by calling `resume-tty' on it.  */)
       reset_sys_modes (t->display_info.tty);
       delete_keyboard_wait_descriptor (fileno (f));
 
-#ifndef MSDOS
       if (f != t->display_info.tty->output)
         emacs_fclose (t->display_info.tty->output);
       emacs_fclose (f);
-#endif /* !MSDOS */
 
       t->display_info.tty->input = 0;
       t->display_info.tty->output = 0;
@@ -2539,10 +2500,6 @@ frame's terminal). */)
       if (get_named_terminal (t->display_info.tty->name))
         error ("Cannot resume display while another display is active on the same device");
 
-#ifdef MSDOS
-      t->display_info.tty->output = stdout;
-      t->display_info.tty->input  = stdin;
-#else  /* !MSDOS */
       fd = emacs_open (t->display_info.tty->name, O_RDWR | O_NOCTTY, 0);
       t->display_info.tty->input = t->display_info.tty->output
 	= fd < 0 ? 0 : emacs_fdopen (fd, "w+");
@@ -2558,7 +2515,6 @@ frame's terminal). */)
 
       if (!O_IGNORE_CTTY && strcmp (t->display_info.tty->name, dev_tty) != 0)
         dissociate_if_controlling_tty (fd);
-#endif /* MSDOS */
 
       add_keyboard_wait_descriptor (fd);
 
@@ -4101,20 +4057,6 @@ tty_menu_show (struct frame *f, int x, int y, int menuflags,
   if (ulx < 0) x -= ulx;
   if (uly < 0) y -= uly;
 
-#if 0
-  /* This code doesn't make sense on a TTY, since it can easily annul
-     the adjustments above that carefully avoid truncation of the menu
-     items.  I think it was written to fix some problem that only
-     happens on X11.  */
-  if (! for_click)
-    {
-      /* If position was not given by a mouse click, adjust so upper left
-         corner of the menu as a whole ends up at given coordinates.  This
-         is what x-popup-menu says in its documentation.  */
-      x += width / 2;
-      y += 1.5 * height / (maxlines + 2);
-    }
-#endif
 
   pane = selidx = 0;
 
@@ -4323,11 +4265,7 @@ set_tty_hooks (struct terminal *terminal)
   terminal->reset_terminal_modes_hook = &tty_reset_terminal_modes;
   terminal->set_terminal_modes_hook = &tty_set_terminal_modes;
   terminal->update_end_hook = &tty_update_end;
-#ifdef MSDOS
-  terminal->menu_show_hook = &x_menu_show;
-#else
   terminal->menu_show_hook = &tty_menu_show;
-#endif
   terminal->set_terminal_window_hook = &tty_set_terminal_window;
   terminal->defined_color_hook = &tty_defined_color; /* xfaces.c */
   terminal->read_socket_hook = &tty_read_avail_input; /* keyboard.c */
@@ -4388,13 +4326,11 @@ init_tty (const char *name, const char *terminal_type, bool must_succeed)
 #else
   struct tty_display_info *tty = NULL;
   struct terminal *terminal = NULL;
-#ifndef DOS_NT
   char *area;
   char **address = &area;
   int status;
   sigset_t oldset;
   bool ctty = false;  /* True if asked to open controlling tty.  */
-#endif
 
   if (!terminal_type)
     maybe_fatal (must_succeed, 0,
@@ -4403,10 +4339,8 @@ init_tty (const char *name, const char *terminal_type, bool must_succeed)
 
   if (name == NULL)
     name = dev_tty;
-#ifndef DOS_NT
   if (!strcmp (name, dev_tty))
     ctty = 1;
-#endif
 
   /* If we already have a terminal on the given device, use that.  If
      all such terminals are suspended, create a new one instead.  */
@@ -4418,15 +4352,7 @@ init_tty (const char *name, const char *terminal_type, bool must_succeed)
     return terminal;
 
   terminal = create_terminal (output_termcap, NULL);
-#ifdef MSDOS
-  if (been_here > 0)
-    maybe_fatal (0, 0, "Attempt to create another terminal %s", "",
-		 name, "");
-  been_here = 1;
-  tty = &the_only_display_info;
-#else
   tty = xzalloc (sizeof *tty);
-#endif
   tty->top_frame = Qnil;
   tty->next = tty_list;
   tty_list = tty;
@@ -4441,7 +4367,6 @@ init_tty (const char *name, const char *terminal_type, bool must_succeed)
   encode_terminal_dst_size = 0;
 
 
-#ifndef DOS_NT
   set_tty_hooks (terminal);
 
   {
@@ -4707,76 +4632,6 @@ use the Bourne shell command 'TERM=...; export TERM' (C-shell:\n\
        Requires a single parameter, the color index.  */
     tty->TF_set_underline_color = "\x1b[58:2::%p1%{65536}%/%d:%p1%{256}%/%{255}%&%d:%p1%{255}%&%dm";
 
-#else /* DOS_NT */
-#ifdef WINDOWSNT
-  {
-    struct frame *f = XFRAME (selected_frame);
-    int height, width;
-
-    initialize_w32_display (terminal, &width, &height);
-
-    tty->TN_no_color_video = 0;
-    tty->TN_max_colors = 16777216;
-    tty->TS_orig_pair = "\x1b[39m\x1b[49m";
-    tty->TS_set_foreground = "\x1b[38;2;%lu;%lu;%lum";
-    tty->TS_set_background = "\x1b[48;2;%lu;%lu;%lum";
-
-    /* Save default color capabilities */
-    tty_default_color_capabilities (tty, 1);
-
-    tty->TS_enter_bold_mode = "\x1b[1m";
-    tty->TS_enter_italic_mode = "\x1b[3m";
-    tty->TS_enter_strike_through_mode = "\x1b[9m";
-    tty->TS_enter_underline_mode = "\x1b[4m";
-    tty->TS_enter_reverse_mode = "\x1b[7m";
-    tty->TS_exit_attribute_mode = "\x1b[0m";
-
-    FrameRows (tty) = height;
-    FrameCols (tty) = width;
-    tty->specified_window = height;
-
-    FRAME_VERTICAL_SCROLL_BAR_TYPE (f) = vertical_scroll_bar_none;
-    FRAME_HAS_HORIZONTAL_SCROLL_BARS (f) = 0;
-    tty->char_ins_del_ok = 1;
-    baud_rate = 19200;
-  }
-#else  /* MSDOS */
-  {
-    int height, width;
-    if (strcmp (terminal_type, "internal") == 0)
-      terminal->type = output_msdos_raw;
-    initialize_msdos_display (terminal);
-
-    get_tty_size (fileno (tty->input), &width, &height);
-    FrameCols (tty) = width;
-    FrameRows (tty) = height;
-    tty->char_ins_del_ok = 0;
-    init_baud_rate (fileno (tty->input));
-  }
-#endif	/* MSDOS */
-  tty->output = stdout;
-  tty->input = stdin;
-  /* The following two are inaccessible from w32console.c.  */
-  terminal->delete_frame_hook = &tty_free_frame_resources;
-  terminal->delete_terminal_hook = &delete_tty;
-
-  tty->name = xstrdup (name);
-  terminal->name = xstrdup (name);
-  tty->type = xstrdup (terminal_type);
-
-  add_keyboard_wait_descriptor (0);
-
-  tty->delete_in_insert_mode = 1;
-
-  UseTabs (tty) = 0;
-  tty->scroll_region_ok = 0;
-
-  /* Seems to insert lines when it's not supposed to, messing up the
-     display.  In doing a trace, it didn't seem to be called much, so I
-     don't think we're losing anything by turning it off.  */
-  tty->line_ins_del_ok = 0;
-
-#endif	/* DOS_NT */
 
 #ifdef HAVE_GPM
   terminal->mouse_position_hook = term_mouse_position;
@@ -4790,7 +4645,6 @@ use the Bourne shell command 'TERM=...; export TERM' (C-shell:\n\
      prompt in the mini-buffer.  */
   if (current_kboard == initial_kboard)
     current_kboard = terminal->kboard;
-#ifndef DOS_NT
   term_get_fkeys (address, terminal->kboard);
 
   /* Get frame size from system, or else from termcap.  */
@@ -4921,7 +4775,6 @@ use the Bourne shell command 'TERM=...; export TERM' (C-shell:\n\
 
   init_baud_rate (fileno (tty->input));
 
-#endif /* not DOS_NT */
 
   /* Init system terminal modes (RAW or CBREAK, etc.).  */
   init_sys_modes (tty);
@@ -5305,7 +5158,6 @@ non-nil to enable this optimization.  */);
   DEFSYM (Qtty_mode_set_strings, "tty-mode-set-strings");
   DEFSYM (Qtty_mode_reset_strings, "tty-mode-reset-strings");
 
-#ifndef MSDOS
   DEFSYM (Qtty_menu_next_item, "tty-menu-next-item");
   DEFSYM (Qtty_menu_prev_item, "tty-menu-prev-item");
   DEFSYM (Qtty_menu_next_menu, "tty-menu-next-menu");
@@ -5315,7 +5167,6 @@ non-nil to enable this optimization.  */);
   DEFSYM (Qtty_menu_exit, "tty-menu-exit");
   DEFSYM (Qtty_menu_mouse_movement, "tty-menu-mouse-movement");
   DEFSYM (Qtty_menu_navigation_map, "tty-menu-navigation-map");
-#endif
   DEFSYM (Qf0, "f0");
   DEFSYM (Qf10, "f10");
   DEFSYM (Qtty_set_up_initial_frame_faces,

@@ -42,29 +42,9 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "sfntfont.h"
 #endif
 
-#ifdef WINDOWSNT
-#include <fcntl.h>
-#include <sys/socket.h>
-#include <mbstring.h>
-#include <filename.h>	/* for IS_ABSOLUTE_FILE_NAME */
-#include "w32.h"
-#include "w32heap.h"
-#endif
 
-#if defined WINDOWSNT || defined HAVE_NTGUI
-#include "w32select.h"
-#include "w32font.h"
-#include "w32common.h"
-#endif
 
-#if defined CYGWIN
-#include "cygw32.h"
-#endif
 
-#ifdef MSDOS
-#include <binary-io.h>
-#include "dosfns.h"
-#endif
 
 #ifdef HAVE_LIBSYSTEMD
 # include <systemd/sd-daemon.h>
@@ -117,18 +97,11 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "getpagesize.h"
 #include "gnutls.h"
 
-#ifdef HAVE_HAIKU
-#include <kernel/OS.h>
-#endif
 
 #ifdef PROFILING
 # include <sys/gmon.h>
 extern void moncontrol (int mode);
-# ifdef __MINGW32__
-extern unsigned char etext asm ("etext");
-# else
 extern char etext;
-# endif
 #endif
 
 #if HAVE_WCHAR_H
@@ -169,14 +142,6 @@ char const EXTERNALLY_VISIBLE RCS_Id[]
 /* Empty Lisp strings.  To avoid having to build any others.  */
 Lisp_Object empty_unibyte_string, empty_multibyte_string;
 
-#ifdef WINDOWSNT
-/* Cache for externally loaded libraries.  */
-Lisp_Object Vlibrary_cache;
-/* Original command line string as received from the OS.  */
-static char *initial_cmdline;
-/* Original working directory when invoked.  */
-static const char *initial_wd;
-#endif
 
 struct gflags gflags;
 bool initialized;
@@ -230,13 +195,9 @@ static char *daemon_name;
    A negative value means the daemon initialization was already done.  */
 int daemon_type;
 
-#ifndef WINDOWSNT
 /* Pipe used to send exit notification to the background daemon parent at
    startup.  On Windows, we use a kernel event instead.  */
 static int daemon_pipe[2];
-#else
-HANDLE w32_daemon_event;
-#endif
 
 /* Save argv and argc.
 
@@ -251,19 +212,15 @@ HANDLE w32_daemon_event;
    initial_emacs_executable:
      Path to the current executable.  Based on argv[0] but verified to
      point to an existing executable if non-NULL.  */
-#ifndef WINDOWSNT
 char **initial_argv;
 int initial_argc;
-#endif
 char *initial_argv0;
 static char *initial_emacs_executable = NULL;
 
 /* The name of the working directory, or NULL if this info is unavailable.  */
 char const *emacs_wd;
 
-#ifndef WINDOWSNT
 static void copy_args (int argc, char **argv);
-#endif
 static void sort_args (int argc, char **argv);
 static void syms_of_emacs (void);
 
@@ -468,14 +425,12 @@ terminate_due_to_signal (int sig, int backtrace_limit)
   /* Signal the same code; this time it will really be fatal.
      Since we're in a signal handler, the signal is blocked, so we
      have to unblock it if we want to really receive it.  */
-#ifndef MSDOS
   {
     sigset_t unblocked;
     sigemptyset (&unblocked);
     sigaddset (&unblocked, sig);
     pthread_sigmask (SIG_UNBLOCK, &unblocked, 0);
   }
-#endif
 
   emacs_raise (sig);
 
@@ -494,20 +449,7 @@ init_cmdargs (int argc, char **argv, int skip_args, char const *original_pwd)
   Lisp_Object raw_name;
   AUTO_STRING (slash_colon, "/:");
 
-#ifdef WINDOWSNT
-  /* Must use argv[0] converted to UTF-8, as it begets many standard
-     file and directory names.  */
-  {
-    char argv0[MAX_UTF8_PATH];
-
-    if (filename_from_ansi (argv[0], argv0) == 0)
-      raw_name = build_unibyte_string (argv0);
-    else
-      raw_name = build_unibyte_string (argv[0]);
-  }
-#else
   raw_name = build_unibyte_string (argv[0]);
-#endif
 
   /* Add /: to the front of the name
      if it would otherwise be treated as magic.  */
@@ -553,22 +495,6 @@ init_cmdargs (int argc, char **argv, int skip_args, char const *original_pwd)
   if (!NILP (Vinvocation_directory))
     {
       dir = Vinvocation_directory;
-#ifdef WINDOWSNT
-      /* If we are running from the build directory, set DIR to the
-	 src subdirectory of the Emacs tree, like on Posix
-	 platforms.  */
-      if (SBYTES (dir) > sizeof ("/i386/") - 1
-	  && 0 == strcmp (SSDATA (dir) + SBYTES (dir) - sizeof ("/i386/") + 1,
-			  "/i386/"))
-	{
-	  if (NILP (Vpurify_flag))
-	    {
-	      if (!NILP (Ffboundp (Qfile_truename)))
-		dir = calln (Qfile_truename, dir);
-	    }
-	  dir = Fexpand_file_name (build_string ("../.."), dir);
-	}
-#endif
       name = Fexpand_file_name (Vinvocation_name, dir);
       while (1)
 	{
@@ -581,15 +507,7 @@ init_cmdargs (int argc, char **argv, int skip_args, char const *original_pwd)
 	  tem = Fexpand_file_name (build_string ("lib-src"), dir);
 	  lib_src_exists = Ffile_exists_p (tem);
 
-#ifdef MSDOS
-	  /* MSDOS installations frequently remove lib-src, but we still
-	     must set installation-directory, or else info won't find
-	     its files (it uses the value of installation-directory).  */
-	  tem = Fexpand_file_name (build_string ("info"), dir);
-	  info_exists = Ffile_exists_p (tem);
-#else
 	  info_exists = Qnil;
-#endif
 
 	  if (!NILP (lib_src_exists) || !NILP (info_exists))
 	    {
@@ -607,13 +525,7 @@ init_cmdargs (int argc, char **argv, int skip_args, char const *original_pwd)
 	  lib_src_exists = Ffile_exists_p (tem);
 
 
-#ifdef MSDOS
-	  /* See the MSDOS commentary above.  */
-	  tem = Fexpand_file_name (build_string ("../info"), dir);
-	  info_exists = Ffile_exists_p (tem);
-#else
 	  info_exists = Qnil;
-#endif
 
 	  if (!NILP (lib_src_exists) || !NILP (info_exists))
 	    {
@@ -783,7 +695,6 @@ default_PATH (void)
 
 #if !defined HAVE_ANDROID || defined ANDROID_STUBIFY
 
-# ifndef WINDOWSNT
 /* If NAME is a symlink return a non-symlink name of the file it points to,
    allocated as if by malloc.  Otherwise, or if there is an error
    resolving the name, set errno and return a null pointer.  */
@@ -801,7 +712,6 @@ follow_if_symlink (char const *name)
 	  ? NULL
 	  : realpath (name, NULL));
 }
-# endif
 
 /* Find a name (absolute or relative) of the Emacs executable whose
    name (as passed into this program) is ARGV0.  Called early in
@@ -817,12 +727,6 @@ find_emacs_executable (char const *argv0, ptrdiff_t *candidate_size)
 
   /* Use xstrdup etc. to allocate storage, so as to call our private
      implementation of malloc, since the caller calls our free.  */
-#ifdef WINDOWSNT
-  char *prog_fname = w32_my_exename ();
-  if (prog_fname)
-    *candidate_size = strlen (prog_fname) + 1;
-  return prog_fname ? xstrdup (prog_fname) : NULL;
-#else  /* !WINDOWSNT */
   char *candidate = NULL;
 
   /* If the executable name contains a slash, we have some kind of
@@ -893,7 +797,6 @@ find_emacs_executable (char const *argv0, ptrdiff_t *candidate_size)
   while (*path++ != '\0');
 
   return candidate;
-#endif	/* !WINDOWSNT */
 }
 
 #endif
@@ -958,21 +861,13 @@ load_pdump (int argc, char **argv, char *dump_file)
   return argv[0];
 #else
 
-#ifdef MSDOS
-  const char *const suffix = ".dmp";
-#else /* !MSDOS */
   const char *const suffix = ".pdmp";
-#endif /* !MSDOS */
   int result;
   char *emacs_executable = argv[0];
   ptrdiff_t hexbuf_size;
   char *hexbuf;
   const char *strip_suffix =
-#if defined DOS_NT || defined CYGWIN
-    ".exe"
-#else
     NULL
-#endif
     ;
   const char *argv0_base =
 #ifdef NS_SELF_CONTAINED
@@ -1122,14 +1017,6 @@ load_pdump (int argc, char **argv, char *dump_file)
 	  xfree (dump_file);
 	  dump_file = xmalloc (needed);
 	}
-#ifdef DOS_NT
-      ptrdiff_t argv0_len = strlen (argv0_base);
-      if (argv0_len >= 4
-	  && c_strcasecmp (argv0_base + argv0_len - 4, ".exe") == 0)
-	sprintf (dump_file, "%s%c%.*s%s", path_exec, DIRECTORY_SEP,
-		 (int)(argv0_len - 4), argv0_base, suffix);
-      else
-#endif
       sprintf (dump_file, "%s%c%s%s",
 	       path_exec, DIRECTORY_SEP, argv0_base, suffix);
       result = pdumper_load (dump_file, emacs_executable);
@@ -1396,34 +1283,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
 #endif
     }
 
-#ifdef WINDOWSNT
-  /* Grab our malloc arena space now, before anything important
-     happens.  */
-  init_heap ();
-  initial_cmdline = GetCommandLine ();
-#endif
-#if defined WINDOWSNT || defined HAVE_NTGUI
-  /* Set global variables used to detect Windows version.  Do this as
-     early as possible.  (w32proc.c calls this function as well, but
-     the additional call here is harmless.) */
-  cache_system_info ();
-#ifdef WINDOWSNT
-  /* This must be called to initialize w32_unicode_filenames and
-     is_windows_9x prior to w32_init_current_directory.  */
-  globals_of_w32 ();
-
-  /* On Windows 9X, we have to load UNICOWS.DLL as early as possible,
-     to have non-stub implementations of APIs we need to convert file
-     names between UTF-8 and the system's ANSI codepage.  */
-  maybe_load_unicows_dll ();
-  /* Initialize the codepage for file names, needed to decode
-     non-ASCII file names during startup.  */
-  w32_init_file_name_codepage ();
-  /* Initialize the startup directory, needed for emacs_wd below.  */
-  w32_init_current_directory ();
-#endif
-  w32_init_main_thread ();
-#endif
 
 #ifdef HAVE_NS
   /* Initialize the Obj C autorelease pool.  */
@@ -1434,15 +1293,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
   if (attempt_load_pdump)
     {
       initial_emacs_executable = load_pdump (argc, argv, dump_file);
-#ifdef WINDOWSNT
-  /* Reinitialize the codepage for file names, needed to decode
-     non-ASCII file names during startup.  This is needed because
-     loading the pdumper file above assigns to those variables values
-     from the dump stage, which might be incorrect, if dumping was done
-     on a different system.  */
-      if (dumped_with_pdumper_p ())
-	w32_init_file_name_codepage ();
-#endif
     }
 #else
   ptrdiff_t bufsize;
@@ -1460,9 +1310,7 @@ android_emacs_init (int argc, char **argv, char *dump_file)
   init_standard_fds ();
   atexit (close_output_streams);
 
-#ifndef WINDOWSNT
   copy_args (argc, argv);
-#endif
   initial_argv0 = argv[0];
 
   /* Command-line argument processing.
@@ -1527,9 +1375,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
     }
 #endif
   emacs_wd = emacs_get_current_dir_name ();
-#ifdef WINDOWSNT
-  initial_wd = emacs_wd;
-#endif /* WINDOWSNT */
 #ifdef HAVE_PDUMPER
   if (dumped_with_pdumper_p ())
     pdumper_record_wd (emacs_wd);
@@ -1538,14 +1383,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
   if (argmatch (argv, argc, "-chdir", "--chdir", 4, &ch_to_dir, &skip_args)
       && !only_version)
     {
-#ifdef WINDOWSNT
-      /* argv[] array is kept in its original ANSI codepage encoding,
-	 we need to convert to UTF-8, for chdir to work.  */
-      char newdir[MAX_UTF8_PATH];
-
-      filename_from_ansi (ch_to_dir, newdir);
-      ch_to_dir = newdir;
-#endif
       if (chdir (ch_to_dir) != 0)
         {
           fprintf (stderr, "%s: Can't chdir to %s: %s\n",
@@ -1553,10 +1390,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
           exit (1);
         }
       original_pwd = emacs_wd;
-#ifdef WINDOWSNT
-      /* Reinitialize Emacs's notion of the startup directory.  */
-      w32_init_current_directory ();
-#endif
       emacs_wd = emacs_get_current_dir_name ();
     }
 
@@ -1636,11 +1469,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
 
 #endif	/* not SYSTEM_MALLOC */
 
-#ifdef MSDOS
-  set_binary_mode (STDIN_FILENO, O_BINARY);
-  fflush (stdout);
-  set_binary_mode (STDOUT_FILENO, O_BINARY);
-#endif /* MSDOS */
 
   /* Set locale, so that initial error messages are localized properly.
      However, skip this if LC_ALL is "C", as it's not needed in that case.  */
@@ -1729,12 +1557,8 @@ android_emacs_init (int argc, char **argv, char *dump_file)
 
   daemon_type = 0;
 
-#ifndef WINDOWSNT
   /* Make sure IS_DAEMON starts up as false.  */
   daemon_pipe[1] = 0;
-#else
-  w32_daemon_event = NULL;
-#endif
 
 
   int sockfd = -1;
@@ -1762,7 +1586,6 @@ android_emacs_init (int argc, char **argv, char *dump_file)
 
   if (daemon_type > 0)
     {
-#ifndef DOS_NT
       if (daemon_type == 2)
         {
           /* Start as a background daemon: fork a new child process which
@@ -1922,19 +1745,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 
           setsid ();
         } /* daemon_type == 2 */
-#elif defined(WINDOWSNT)
-      /* Indicate that we want daemon mode.  */
-      w32_daemon_event = CreateEvent (NULL, TRUE, FALSE, W32_DAEMON_EVENT);
-      if (w32_daemon_event == NULL)
-        {
-          fprintf (stderr, "Couldn't create MS-Windows event for daemon: %s\n",
-		   w32_strerror (0));
-          exit (1);
-        }
-#else /* MSDOS */
-      fputs ("This platform does not support daemon mode.\n", stderr);
-      exit (1);
-#endif /* MSDOS */
       if (dname_arg)
 	daemon_name = xstrdup (dname_arg);
     }
@@ -2151,15 +1961,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
      except when building temacs
      because the -d argument has not been skipped in skip_args.  */
 
-#ifdef MSDOS
-  /* Call early 'cause init_environment needs it.  */
-  init_dosfns ();
-  /* Set defaults for several environment variables.  */
-  if (initialized)
-    init_environment (argc, argv, skip_args);
-  else
-    tzset ();
-#endif /* MSDOS */
 
 #ifdef HAVE_KQUEUE
   globals_of_kqueue ();
@@ -2183,22 +1984,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
   /* Has to run after the environment is set up. */
   init_atimer ();
 
-#ifdef WINDOWSNT
-  /* We need to forget about libraries that were loaded during the
-     dumping process (e.g. libgccjit).  This must be done _after_
-     load_pdump.  */
-  Vlibrary_cache = Qnil;
-#ifdef HAVE_W32NOTIFY
-  globals_of_w32notify ();
-#endif
-  /* Initialize environment from registry settings.  Make sure to do
-     this only after calling set_initial_environment so that
-     Vinitial_environment and Vprocess_environment will contain only
-     variables from the parent process without modifications from
-     Emacs.  */
-  init_environment (argv);
-  init_ntproc (will_dump_p ()); /* must precede init_editfns.  */
-#endif
 
   /* Init buffer storage and default directory of main buffer.  */
   init_buffer ();
@@ -2288,10 +2073,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
       exit (0);
     }
 
-#ifdef WINDOWSNT
-  /* Check to see if Emacs has been installed correctly.  */
-  check_windows_init_file ();
-#endif
 
   /* Intern the names of all standard functions and variables;
      define standard keys.  */
@@ -2348,12 +2129,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 #endif
       syms_of_textprop ();
       syms_of_composite ();
-#ifdef WINDOWSNT
-      syms_of_ntproc ();
-#endif /* WINDOWSNT */
-#if defined CYGWIN
-      syms_of_cygw32 ();
-#endif
       syms_of_window ();
       syms_of_xdisp ();
       syms_of_sqlite ();
@@ -2361,11 +2136,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 #ifdef HAVE_WINDOW_SYSTEM
       syms_of_fringe ();
       syms_of_image ();
-#ifdef HAVE_NTGUI
-# if HAVE_NATIVE_IMAGE_API
-      syms_of_w32image ();
-# endif
-#endif	/* HAVE_NTGUI */
 #endif /* HAVE_WINDOW_SYSTEM */
 #ifdef HAVE_X_WINDOWS
       syms_of_xterm ();
@@ -2393,27 +2163,9 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 
       syms_of_menu ();
 
-#ifdef HAVE_NTGUI
-      syms_of_w32term ();
-      syms_of_w32fns ();
-      syms_of_w32menu ();
-      syms_of_fontset ();
-#endif /* HAVE_NTGUI */
 
-#if defined HAVE_NTGUI || defined CYGWIN
-      syms_of_w32cygwinx ();
-#endif
 
-#if defined WINDOWSNT || defined HAVE_NTGUI
-      syms_of_w32select ();
-#endif
 
-#ifdef MSDOS
-      syms_of_xmenu ();
-      syms_of_dosfns ();
-      syms_of_msdos ();
-      syms_of_win16select ();
-#endif	/* MSDOS */
 
 #ifdef HAVE_NS
       syms_of_nsterm ();
@@ -2432,17 +2184,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
       syms_of_fontset ();
       syms_of_xsettings ();
 #endif /* HAVE_PGTK */
-#ifdef HAVE_HAIKU
-      syms_of_haikuterm ();
-      syms_of_haikufns ();
-      syms_of_haikumenu ();
-      syms_of_haikufont ();
-      syms_of_haikuselect ();
-#ifdef HAVE_NATIVE_IMAGE_API
-      syms_of_haikuimage ();
-#endif
-      syms_of_fontset ();
-#endif /* HAVE_HAIKU */
 #ifdef HAVE_ANDROID
       syms_of_androidterm ();
       syms_of_androidfns ();
@@ -2475,13 +2216,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
       syms_of_dbusbind ();
 #endif /* HAVE_DBUS */
 
-#ifdef WINDOWSNT
-      syms_of_ntterm ();
-#ifdef HAVE_W32NOTIFY
-      syms_of_w32notify ();
-#endif /* HAVE_W32NOTIFY */
-      syms_of_w32dwrite ();
-#endif /* WINDOWSNT */
 
       syms_of_xwidget ();
       syms_of_threads ();
@@ -2500,23 +2234,9 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
     {
       /* Initialization that must be done even if the global variable
 	 initialized is non zero.  */
-#ifdef HAVE_NTGUI
-      globals_of_w32font ();
-      globals_of_w32fns ();
-      globals_of_w32menu ();
-# if HAVE_NATIVE_IMAGE_API
-      globals_of_w32image ();
-# endif
-#endif  /* HAVE_NTGUI */
 
-#if defined WINDOWSNT || defined HAVE_NTGUI
-      globals_of_w32select ();
-#endif
     }
 
-#ifdef HAVE_HAIKU
-  init_haiku_select ();
-#endif
 
   init_charset ();
 
@@ -2541,10 +2261,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 
   init_keyboard ();	/* This too must precede init_sys_modes.  */
   init_display ();	/* Determine terminal type.  Calls init_sys_modes.  */
-#if HAVE_W32NOTIFY
-  if (noninteractive)
-    init_crit ();	/* w32notify.c needs this in batch mode.  */
-#endif	/* HAVE_W32NOTIFY */
   init_xdisp ();
 #ifdef HAVE_WINDOW_SYSTEM
   init_fringe ();
@@ -2570,12 +2286,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
       /* Handle -l loadup, args passed by Makefile.  */
       if (argmatch (argv, argc, "-l", "--load", 3, &file, &skip_args))
 	{
-#ifdef WINDOWSNT
-	  char file_utf8[MAX_UTF8_PATH];
-
-	  if (filename_from_ansi (file, file_utf8) == 0)
-	    file = file_utf8;
-#endif
 	  Vtop_level = list2 (Qload, build_unibyte_string (file));
 	}
       /* Unless next switch is -nl, load "loadup.el" first thing.  */
@@ -2769,7 +2479,6 @@ static const struct standard_args standard_args[] =
   { "-kill", "--kill", -10, 0 },
 };
 
-#ifndef WINDOWSNT
 
 /* Copy the elements of ARGV (assumed to have ARGC elements) and store
    the copy in initial_argv.  Store ARGC in initial_argc.  */
@@ -2787,7 +2496,6 @@ copy_args (int argc, char **argv)
   initial_argc = argc;
 }
 
-#endif
 
 /* Reorder the elements of ARGV (assumed to have ARGC elements)
    so that the highest priority ones come first.
@@ -2973,7 +2681,6 @@ killed.  */
 {
   int exit_code;
 
-#ifndef WINDOWSNT
   /* Do some checking before shutting down Emacs, because errors
      can't be meaningfully reported afterwards.  */
   if (!NILP (restart)
@@ -2997,7 +2704,6 @@ killed.  */
       if (!file_access_p (initial_emacs_executable, F_OK))
 	error ("Emacs executable \"%s\" can't be found", initial_argv0);
     }
-#endif
 
 #ifdef HAVE_LIBSYSTEMD
   /* Notify systemd we are shutting down, but only if we have notified
@@ -3067,12 +2773,8 @@ killed.  */
       if (android_init_gui)
 	android_restart_emacs ();
 #endif
-#ifdef WINDOWSNT
-      if (w32_reexec_emacs (initial_cmdline, initial_wd) < 0)
-#else
       initial_argv[0] = initial_emacs_executable;
       if (execvp (*initial_argv, initial_argv) < 1)
-#endif
 	emacs_perror ("Unable to re-execute Emacs");
     }
 
@@ -3114,10 +2816,6 @@ shut_down_emacs (int sig, Lisp_Object stuff)
       reset_all_sys_modes ();
       if (sig && sig != SIGTERM)
 	{
-#ifdef HAVE_HAIKU
-	  if (haiku_debug_on_fatal_error)
-	    debugger ("Fatal error in Emacs");
-#endif
 	  /* Output a "Fatal error NUM: DESC\n" diagnostic with a single write,
 	     but use multiple writes if the diagnosic is absurdly long
 	     and likely couldn't be written atomically anyway.  */
@@ -3167,9 +2865,6 @@ shut_down_emacs (int sig, Lisp_Object stuff)
       check_message_stack ();
     }
 
-#ifdef MSDOS
-  dos_cleanup ();
-#endif
 
 #ifdef HAVE_NS
   ns_term_shutdown (sig);
@@ -3179,9 +2874,6 @@ shut_down_emacs (int sig, Lisp_Object stuff)
   xml_cleanup_parser ();
 #endif
 
-#ifdef WINDOWSNT
-  term_ntproc (0);
-#endif
 }
 
 
@@ -3205,18 +2897,7 @@ synchronize_locale (int category, Lisp_Object *plocale, Lisp_Object desired_loca
       *plocale = desired_locale;
       char const *locale_string
 	= STRINGP (desired_locale) ? SSDATA (desired_locale) : "";
-#ifdef WINDOWSNT
-      /* Changing categories like LC_TIME usually requires specifying
-	 an encoding suitable for the new locale, but MS-Windows's
-	 'setlocale' will only switch the encoding when LC_ALL is
-	 specified.  So we ignore CATEGORY, use LC_ALL instead, and
-	 then restore LC_NUMERIC to "C", so reading and printing
-	 numbers is unaffected.  */
-      setlocale (LC_ALL, locale_string);
-      fixup_locale ();
-#else
       setlocale (category, locale_string);
-#endif
     }
 }
 
@@ -3263,19 +2944,6 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
   /* Default is to use "." for empty path elements.
      But if argument EMPTY is true, use nil instead.  */
   Lisp_Object empty_element = empty ? Qnil : build_string (".");
-#ifdef WINDOWSNT
-  bool defaulted = 0;
-  static const char *emacs_dir_env = "%emacs_dir%/";
-  const size_t emacs_dir_len = strlen (emacs_dir_env);
-  const char *edir = egetenv ("emacs_dir");
-  char emacs_dir[MAX_UTF8_PATH];
-
-  /* egetenv looks in process-environment, which holds the variables
-     in their original system-locale encoding.  We need emacs_dir to
-     be in UTF-8.  */
-  if (edir)
-    filename_from_ansi (edir, emacs_dir);
-#endif
 
   /* It's okay to use getenv here, because this function is only used
      to initialize variables when Emacs starts up, and isn't called
@@ -3295,55 +2963,7 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
       if (path)
 	path = ns_relocate (path);
 #endif
-#ifdef WINDOWSNT
-      defaulted = 1;
-#endif
     }
-#ifdef DOS_NT
-  /* Ensure values from the environment use the proper directory separator.  */
-  if (path)
-    {
-      char *path_copy;
-
-#ifdef WINDOWSNT
-      char *path_utf8, *q, *d;
-      int cnv_result;
-
-      /* Convert each element of PATH to UTF-8.  */
-      p = path_copy = alloca (strlen (path) + 1);
-      strcpy (path_copy, path);
-      d = path_utf8 = alloca (4 * strlen (path) + 1);
-      *d = '\0';
-      do {
-	q = _mbschr (p, SEPCHAR);
-	if (q)
-	  *q = '\0';
-	cnv_result = filename_from_ansi (p, d);
-	if (q)
-	  {
-	    *q++ = SEPCHAR;
-	    p = q;
-	    /* If conversion of this PATH elements fails, make sure
-	       destination pointer will stay put, thus effectively
-	       ignoring the offending element.  */
-	    if (cnv_result == 0)
-	      {
-		d += strlen (d);
-		*d++ = SEPCHAR;
-	      }
-	  }
-	else if (cnv_result != 0 && d > path_utf8)
-	  d[-1] = '\0';	/* remove last semi-colon and null-terminate PATH */
-      } while (q);
-      path_copy = path_utf8;
-#else  /* MSDOS */
-      path_copy = alloca (strlen (path) + 1);
-      strcpy (path_copy, path);
-#endif
-      dostounix_filename (path_copy);
-      path = path_copy;
-    }
-#endif
   lpath = Qnil;
   for (; path; path = *p ? p + 1 : NULL)
     {
@@ -3354,17 +2974,6 @@ decode_env_path (const char *evarname, const char *defalt, bool empty)
 		 : empty_element);
       if (! NILP (element))
         {
-#ifdef WINDOWSNT
-          /* Relative file names in the default path are interpreted as
-             being relative to $emacs_dir.  */
-          if (edir && defaulted
-              && strncmp (path, emacs_dir_env, emacs_dir_len) == 0)
-            element = Fexpand_file_name (Fsubstring
-                                         (element,
-                                          make_fixnum (emacs_dir_len),
-                                          Qnil),
-                                         build_unibyte_string (emacs_dir));
-#endif
 
           /* Add /: to the front of the name
              if it would otherwise be treated as magic.  */
@@ -3423,7 +3032,6 @@ from the parent process and its tty file descriptors.  */)
 
   if (NILP (Vafter_init_time))
     error ("This function can only be called after loading the init files");
-#ifndef WINDOWSNT
 
   if (daemon_type == 1)
     {
@@ -3458,13 +3066,6 @@ from the parent process and its tty file descriptors.  */)
   /* Set it to an invalid value so we know we've already run this function.  */
   daemon_type = -daemon_type;
 
-#else  /* WINDOWSNT */
-  /* Signal the waiting emacsclient process.  */
-  err |= SetEvent (w32_daemon_event) == 0;
-  err |= CloseHandle (w32_daemon_event) == 0;
-  /* Set it to an invalid value so we know we've already run this function.  */
-  w32_daemon_event = INVALID_HANDLE_VALUE;
-#endif
 
   if (err)
     error ("I/O error during daemon initialization");
@@ -3630,22 +3231,7 @@ because they do not depend on external libraries and are always available.
 
 Also note that this is not a generic facility for accessing external
 libraries; only those already known by Emacs will be loaded.  */);
-#ifdef WINDOWSNT
-  /* FIXME: We may need to load libgccjit when dumping before
-     term/w32-win.el defines `dynamic-library-alist`.  This will fail
-     if that variable is empty, so add libgccjit-0.dll to it.  */
-  if (will_dump_p ())
-    Vdynamic_library_alist = list1 (list2 (Qgccjit,
-                                           build_string ("libgccjit-0.dll")));
-  else
-    Vdynamic_library_alist = Qnil;
-#else
   Vdynamic_library_alist = Qnil;
-#endif
   Fput (intern_c_string ("dynamic-library-alist"), Qrisky_local_variable, Qt);
 
-#ifdef WINDOWSNT
-  Vlibrary_cache = Qnil;
-  staticpro (&Vlibrary_cache);
-#endif
 }
