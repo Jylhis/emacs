@@ -509,21 +509,14 @@ dnl This should be the last --with option, because --with-x is
 dnl added later on when we find the file name of X, and it's best to
 dnl keep them together visually.
 AC_ARG_WITH([x-toolkit],[AS_HELP_STRING([--with-x-toolkit=KIT],
- [use an X toolkit (KIT one of: yes or gtk, gtk2, gtk3, lucid or athena, motif, no)])],
+ [use an X toolkit (KIT must be 'gtk3' or 'no')])],
 [	  case "${withval}" in
-	    y | ye | yes )	val=gtk ;;
+	    y | ye | yes | g | gt | gtk | gtk3 )	val=gtk3 ;;
 	    n | no )		val=no  ;;
-	    l | lu | luc | luci | lucid )	val=lucid ;;
-	    a | at | ath | athe | athen | athena )	val=athena ;;
-	    m | mo | mot | moti | motif )	val=motif ;;
-	    g | gt | gtk  )	val=gtk ;;
-	    gtk2  )	val=gtk2 ;;
-	    gtk3  )	val=gtk3 ;;
 	    * )
 AC_MSG_ERROR(['--with-x-toolkit=$withval' is invalid;
-this option's value should be 'yes', 'no', 'lucid', 'athena', 'motif', 'gtk',
-'gtk2' or 'gtk3'.  'yes' and 'gtk' are synonyms.
-'athena' and 'lucid' are synonyms.])
+this option's value should be 'gtk3' or 'no'.
+Lucid, Athena and Motif toolkits are no longer supported.])
 	    ;;
 	  esac
 	  with_x_toolkit=$val
@@ -1407,9 +1400,8 @@ dnl quotation begins
 
 ### As far as handling version numbers on operating systems is
 ### concerned, make sure things will fail in a fixable way.  If
-### /etc/MACHINES doesn't say anything about version numbers, be
-### prepared to handle anything reasonably.  If version numbers
-### matter, be sure /etc/MACHINES says something about it.
+### Supported targets: GNU/Linux on x86_64 or aarch64, macOS on
+### x86_64 or arm64, and Android.
 
 opsys='' unported=no
 case "${canonical}" in
@@ -1419,138 +1411,14 @@ case "${canonical}" in
     opsys=android
   ;;
 
-  ## GNU/Linux and similar ports
-  *-*-linux* )
+  ## GNU/Linux
+  x86_64-*-linux* | aarch64-*-linux* )
     opsys=gnu-linux
   ;;
 
-  ## FreeBSD ports
-  *-*-freebsd* )
-    opsys=freebsd
-  ;;
-
-  ## DragonFly ports
-  *-*-dragonfly* )
-    opsys=dragonfly
-  ;;
-
-  ## FreeBSD kernel + glibc based userland
-  *-*-kfreebsd*gnu* )
-    opsys=gnu-kfreebsd
-  ;;
-
-  ## NetBSD ports
-  *-*-netbsd* )
-    opsys=netbsd
-  ;;
-
-  ## OpenBSD ports
-  *-*-openbsd* | *-*-mirbsd* )
-    opsys=openbsd
-  ;;
-
   ## Apple Darwin / macOS
-  *-apple-darwin* )
-    case "${canonical}" in
-      *-apple-darwin[0-9].*) unported=yes ;;
-      i[3456]86-* | x86_64-* | arm-* | aarch64-* )  ;;
-      * )            unported=yes ;;
-    esac
+  x86_64-apple-darwin* | aarch64-apple-darwin* | arm-apple-darwin* )
     opsys=darwin
-    ## FIXME: Find a way to use Fink if available (Bug#11507).
-  ;;
-
-  ## Chromium Native Client
-  *-nacl )
-    opsys=nacl
-  ;;
-
-  ## Cygwin ports
-  *-*-cygwin )
-    opsys=cygwin
-  ;;
-
-  ## HP 9000 series 700 and 800, running HP/UX
-  hppa*-hp-hpux10.2* )
-    opsys=hpux10-20
-  ;;
-  hppa*-hp-hpux1[1-9]* )
-    opsys=hpux11
-    CFLAGS="-D_INCLUDE__STDC_A1_SOURCE $CFLAGS"
-  ;;
-
-  ## IBM machines
-  rs6000-ibm-aix4.[23]* )
-    opsys=aix4-2
-  ;;
-  powerpc-ibm-aix4.[23]*  )
-    opsys=aix4-2
-  ;;
-  rs6000-ibm-aix[56]* )
-    opsys=aix4-2
-  ;;
-  powerpc-ibm-aix[5-9]* | powerpc-ibm-aix[1-9][0-9]* )
-    opsys=aix4-2
-  ;;
-
-  ## Solaris
-  *-*-solaris* | *-*-sunos*)
-    case "${canonical}" in
-      i[3456]86-*-* )   ;;
-      amd64-*-*|x86_64-*-*) ;;
-      sparc* )		;;
-      * )		unported=yes ;;
-    esac
-    opsys=solaris
-    ## Watch out for a compiler that we know will not work.
-    if [ "$CC" = /usr/ucb/cc ]; then
-      ## /usr/ucb/cc doesn't work;
-      ## we should find some other compiler that does work.
-      unset CC
-    fi
-  ;;
-
-  ## QNX Neutrino
-  *-nto-qnx* )
-    opsys=qnxnto
-    test -z "$CC" && CC=qcc
-    LDFLAGS="-N2M $LDFLAGS"
-  ;;
-
-  *-haiku )
-    opsys=haiku
-  ;;
-
-  ## Intel 386 machines where we don't care about the manufacturer.
-  i[3456]86-*-* )
-    case "${canonical}" in
-      *-darwin* )               opsys=darwin ;;
-      *-mingw* )
-		opsys=mingw32
-		# MinGW overrides and adds some system headers in nt/inc.
-		# Also, GCC 14 turns on implicit-function-declaration
-		# error by default, which fails configure tests where our
-		# emulation of Posix headers defines only the minimal
-		# stuff we actually need.
-		GCC_TEST_OPTIONS="-I $srcdir/nt/inc -Wno-error=implicit-function-declaration"
-		;;
-      *-sysv4.2uw* )		opsys=unixware ;;
-      *-sysv5uw* )		opsys=unixware ;;
-      *-sysv5OpenUNIX* )	opsys=unixware ;;
-      ## Otherwise, we'll fall through to the generic opsys code at the bottom.
-    esac
-  ;;
-
-  # MinGW64
-  x86_64-*-* )
-    case "${canonical}" in
-      *-mingw* )
-		opsys=mingw32
-		# MinGW overrides and adds some system headers in nt/inc.
-		GCC_TEST_OPTIONS="-I $srcdir/nt/inc -Wno-error=implicit-function-declaration"
-		;;
-      ## Otherwise, we'll fall through to the generic opsys code at the bottom.
-    esac
   ;;
 
   * )
@@ -1558,28 +1426,13 @@ case "${canonical}" in
   ;;
 esac
 
-### If the code above didn't choose an operating system, just choose
-### an operating system based on the configuration name.  You really
-### only want to use this when you have no idea what the right
-### operating system is; if you know what operating systems a machine
-### runs, it's cleaner to make it explicit in the case statement
-### above.
-if test x"${opsys}" = x; then
-  case "${canonical}" in
-    *-gnu* )				opsys=gnu ;;
-    * )
-      unported=yes
-    ;;
-  esac
-fi
-
 ]
 dnl quotation ends
 
 if test $unported = yes; then
   AC_MSG_ERROR([Emacs does not support '${canonical}' systems.
-If you think it should, please send a report to ${PACKAGE_BUGREPORT}.
-Check 'etc/MACHINES' for recognized configuration names.])
+Supported targets are GNU/Linux on x86_64 or aarch64, macOS on
+x86_64 or arm64, and Android.])
 fi
 
 #### Choose a compiler.
@@ -1783,12 +1636,6 @@ AS_IF([test $gl_gcc_warnings = no],
   # This, $nw, is the list of warnings we disable.
   nw=
 
-  case $with_x_toolkit in
-    lucid | athena | motif)
-       # Old toolkits mishandle 'const'.
-       nw="$nw -Wwrite-strings"
-       ;;
-  esac
   AS_IF([test $gl_gcc_warnings = yes],
     [WERROR_CFLAGS=-Werror],
     [# Use -fanalyzer and related options only if --enable-gcc-warnings,
@@ -2166,49 +2013,9 @@ AC_CACHE_CHECK([whether addresses are sanitized],
      [emacs_cv_sanitize_address=no])])
 
 LD_SWITCH_SYSTEM=
-case "$opsys" in
-  freebsd|dragonfly)
-   ## Let 'ld' find image libs and similar things in /usr/local/lib.
-   ## The system compiler, GCC, has apparently been modified to not
-   ## look there, contrary to what a stock GCC would do.
-### It's not our place to do this.  See bug#10313#17.
-###   LD_SWITCH_SYSTEM=-L/usr/local/lib
-      :
-   ;;
-
-  gnu-linux)
-   ## cpp test was "ifdef __mips__", but presumably this is equivalent...
-   case $host_cpu in mips*) LD_SWITCH_SYSTEM="-G 0";; esac
-   ;;
-
-  netbsd)
-### It's not our place to do this.  See bug#10313#17.
-###   LD_SWITCH_SYSTEM="-Wl,-rpath,/usr/pkg/lib -L/usr/pkg/lib -Wl,-rpath,/usr/local/lib -L/usr/local/lib"
-      :
-   ;;
-
-  openbsd)
-      :
-   ;;
-esac
 AC_SUBST([LD_SWITCH_SYSTEM])
 
 ac_link="$ac_link $LD_SWITCH_SYSTEM"
-
-## This setting of LD_SWITCH_SYSTEM references LD_SWITCH_X_SITE_RPATH,
-## which has not been defined yet.  When this was handled with cpp,
-## it was expanded to null when configure sourced the s/*.h file.
-## Thus LD_SWITCH_SYSTEM had different values in configure and the Makefiles.
-## FIXME it would be cleaner to put this in LD_SWITCH_SYSTEM_TEMACS
-## (or somesuch), but because it is supposed to go at the _front_
-## of LD_SWITCH_SYSTEM, we cannot do that in exactly the same way.
-## Compare with the gnu-linux case below, which added to the end
-## of LD_SWITCH_SYSTEM, and so can instead go at the front of
-## LD_SWITCH_SYSTEM_TEMACS.
-case "$opsys" in
-  netbsd|openbsd)
-   LD_SWITCH_SYSTEM="\$(LD_SWITCH_X_SITE_RPATH) $LD_SWITCH_SYSTEM" ;;
-esac
 
 C_SWITCH_MACHINE=
 
@@ -2258,42 +2065,9 @@ AS_CASE([$emacs_cv_gcc_union_bugs_CFLAGS],
 AC_SUBST([C_SWITCH_MACHINE])
 
 C_SWITCH_SYSTEM=
-## Some programs in src produce warnings saying certain subprograms
-## are too complex and need a MAXMEM value greater than 2000 for
-## additional optimization.  --nils@exp-math.uni-essen.de
-test "$opsys" = "aix4.2" && test "x$GCC" != "xyes" && \
-  C_SWITCH_SYSTEM="-ma -qmaxmem=4000"
-if test "$opsys" = "mingw32"; then
-  case "$canonical" in
-    x86_64-*-mingw*) C_SWITCH_SYSTEM="-mtune=generic" ;;
-    *) C_SWITCH_SYSTEM="-mtune=pentium4" ;;
-  esac
-fi
-## gnu-linux might need -D_BSD_SOURCE on old libc5 systems.
-## It is redundant in glibc2, since we define _GNU_SOURCE.
 AC_SUBST([C_SWITCH_SYSTEM])
 
-
 LIBS_SYSTEM=
-case "$opsys" in
-  ## IBM's X11R5 uses -lIM and -liconv in AIX 3.2.2.
-  aix4-2) LIBS_SYSTEM="-lrts -lIM -liconv" ;;
-
-  freebsd|dragonfly) LIBS_SYSTEM="-lutil" ;;
-
-  hpux*) LIBS_SYSTEM="-l:libdld.sl" ;;
-
-  qnxnto) LIBS_SYSTEM="-lsocket" ;;
-
-  solaris) LIBS_SYSTEM="-lsocket -lnsl" ;;
-
-  ## Motif needs -lgen.
-  unixware) LIBS_SYSTEM="-lsocket -lnsl -lelf -lgen" ;;
-
-  # Haiku needs -lbsd for cfsetspeed.
-  haiku) LIBS_SYSTEM="-lnetwork -lbsd" ;;
-esac
-
 AC_SUBST([LIBS_SYSTEM])
 
 ### Make sure subsequent tests use flags consistent with the build flags.
@@ -2367,39 +2141,14 @@ case $emacs_cv_lib_math in
   *)  LIB_MATH=;;
 esac
 
-dnl Current possibilities handled by sed (aix4-2 -> aix,
-dnl gnu-linux -> gnu/linux, etc.):
-dnl gnu, gnu/linux, gnu/kfreebsd, aix, cygwin, darwin, hpux.
-dnl And special cases: berkeley-unix, usg-unix-v, ms-dos, windows-nt.
-SYSTEM_TYPE=`echo $opsys | sed -e 's/[[0-9]].*//' -e 's|-|/|'`
+dnl Possibilities: gnu/linux, darwin, android.
+SYSTEM_TYPE=`echo $opsys | sed -e 's|-|/|'`
 
 case $opsys in
-  cygwin )
-    LIB_MATH=
-    ;;
   darwin )
     ## Adding -lm confuses the dynamic linker, so omit it.
     LIB_MATH=
     ;;
-  freebsd | dragonfly )
-    SYSTEM_TYPE=berkeley-unix
-    ;;
-  gnu-linux | gnu-kfreebsd )
-    ;;
-  hpux10-20 | hpux11 )
-    ;;
-  mingw32 )
-    LIB_MATH=
-    SYSTEM_TYPE=windows-nt
-    ;;
-  netbsd | openbsd )
-    SYSTEM_TYPE=berkeley-unix
-    ;;
-
-  solaris | unixware )
-    SYSTEM_TYPE=usg-unix-v
-    ;;
-
 esac
 
 AC_SUBST([LIB_MATH])
@@ -2445,28 +2194,12 @@ AC_DEFUN([EMACS_CHECK_LIB],
 
 HAVE_SOUND=no
 if test "${with_sound}" != "no"; then
-  # Sound support for GNU/Linux, the free BSDs, MinGW, and Cygwin.
-  AC_CHECK_HEADERS([machine/soundcard.h sys/soundcard.h soundcard.h mmsystem.h],
-    [have_sound_header=yes], [], [
-    #ifdef __MINGW32__
-    #define WIN32_LEAN_AND_MEAN
-    #include <windows.h>
-    #endif
-    ])
+  # Sound support for GNU/Linux via OSS or ALSA.
+  AC_CHECK_HEADERS([sys/soundcard.h soundcard.h],
+    [have_sound_header=yes])
   test "${with_sound}" = "oss" && test "${have_sound_header}" != "yes" && \
     AC_MSG_ERROR([OSS sound support requested but not found.])
 
-  if test "${with_sound}" = "bsd-ossaudio" || test "${with_sound}" = "yes"; then
-    # OSS emulation library used on NetBSD and OpenBSD.
-    AC_CHECK_LIB([ossaudio], [_oss_ioctl], [LIBSOUND=-lossaudio], [LIBSOUND=])
-    test "${with_sound}" = "bsd-ossaudio" && test -z "$LIBSOUND" && \
-      AC_MSG_ERROR([bsd-ossaudio sound support requested but not found.])
-    # On {Net,Open}BSD use the system audio library instead of
-    # potentially switching to ALSA below, as ALSA on these appears to
-    # just wrap system libraries.
-    test "${with_sound}" = "yes" && test "$LIBSOUND" = "-lossaudio" && \
-      with_sound="bsd-ossaudio"
-  fi
   AC_SUBST([LIBSOUND])
 
   if test "${with_sound}" = "alsa" || test "${with_sound}" = "yes"; then
@@ -2482,16 +2215,9 @@ if test "${with_sound}" != "no"; then
     fi
   fi                            dnl with_sound = alsa|yes
 
-  dnl Define HAVE_SOUND if we have sound support.  We know it works and
-  dnl compiles only on the specified platforms.  For others, it
-  dnl probably doesn't make sense to try.
-  dnl FIXME So surely we should bypass this whole section if not using
-  dnl one of these platforms?
   if test x$have_sound_header = xyes || test $HAVE_ALSA = yes; then
      case "$opsys" in
-       dnl defined __FreeBSD__ || defined __NetBSD__ || defined __linux__
-       dnl Adjust the --with-sound help text if you change this.
-       gnu-linux|freebsd|netbsd|mingw32|cygwin)
+       gnu-linux)
 	 AC_DEFINE([HAVE_SOUND], [1], [Define to 1 if you have sound support.])
          HAVE_SOUND=yes
          ;;
@@ -3008,157 +2734,7 @@ fi
 
 AC_SUBST([HAVE_BE_APP])
 
-HAVE_W32=no
-W32_OBJ=
-W32_LIBS=
-EMACSRES=
-CLIENTRES=
-CLIENTW=
-W32_RES_LINK=
-EMACS_MANIFEST=
-if test "${with_w32}" != no; then
-  case "${opsys}" in
-    cygwin)
-      AC_CHECK_HEADER([windows.h], [HAVE_W32=yes],
-             [AC_MSG_ERROR(['--with-w32' was specified, but windows.h
-                   cannot be found.])])
-    ;;
-    mingw32)
-    ## Using --with-w32 with MinGW is a no-op, but we allow it.
-    ;;
-    *)
-      AC_MSG_ERROR([Using w32 with an autotools build is only supported for Cygwin and MinGW32.])
-    ;;
-  esac
-fi
-
-if test "${opsys}" = "mingw32"; then
-  AC_CACHE_CHECK([whether Windows API headers are recent enough], [emacs_cv_w32api],
-  [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
-     #include <windows.h>
-     #include <usp10.h>]],
-   [[PIMAGE_NT_HEADERS pHeader;
-     PIMAGE_SECTION_HEADER pSection = IMAGE_FIRST_SECTION(pHeader)]])],
-   [emacs_cv_w32api=yes], [emacs_cv_w32api=no])])
-  if test "${emacs_cv_w32api}" = "no"; then
-    AC_MSG_ERROR([the Windows API headers are too old to support this build.])
-  fi
-  HAVE_W32=${emacs_cv_w32api}
-fi
-
-NTDIR=
-LIBS_ECLIENT=
-LIB_WSOCK32=
-NTLIB=
-XARGS_LIMIT=
-if test "${HAVE_W32}" = "yes"; then
-  AC_DEFINE([HAVE_NTGUI], [1], [Define to use native MS Windows GUI.])
-  if test "$with_toolkit_scroll_bars" = "no"; then
-    AC_MSG_ERROR([Non-toolkit scroll bars are not implemented for w32 build.])
-  fi
-  AC_CHECK_TOOL([WINDRES], [windres],
-                [AC_MSG_ERROR([No resource compiler found.])])
-  W32_OBJ="w32fns.o w32menu.o w32reg.o w32font.o w32term.o"
-  W32_OBJ="$W32_OBJ w32xfns.o w32select.o w32uniscribe.o w32dwrite.o w32cygwinx.o"
-  EMACSRES="emacs.res"
-  case "$canonical" in
-    x86_64-*-*) EMACS_MANIFEST="emacs-x64.manifest" ;;
-    *) EMACS_MANIFEST="emacs-x86.manifest" ;;
-  esac
-  dnl Construct something of the form "24,4,0,0" with 4 components.
-  comma_version=`echo "${PACKAGE_VERSION}.0.0" | sed -e 's/\./,/g' -e 's/^\([[^,]]*,[[^,]]*,[[^,]]*,[[^,]]*\).*/\1/'`
-
-  comma_space_version=`echo "$comma_version" | sed 's/,/, /g'`
-  AC_SUBST([comma_version])
-  AC_SUBST([comma_space_version])
-  AC_CONFIG_FILES([nt/emacs.rc nt/emacsclient.rc])
-  if test "${opsys}" = "cygwin"; then
-    W32_LIBS="$W32_LIBS -lkernel32 -luser32 -lusp10 -lgdi32"
-    W32_LIBS="$W32_LIBS -lole32 -lcomdlg32 -lcomctl32 -lwinspool"
-    # Tell the linker that emacs.res is an object (which we compile from
-    # the rc file), not a linker script.
-    W32_RES_LINK="-Wl,emacs.res"
-  else
-    W32_OBJ="$W32_OBJ w32.o w32console.o w32heap.o w32inevt.o w32proc.o"
-    dnl FIXME: This should probably be supported for Cygwin/w32 as
-    dnl well, but the Cygwin build needs to link against -lgdiplus
-    if test "${with_native_image_api}" = yes; then
-      AC_DEFINE([HAVE_NATIVE_IMAGE_API], [1],
-	[Define to use native OS APIs for images.])
-      NATIVE_IMAGE_API="yes (w32)"
-      W32_OBJ="$W32_OBJ w32image.o"
-    fi
-    W32_LIBS="$W32_LIBS -lwinmm -lgdi32 -lcomdlg32"
-    W32_LIBS="$W32_LIBS -lmpr -lwinspool -lole32 -lcomctl32"
-    W32_RES_LINK="\$(EMACSRES)"
-    CLIENTRES="emacsclient.res"
-    CLIENTW="emacsclientw\$(EXEEXT)"
-    NTDIR=nt
-    CM_OBJ=
-    LIBS_ECLIENT="-lcomctl32"
-    LIB_WSOCK32="-lwsock32"
-    NTLIB="ntlib.$ac_objext"
-    XARGS_LIMIT="-s 10000"
-  fi
-fi
-
-if test "${HAVE_W32}" = "no" && test "${opsys}" = "cygwin"; then
-  W32_LIBS="-lkernel32"
-  W32_OBJ="w32cygwinx.o"
-fi
-
-AC_SUBST([W32_OBJ])
-AC_SUBST([W32_LIBS])
-AC_SUBST([EMACSRES])
-AC_SUBST([EMACS_MANIFEST])
-AC_SUBST([CLIENTRES])
-AC_SUBST([CLIENTW])
-AC_SUBST([W32_RES_LINK])
-AC_SUBST([NTDIR])
 AC_SUBST([CM_OBJ])
-AC_SUBST([LIBS_ECLIENT])
-AC_SUBST([LIB_WSOCK32])
-AC_SUBST([NTLIB])
-AC_SUBST([XARGS_LIMIT])
-
-if test "${HAVE_W32}" = "yes"; then
-  window_system=w32
-  with_xft=no
-fi
-
-HAIKU_OBJ=
-HAIKU_CXX_OBJ=
-HAIKU_LIBS=
-HAIKU_CFLAGS=
-
-if test "$opsys" = "haiku"; then
-  HAIKU_OBJ="$HAIKU_OBJ haiku.o"
-fi
-
-if test "${HAVE_BE_APP}" = "yes"; then
-  AC_DEFINE([HAVE_HAIKU], [1],
-      [Define if Emacs will be built with Haiku windowing support])
-fi
-
-if test "${HAVE_BE_APP}" = "yes"; then
-  window_system=haiku
-  with_xft=no
-  HAIKU_OBJ="$HAIKU_OBJ haikufns.o haikuterm.o haikumenu.o haikufont.o haikuselect.o haiku_io.o"
-  HAIKU_CXX_OBJ="haiku_support.o haiku_font_support.o haiku_draw_support.o haiku_select.o"
-  HAIKU_LIBS="-lbe -lgame -ltranslation -ltracker" # -lgame is needed for set_mouse_position.
-
-  if test "${with_native_image_api}" = yes; then
-     AC_DEFINE([HAVE_NATIVE_IMAGE_API], [1],
-       [Define to use native OS APIs for images.])
-     NATIVE_IMAGE_API="yes (haiku)"
-     HAIKU_OBJ="$HAIKU_OBJ haikuimage.o"
-  fi
-fi
-
-AC_SUBST([HAIKU_LIBS])
-AC_SUBST([HAIKU_OBJ])
-AC_SUBST([HAIKU_CXX_OBJ])
-AC_SUBST([HAIKU_CFLAGS])
 
 ## $window_system is now set to the window system we will
 ## ultimately use.
@@ -3174,31 +2750,12 @@ case "${window_system}" in
     HAVE_X_WINDOWS=yes
     HAVE_X11=yes
     term_header=xterm.h
-    case "${with_x_toolkit}" in
-      athena | lucid ) USE_X_TOOLKIT=LUCID ;;
-      motif ) USE_X_TOOLKIT=MOTIF ;;
-      gtk ) with_gtk=yes
-            term_header=gtkutil.h
-dnl Don't set this for GTK.  A lot of tests below assumes Xt when
-dnl USE_X_TOOLKIT is set.
-            USE_X_TOOLKIT=none ;;
-      gtk2 ) with_gtk2=yes
-             term_header=gtkutil.h
-             USE_X_TOOLKIT=none ;;
-      gtk3 ) with_gtk3=yes
-             term_header=gtkutil.h
-             USE_X_TOOLKIT=none ;;
-      no ) USE_X_TOOLKIT=none ;;
-dnl If user did not say whether to use a toolkit, make this decision later:
-dnl use the toolkit if we have gtk, or X11R5 or newer.
-      * ) USE_X_TOOLKIT=maybe ;;
-    esac
+    with_gtk3=yes
+    term_header=gtkutil.h
+    USE_X_TOOLKIT=none
   ;;
   nextstep )
     term_header=nsterm.h
-  ;;
-  w32 )
-    term_header=w32term.h
   ;;
   pgtk )
     term_header=pgtkterm.h
@@ -3206,9 +2763,6 @@ dnl use the toolkit if we have gtk, or X11R5 or newer.
     USE_X_TOOLKIT=none
     HAVE_PGTK=yes
     AC_DEFINE([HAVE_PGTK], [1], [Define to 1 if you have pure Gtk+-3.])
-  ;;
-  haiku )
-    term_header=haikuterm.h
   ;;
   android )
     term_header=androidterm.h
@@ -3390,7 +2944,6 @@ fi
 
 use_mmap_for_buffers=no
 case "$opsys" in
-  mingw32) use_mmap_for_buffers=yes ;;
 esac
 
 AC_FUNC_MMAP
@@ -3456,12 +3009,6 @@ if test "$ac_cv_header_pthread_h" && test "$opsys" != "mingw32"; then
     # need special flags to disable these optimizations. For example, the
     # definition of 'errno' in <errno.h>.
     case $opsys in
-      hpux* | solaris)
-	AC_DEFINE([_REENTRANT], [1],
-	  [Define to 1 if your system requires this in multithreaded code.]);;
-      aix4-2)
-	AC_DEFINE([_THREAD_SAFE], [1],
-	  [Define to 1 if your system requires this in multithreaded code.]);;
     esac
   fi
 fi
@@ -3557,7 +3104,6 @@ fail;
     ## inoue@ainet.or.jp says Solaris has a bug related to X11R6-style
     ## XIM support.
     case "$opsys" in
-      solaris) : ;;
       *) AC_DEFINE([HAVE_X11R6_XIM], [1],
            [Define if you have usable X11R6-style XIM support.])
          ;;
@@ -4268,7 +3814,6 @@ fail;
     LIBXTR6="-lSM -lICE"
     case "$opsys" in
       ## Use libw.a along with X11R6 Xt.
-      unixware) LIBXTR6="$LIBXTR6 -lw" ;;
     esac
   else
     AC_MSG_RESULT([before 6])
@@ -5023,7 +4568,6 @@ AC_SUBST([LIBZ])
 
 ### Dynamic library support
 case $opsys in
-  cygwin|mingw32) DYNAMIC_LIB_SUFFIX=".dll" ;;
   darwin) DYNAMIC_LIB_SUFFIX=".dylib" ;;
   *) DYNAMIC_LIB_SUFFIX=".so" ;;
 esac
@@ -5293,11 +4837,8 @@ if test "${with_native_compilation}" != "no"; then
     HAVE_NATIVE_COMP=yes
     case "${opsys}" in
       # mingw32 loads the library dynamically.
-      mingw32) ;;
       # Neither NetBSD, OpenBSD nor Haiku have libdl, with all dynamic
       # linker functions placed within libc.
-      netbsd|openbsd|haiku)
-        LIBGCCJIT_LIBS="-lgccjit" ;;
       darwin)
         LIBGCCJIT_CFLAGS="${MAC_CFLAGS}"
         LIBGCCJIT_LIBS="${MAC_LIBS} -lgccjit -ldl";;
@@ -5897,7 +5438,6 @@ There may be a 'development' package to install containing liblockfile.])
   ## /usr/spool/mail/$USER.lock.
   mail_lock=no
   case $opsys in
-    aix4-2) mail_lock="lockf" ;;
 
     gnu|freebsd|dragonfly|netbsd|openbsd|darwin) mail_lock="flock" ;;
 
@@ -5921,8 +5461,6 @@ There may be a 'development' package to install containing liblockfile.])
 	test $ac_cv_header_maillock_h = yes && mail_lock=no
       fi ;;
 
-    mingw32)
-      mail_lock="none-needed" ;;
   esac
 
   case $mail_lock in
@@ -6535,11 +6073,6 @@ fi
 if test "$USE_X_TOOLKIT" != "none"; then
   have_editres=yes
   case $opsys in
-    hpux*)
-      dnl Assar Westerlund <assar@sics.se> says this is necessary
-      dnl for HP-UX 10.20, and that it works for HP-UX 0 as well.
-      have_editres=no
-    ;;
   esac
   if test "$have_editres" != no && test ! -z "$LIBXMU"; then
     OLDLIBS="$LIBS"
@@ -6560,65 +6093,14 @@ if test "$USE_X_TOOLKIT" != "none"; then
 fi
 
 case $opsys in
-  solaris | unixware )
-    dnl Some SVr4s don't define NSIG in sys/signal.h for ANSI environments;
-    dnl instead, there's a system variable _sys_nsig.  Unfortunately, we
-    dnl need the constant to dimension an array.  So wire in the appropriate
-    dnl value here.
-    AC_DEFINE([NSIG_MINIMUM], [32], [Minimum value of NSIG.])
-    ;;
 esac
 
 emacs_broken_SIGIO=no
 
 case $opsys in
   dnl SIGIO exists, but the feature doesn't work in the way Emacs needs.
-  hpux* | nacl | solaris | unixware )
-    emacs_broken_SIGIO=yes
-    ;;
 
-  aix4-2)
-    dnl On AIX Emacs uses the gmalloc.c malloc implementation.  But given
-    dnl the way this system works, libc functions that return malloced
-    dnl memory use the libc malloc implementation. Calling xfree or
-    dnl xrealloc on the results of such functions results in a crash.
-    dnl
-    dnl One solution for this could be to define SYSTEM_MALLOC in configure,
-    dnl but that does not currently work on this system.
-    dnl
-    dnl It is possible to completely override the malloc implementation on
-    dnl AIX, but that involves putting the malloc functions in a shared
-    dnl library and setting the MALLOCTYPE environment variable to point to
-    dnl that shared library.
-    dnl
-    dnl Emacs currently calls xrealloc on the results of get_current_dir name,
-    dnl to avoid a crash just use the Emacs implementation for that function.
-    dnl
-    dnl FIXME We could change the AC_CHECK_FUNCS call near the start
-    dnl of this file, so that we do not check for get_current_dir_name
-    dnl on AIX.  But that might be fragile if something else ends
-    dnl up testing for get_current_dir_name as a dependency.
-    AC_DEFINE([BROKEN_GET_CURRENT_DIR_NAME], [1], [Define if
-      get_current_dir_name should not be used.])
-    ;;
 
-  freebsd)
-    dnl Circumvent a bug in FreeBSD.  In the following sequence of
-    dnl writes/reads on a PTY, read(2) returns bogus data:
-    dnl
-    dnl write(2)  1022 bytes
-    dnl write(2)   954 bytes, get EAGAIN
-    dnl read(2)   1024 bytes in process_read_output
-    dnl read(2)     11 bytes in process_read_output
-    dnl
-    dnl That is, read(2) returns more bytes than have ever been written
-    dnl successfully.  The 1033 bytes read are the 1022 bytes written
-    dnl successfully after processing (for example with CRs added if the
-    dnl terminal is set up that way which it is here).  The same bytes will
-    dnl be seen again in a later read(2), without the CRs.
-    AC_DEFINE([BROKEN_PTY_READ_AFTER_EAGAIN], [1], [Define on FreeBSD to
-      work around an issue when reading from a PTY.])
-    ;;
 esac
 
 case $opsys in
@@ -6638,7 +6120,6 @@ esac
 
 dnl FIXME Surely we can test for this rather than hard-code it.
 case $opsys in
-  netbsd | openbsd) sound_device="/dev/audio" ;;
   *) sound_device="/dev/dsp" ;;
 esac
 
@@ -6701,26 +6182,8 @@ AH_TEMPLATE([PTY_TTY_NAME_SPRINTF], [How to get device name of the tty
   end of a PTY, if non-standard.])
 
 case $opsys in
-  aix4-2 )
-    AC_DEFINE([PTY_ITERATION], [int c; for (c = 0; !c ; c++)])
-    dnl You allocate a pty by opening /dev/ptc to get the master side.
-    dnl To get the name of the slave side, you just ttyname() the master side.
-    AC_DEFINE([PTY_NAME_SPRINTF], [strcpy (pty_name, "/dev/ptc");])
-    AC_DEFINE([PTY_TTY_NAME_SPRINTF], [strcpy (pty_name, ttyname (fd));])
-    ;;
 
-  cygwin )
-    AC_DEFINE([PTY_ITERATION], [int i; for (i = 0; i < 1; i++)])
-    dnl multi-line AC_DEFINEs are hard. :(
-    AC_DEFINE([PTY_OPEN],
-      [ do { int dummy; sigset_t blocked, procmask; sigemptyset (&blocked); sigaddset (&blocked, SIGCHLD); pthread_sigmask (SIG_BLOCK, &blocked, &procmask); if (-1 == openpty (&fd, &dummy, pty_name, 0, 0)) fd = -1; pthread_sigmask (SIG_SETMASK, &procmask, 0); if (fd >= 0) emacs_close (dummy); } while (false)])
-    AC_DEFINE([PTY_NAME_SPRINTF], [])
-    AC_DEFINE([PTY_TTY_NAME_SPRINTF], [])
-    ;;
 
-  gnu | qnxnto )
-    AC_DEFINE([FIRST_PTY_LETTER], ['p'])
-    ;;
 
   android )
     AC_DEFINE([PTY_ITERATION], [int i; for (i = 0; i < 1; ++i)])
@@ -6767,52 +6230,13 @@ case $opsys in
     fi
     ;;
 
-  hpux*)
-    AC_DEFINE([FIRST_PTY_LETTER], ['p'])
-    AC_DEFINE([PTY_NAME_SPRINTF],
-      [sprintf (pty_name, "/dev/ptym/pty%c%x", c, i);])
-    AC_DEFINE([PTY_TTY_NAME_SPRINTF],
-      [sprintf (pty_name, "/dev/pty/tty%c%x", c, i);])
-    ;;
 
-  solaris )
-    dnl On SysVr4, grantpt(3) forks a subprocess, so do not use
-    dnl O_CLOEXEC when opening the pty, and keep the SIGCHLD handler
-    dnl from intercepting that death.  If any child but grantpt's should die
-    dnl within, it should be caught after sigrelse(2).
-    AC_DEFINE([PTY_OPEN], [fd = open (pty_name, O_RDWR | O_NONBLOCK)])
-    AC_DEFINE([PTY_TTY_NAME_SPRINTF],
-      [{ char *ptsname (int), *ptyname; int grantpt_result; sigset_t blocked; sigemptyset (&blocked); sigaddset (&blocked, SIGCHLD); pthread_sigmask (SIG_BLOCK, &blocked, 0); grantpt_result = grantpt (fd); pthread_sigmask (SIG_UNBLOCK, &blocked, 0); if (grantpt_result == -1 || unlockpt (fd) == -1 || !(ptyname = ptsname (fd))) { emacs_close (fd); return -1; } snprintf (pty_name, PTY_NAME_SIZE, "%s", ptyname); }])
-    ;;
 
-  unixware )
-    dnl Comments are as per solaris.
-    AC_DEFINE([PTY_OPEN], [fd = open (pty_name, O_RDWR | O_NONBLOCK)])
-    AC_DEFINE([PTY_TTY_NAME_SPRINTF],
-      [{ char *ptsname (int), *ptyname; int grantpt_result; sigset_t blocked; sigemptyset (&blocked); sigaddset (&blocked, SIGCHLD); pthread_sigmask (SIG_BLOCK, &blocked, 0); grantpt_result = grantpt (fd); pthread_sigmask (SIG_UNBLOCK, &blocked, 0); if (grantpt_result == -1) fatal("could not grant slave pty"); if (unlockpt(fd) == -1) fatal("could not unlock slave pty"); if (!(ptyname = ptsname(fd))) fatal ("could not enable slave pty"); snprintf (pty_name, PTY_NAME_SIZE, "%s", ptyname); }])
-    ;;
 
-  haiku*)
-    AC_DEFINE([FIRST_PTY_LETTER], ['s'])
-    AC_DEFINE([PTY_NAME_SPRINTF], [])
-    dnl on Haiku pty names aren't distinctive, thus the use of posix_openpt
-    AC_DEFINE([PTY_OPEN], [fd = posix_openpt (O_RDWR | O_NONBLOCK)])
-    AC_DEFINE([PTY_TTY_NAME_SPRINTF],
-      [{ char *ptyname; int grantpt_result; sigset_t blocked; sigemptyset (&blocked); sigaddset (&blocked, SIGCHLD); pthread_sigmask (SIG_BLOCK, &blocked, 0); grantpt_result = grantpt (fd); pthread_sigmask (SIG_UNBLOCK, &blocked, 0); if (grantpt_result == -1) fatal("could not grant slave pty"); if (unlockpt(fd) == -1) fatal("could not unlock slave pty"); if (!(ptyname = ptsname(fd))) fatal ("could not enable slave pty"); snprintf (pty_name, PTY_NAME_SIZE, "%s", ptyname); }])
-    ;;
 esac
 
 
 case $opsys in
-  solaris | unixware )
-    dnl This change means that we don't loop through allocate_pty too
-    dnl many times in the (rare) event of a failure.
-    AC_DEFINE([FIRST_PTY_LETTER], ['z'])
-    AC_DEFINE([PTY_NAME_SPRINTF], [strcpy (pty_name, "/dev/ptmx");])
-    dnl Push various streams modules onto a PTY channel.  Used in process.c.
-    AC_DEFINE([SETUP_SLAVE_PTY],
-      [if (ioctl (std_in, I_PUSH, "ptem") == -1) fatal ("ioctl I_PUSH ptem"); if (ioctl (std_in, I_PUSH, "ldterm") == -1) fatal ("ioctl I_PUSH ldterm"); if (ioctl (std_in, I_PUSH, "ttcompat") == -1) fatal ("ioctl I_PUSH ttcompat");], [How to set up a slave PTY, if needed.])
-    ;;
 esac
 
 
@@ -6850,10 +6274,6 @@ AH_TEMPLATE([TAB3], [Undocumented.])
 case $opsys in
   darwin) AC_DEFINE([TAB3], [OXTABS]) ;;
 
-  gnu | dragonfly | freebsd | netbsd | openbsd )
-    AC_DEFINE([TABDLY], [OXTABS], [Undocumented.])
-    AC_DEFINE([TAB3], [OXTABS])
-    ;;
 
   gnu-linux | gnu-kfreebsd )
     AC_PREPROC_IFELSE(
@@ -6868,10 +6288,6 @@ case $opsys in
 	[Mark a secondary stack, like the register stack on the ia64.])], [])
     ;;
 
-  hpux*)
-    AC_DEFINE([RUN_TIME_REMAP], [1], [Define if emacs.c needs to call
-      run_time_remap; for HPUX.])
-    ;;
 esac
 
 
@@ -6907,9 +6323,6 @@ if test x$GCC = xyes; then
    AC_DEFINE([GC_SETJMP_WORKS], [1])
 else
   case $opsys in
-    aix* | dragonfly | freebsd | netbsd | openbsd | solaris )
-      AC_DEFINE([GC_SETJMP_WORKS], [1])
-      ;;
   esac
 fi                              dnl GCC?
 
@@ -6954,21 +6367,10 @@ case $emacs_cv_func_sigsetjmp,$emacs_cv_alternate_stack,$opsys in
 esac
 
 case $opsys in
-  solaris | unixware )
-    dnl TIOCGPGRP is broken in SysVr4, so we can't send signals to PTY
-    dnl subprocesses the usual way.  But TIOCSIGNAL does work for PTYs,
-    dnl and this is all we need.
-    AC_DEFINE([TIOCSIGSEND], [TIOCSIGNAL], [Some platforms redefine this.])
-    ;;
 esac
 
 
 case $opsys in
-  hpux* | solaris )
-    dnl Used in xfaces.c.
-    AC_DEFINE([XOS_NEEDS_TIME_H], [1], [Compensate for a bug in Xos.h on
-      some systems, where it requires time.h.])
-    ;;
 esac
 
 
@@ -6981,19 +6383,7 @@ AH_TEMPLATE([USG5_4],
   [Define if the system is compatible with System V Release 4.])
 
 case $opsys in
-  aix4-2)
-    AC_DEFINE([USG], [])
-    dnl This symbol should be defined on AIX Version 3  ???????
-    AC_PREPROC_IFELSE([AC_LANG_PROGRAM([[
-#ifndef _AIX
-# error "_AIX not defined"
-#endif
-    ]], [[]])], [], [AC_DEFINE([_AIX], [], [Define if the system is AIX.])])
-    ;;
 
-  cygwin)
-    AC_DEFINE([CYGWIN], [1], [Define if the system is Cygwin.])
-    ;;
 
   darwin)
     dnl Not __APPLE__, as this may not be defined on non-macOS Darwin.
@@ -7008,34 +6398,10 @@ case $opsys in
       [Define if this system is compatible with GNU/Linux.])
     ;;
 
-  hpux*)
-    AC_DEFINE([USG], [])
-    AC_DEFINE([HPUX], [], [Define if the system is HPUX.])
-    ;;
 
-  mingw32)
-    AC_DEFINE([DOS_NT], [])
-    AC_DEFINE([WINDOWSNT], [1], [Define if compiling for native MS Windows.])
-    if test "x$ac_enable_checking" != "x" ; then
-      AC_DEFINE([EMACSDEBUG], [1],
-	[Define to 1 to enable w32 debug facilities.])
-    fi
-    ;;
 
-  solaris)
-    AC_DEFINE([USG], [])
-    AC_DEFINE([USG5_4], [])
-    AC_DEFINE([SOLARIS2], [], [Define if the system is Solaris.])
-    ;;
 
-  unixware)
-    AC_DEFINE([USG], [])
-    AC_DEFINE([USG5_4], [])
-    ;;
 
-  haiku)
-    AC_DEFINE([HAIKU], [], [Define if the system is Haiku.])
-    ;;
 esac
 
 AC_SYS_POSIX_TERMIOS
@@ -7115,18 +6481,7 @@ if test $emacs_cv_usable_FIONREAD = yes; then
 fi
 
 case $opsys in
-  hpux11)
-    dnl It works to open the pty's tty in the parent (Emacs), then
-    dnl close and reopen it in the child.
-    AC_DEFINE([USG_SUBTTY_WORKS], [1], [Define for USG systems where it
-      works to open a pty's tty in the parent process, then close and
-      reopen it in the child.])
-    ;;
 
-  solaris)
-    AC_DEFINE([_STRUCTURED_PROC], [1], [Needed for system_process_attributes
-      on Solaris.])
-    ;;
 esac
 
 # Set up the CFLAGS for real compilation, so we can substitute it.
@@ -7263,16 +6618,7 @@ if test "${USE_X_TOOLKIT}" != "none" ; then
         MOTIF_LIBW="$MOTIF_LIBW -lXpm"
         ;;
 
-      unixware)
-        ## Richard Anthony Ryan <ryanr at ellingtn.ftc.nrcs.usda.gov>
-        ## says -lXimp is needed in UNIX_SV ... 4.2 1.1.2.
-        MOTIF_LIBW="MOTIF_LIBW -lXimp"
-        ;;
 
-      aix4-2)
-        ## olson@mcs.anl.gov says -li18n is needed by -lXm.
-        MOTIF_LIBW="$MOTIF_LIBW -li18n"
-        ;;
     esac
     MOTIF_LIBW="$MOTIF_LIBW $LIBXP"
   fi
@@ -7469,9 +6815,7 @@ if test "${opsys}" = "mingw32"; then
 fi
 
 case "$opsys" in
-  aix4-2) LD_SWITCH_SYSTEM_TEMACS="-Wl,-bnodelcsect" ;;
 
-  cygwin) LD_SWITCH_SYSTEM_TEMACS="-Wl,-stack,0x00800000" ;;
 
   darwin)
    if test "$HAVE_NS" = "yes"; then
@@ -7512,12 +6856,6 @@ case "$opsys" in
   ## It seems clearer therefore to put this piece in LD_SWITCH_SYSTEM_TEMACS.
   gnu*) LD_SWITCH_SYSTEM_TEMACS="\$(LD_SWITCH_X_SITE_RPATH)" ;;
 
-  mingw32)
-   ## Is it any better under MinGW64 to relocate emacs into higher addresses?
-   ## If the values of -image-base are modified, the corresponding
-   ## values of DEFAULT_IMAGE_BASE in w32fns.c should be kept in sync.
-   case "$canonical" in
-     x86_64-*-*) LD_SWITCH_SYSTEM_TEMACS="-Wl,-stack,0x00800000 -Wl,-heap,0x00100000 -Wl,-image-base,0x400000000 -Wl,-entry,__start -Wl,-Map,./temacs.map" ;;
      *) LD_SWITCH_SYSTEM_TEMACS="-Wl,-stack,0x00800000 -Wl,-heap,0x00100000 -Wl,-image-base,0x01000000 -Wl,-entry,__start -Wl,-Map,./temacs.map" ;;
    esac
    ;;
@@ -7764,15 +7102,9 @@ case $exec_prefix in
 esac
 
 if test "$HAVE_NS" = "yes"; then
-  if test "$NS_IMPL_GNUSTEP" = yes; then
-    AC_CONFIG_FILES([nextstep/GNUstep/Emacs.base/Resources/Info-gnustep.plist:nextstep/templates/Info-gnustep.plist.in \
-      nextstep/GNUstep/Emacs.base/Resources/Emacs.desktop:nextstep/templates/Emacs.desktop.in])
-    ns_check_file=Resources/Info-gnustep.plist
-  else
-    AC_CONFIG_FILES([nextstep/Cocoa/Emacs.base/Contents/Info.plist:nextstep/templates/Info.plist.in \
-      nextstep/Cocoa/Emacs.base/Contents/Resources/English.lproj/InfoPlist.strings:nextstep/templates/InfoPlist.strings.in])
-    ns_check_file=Contents/Info.plist
-  fi
+  AC_CONFIG_FILES([nextstep/Cocoa/Emacs.base/Contents/Info.plist:nextstep/templates/Info.plist.in \
+    nextstep/Cocoa/Emacs.base/Contents/Resources/English.lproj/InfoPlist.strings:nextstep/templates/InfoPlist.strings.in])
+  ns_check_file=Contents/Info.plist
   AC_SUBST([ns_check_file])
 fi
 
@@ -7781,13 +7113,13 @@ AC_CONFIG_FILES([Makefile lib/gnulib.mk])
 dnl config.status treats $srcdir specially, so I think this is ok...
 ARCH_INDEPENDENT_CONFIG_FILES([$srcdir/doc/man/emacs.1])
 
-AC_CONFIG_FILES([lib/Makefile lib-src/Makefile oldXMenu/Makefile src/Makefile
-                 lwlib/Makefile nextstep/Makefile nt/Makefile])
+AC_CONFIG_FILES([lib/Makefile lib-src/Makefile src/Makefile
+                 nextstep/Makefile])
 ARCH_INDEPENDENT_CONFIG_FILES([doc/emacs/Makefile doc/misc/Makefile
                                doc/lispintro/Makefile doc/lispref/Makefile
 			       lisp/Makefile leim/Makefile])
 
-SUBDIR_MAKEFILES="lib/Makefile lib-src/Makefile oldXMenu/Makefile src/Makefile lwlib/Makefile nextstep/Makefile nt/Makefile doc/emacs/Makefile doc/misc/Makefile doc/lispintro/Makefile doc/lispref/Makefile lisp/Makefile leim/Makefile"
+SUBDIR_MAKEFILES="lib/Makefile lib-src/Makefile src/Makefile nextstep/Makefile doc/emacs/Makefile doc/misc/Makefile doc/lispintro/Makefile doc/lispref/Makefile lisp/Makefile leim/Makefile"
 
 dnl The test/ directory is missing if './make-dist --no-tests' was used.
 opt_makefile=test/Makefile
@@ -7949,9 +7281,6 @@ you can continue to support by using '$0 --with-pop'.])
   fi
 
   case $opsys in
-    mingw32)
-      # Don't suggest GNU Mailutils, as it hasn't been ported.
-      ;;
     *)
       emacs_fix_movemail="use '$0 --with-mailutils'"
       case `(movemail --version) 2>/dev/null` in
