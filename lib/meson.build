@@ -29,6 +29,7 @@ libgnu_sources = files(
   'gettime.c',
   'lstat.c',
   'md5.c',
+  'md5-stream.c',
   'memeq.c',
   'memmem.c',
   'memset_explicit.c',

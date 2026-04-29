@@ -240,6 +240,9 @@ src_deps = [
   sqlite_dep, xml_dep, systemd_dep, gmp_dep,
   dependency('threads'),
 ] + extra_x_libs
+if libgccjit_dep.found()
+  src_deps += libgccjit_dep
+endif
 
 src_args = ['-DEMACS_CORE=1']
 

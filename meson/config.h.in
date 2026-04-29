@@ -196,6 +196,9 @@
 #define HAVE_PDUMPER 1
 #define DUMPING_PDUMPER 1
 
+/* Native-comp .eln file suffix (configure.ac:1755).  */
+#define NATIVE_ELISP_SUFFIX ".eln"
+
 /* Modern Xlib opaqueness probes (configure.ac AC_CHECK_FUNCS
    block).  All true on Linux/X11R7+.  */
 #define HAVE_XRMSETDATABASE      1
