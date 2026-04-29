@@ -114,8 +114,35 @@ else
   }
 endif
 
+# ---- errno.h: nominally 5 vars; just wrap the system header.  ----
+errno_overrides = {
+  'GUARD_PREFIX': 'GL',
+  'NEXT_ERRNO_H': '<errno.h>',
+}
+
+# ---- stddef.h: defines max_align_t, ptrdiff_t, etc.  ----
+stddef_overrides = {
+  'GUARD_PREFIX': 'GL',
+  'NEXT_STDDEF_H': '<stddef.h>',
+}
+
+# ---- sys_types.h: blksize_t, etc.  ----
+sys_types_overrides = {
+  'GUARD_PREFIX': 'GL',
+  'NEXT_SYS_TYPES_H': '<sys/types.h>',
+}
+
 # Master list of headers to substitute.  Order doesn't matter; each
 # call is independent.
+#
+# Only headers added here have been verified to substitute cleanly on
+# Linux glibc with default-zero @GNULIB_*@ / @REPLACE_*@ values.  The
+# remaining gnulib *.in.h files (string.in.h, stdio.in.h,
+# stdlib.in.h, signal.in.h, sys_stat.in.h, time.in.h, unistd.in.h,
+# fcntl.in.h, dirent.in.h, getopt.in.h, getopt-cdefs.in.h) need
+# per-function feature detection (gl_FUNC_FOO calls in m4/) that
+# isn't ported yet.  See
+# .claude/plans/migrate-from-current-build-replicated-gadget.md.
 gnulib_in_h_specs = [
   ['stdckdint', stdckdint_overrides],
   ['assert',    assert_overrides],
@@ -123,31 +150,37 @@ gnulib_in_h_specs = [
   ['endian',    endian_overrides],
   ['byteswap',  {}],
   ['ieee754',   {}],
+  ['errno',     errno_overrides],
+  ['stddef',    stddef_overrides],
+  ['sys_types', sys_types_overrides],
 ]
+
+# Process every header through meson/process_in_h.py, which sets any
+# unspecified @VAR@ to "0".  This avoids listing 100+ default-zero
+# variables for headers like stdlib.in.h, string.in.h, unistd.in.h.
+process_in_h = files('../meson/process_in_h.py')
 
 gnulib_substituted_headers = []
 foreach spec : gnulib_in_h_specs
   name = spec[0]
   overrides = spec[1]
-  data = configuration_data()
+  set_args = []
   foreach k, v : in_h_base_set
-    data.set(k, v)
+    set_args += ['--set', k + '=' + v]
   endforeach
   foreach k, v : overrides
-    data.set(k, v)
+    set_args += ['--set', k + '=' + v]
   endforeach
-  out = configure_file(
+  out = custom_target(
+    name + '.h',
     input : name + '.in.h',
     output : name + '.h',
-    configuration : data,
-    format : 'cmake@',
+    command : [py, process_in_h, '--input', '@INPUT@',
+               '--output', '@OUTPUT@',
+               '--lib-dir', meson.current_source_dir()] + set_args,
   )
   gnulib_substituted_headers += out
 endforeach
-
-# Backward-compatible alias for the first header that used to be a
-# named variable.
-stdckdint_h = gnulib_substituted_headers[0]
 
 libgnu = static_library(
   'gnu',
