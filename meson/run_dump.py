@@ -53,6 +53,17 @@ def main() -> int:
         if not target.exists() or target.read_bytes() != staged.read_bytes():
             shutil.copy(staged, target)
 
+    # For --temacs=pbootstrap, loadup.el reads .el sources rather than
+    # generated loaddefs.el (which won't exist yet); but if a stale
+    # loaddefs.el is left in lisp/ from a prior build it can shadow
+    # ldefs-boot.el and inject autoloads that aren't valid during
+    # early bootstrap (e.g. frameset-filter-alist before
+    # frameset.el is loaded).  See lisp/loadup.el:174.
+    if args.mode == "pbootstrap":
+        for stale in [src_root / "lisp/loaddefs.el"]:
+            if stale.exists():
+                stale.unlink()
+
     # Run bootstrap-emacs from src/ so PATH_DUMPLOADSEARCH ("../lisp")
     # resolves to the source tree's lisp/.
     env = os.environ.copy()

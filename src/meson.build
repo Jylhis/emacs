@@ -323,3 +323,22 @@ bootstrap_pdmp = custom_target(
   depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
   build_by_default : false,
 )
+
+# ----------------------------------------------------------------------
+# Final dump.  Mirrors src/Makefile.in:563-573:
+#
+#     emacs := cp temacs
+#     emacs.pdmp := emacs --batch -l loadup --temacs=pdump
+#
+# Differs from the bootstrap dump in that loadup.el reads .elc files
+# rather than .el sources, so the full lisp/ byte-compile must
+# precede this.  We express that dependency, but build_by_default
+# stays false until phase 4 runs to completion.
+# ----------------------------------------------------------------------
+emacs = custom_target(
+  'emacs',
+  output  : 'emacs',
+  command : ['cp', '-f', temacs.full_path(), '@OUTPUT@'],
+  depends : [temacs],
+  build_by_default : false,
+)

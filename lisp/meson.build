@@ -17,6 +17,36 @@
 
 byte_compile_batch = files('../meson/byte_compile_batch.py')
 list_lisp_files = files('../meson/list_lisp_files.py')
+run_loaddefs = files('../meson/run_loaddefs.py')
+
+# ----------------------------------------------------------------------
+# loaddefs.el and *-loaddefs.el -- autoload extraction.  Mirrors the
+# 'autoloads' target in lisp/Makefile.in:202.  Files land in the
+# source tree (lisp/loaddefs.el etc.) because byte-compile and the
+# final emacs.pdmp expect them there.
+# ----------------------------------------------------------------------
+# Subdirectories to scan, mirroring SUBDIRS_ALMOST in
+# lisp/Makefile.in:125 (which deliberately excludes obsolete and
+# term to avoid corrupting hand-maintained autoload shims).
+loaddefs_subdirs = [
+  'calc', 'calendar', 'cedet', 'emacs-lisp', 'emulation', 'erc',
+  'eshell', 'gnus', 'image', 'international', 'language', 'leim',
+  'mail', 'mh-e', 'net', 'nxml', 'org', 'play',
+  'progmodes', 'textmodes', 'url', 'vc',
+]
+loaddefs_stamp = custom_target(
+  'loaddefs-stamp',
+  output : 'loaddefs.stamp',
+  command : [
+    py, run_loaddefs,
+    '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--source-root',     meson.global_source_root(),
+    '--stamp',           '@OUTPUT@',
+    '--subdirs',
+  ] + loaddefs_subdirs,
+  depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
+  build_by_default : false,
+)
 
 # ----------------------------------------------------------------------
 # compile-first: priority byte-compile list (lisp/Makefile.in:818).
@@ -82,7 +112,7 @@ compile_main_elcs = custom_target(
   ],
   depends : [
     bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp,
-    compile_first_elcs, compile_main_manifest,
+    compile_first_elcs, compile_main_manifest, loaddefs_stamp,
   ],
   build_by_default : false,
 )
