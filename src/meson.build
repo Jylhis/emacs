@@ -37,8 +37,15 @@ base_obj_core = [
 xobj = ['xterm.c', 'xfns.c', 'xmenu.c', 'xselect.c', 'xrdb.c',
         'xsmfns.c', 'xsettings.c']
 
-# GTK toolkit support (configure.ac:3313).
-gtk_obj = ['gtkutil.c']
+# GTK toolkit support (configure.ac:3313, 3331).
+gtk_obj = ['gtkutil.c', 'emacsgtkfixed.c']
+
+# Termcap output (configure.ac:2349, used by tty terminal driver).
+cm_obj = ['cm.c']
+
+# Dynamic library loader (dlopen wrapper, configure.ac:4660 -- we
+# always need it since HAVE_NATIVE_COMP / HAVE_MODULES is set).
+dynlib_obj = ['dynlib.c']
 
 # Window-system shared (configure.ac:6655).
 window_system_obj = ['fontset.c', 'fringe.c', 'image.c', 'textconv.c']
@@ -56,6 +63,7 @@ xgselect_obj = ['xgselect.c']
 base_obj_basenames = (
   base_obj_core + xobj + gtk_obj + window_system_obj
   + font_obj + notify_obj + xgselect_obj
+  + cm_obj + dynlib_obj
 )
 base_obj_sources = files(base_obj_basenames)
 
@@ -197,7 +205,9 @@ src_compile_probe_sources = files(
   # Now that HAVE_XRMSETDATABASE et al are set, the heavyweight
   # X11/GTK files compile too.
   'xterm.c', 'xfns.c', 'xmenu.c', 'xselect.c', 'xsettings.c',
-  'gtkutil.c', 'sound.c', 'textconv.c',
+  'gtkutil.c', 'emacsgtkfixed.c', 'sound.c', 'textconv.c',
+  # Termcap, dynlib (configure.ac:2349, 4660).
+  'cm.c', 'dynlib.c',
 )
 
 # Likewise add 'emacs-module' to the source list for libemacs_src_probe
