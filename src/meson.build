@@ -342,3 +342,7 @@ emacs = custom_target(
   depends : [temacs],
   build_by_default : false,
 )
+
+# emacs.pdmp -- defined in lisp/meson.build because it depends on
+# compile_main_elcs and loaddefs_stamp (lisp/meson.build is loaded
+# after src/meson.build).

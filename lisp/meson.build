@@ -116,3 +116,29 @@ compile_main_elcs = custom_target(
   ],
   build_by_default : false,
 )
+
+# ----------------------------------------------------------------------
+# Final dump.  emacs --batch -l loadup --temacs=pdump produces
+# emacs.pdmp.  Lives here rather than in src/meson.build because it
+# depends on compile_main_elcs and loaddefs_stamp.  See
+# src/Makefile.in:567-573.
+# ----------------------------------------------------------------------
+run_dump_lisp = files('../meson/run_dump.py')
+emacs_pdmp = custom_target(
+  'emacs.pdmp',
+  output  : 'emacs.pdmp',
+  command : [
+    py, run_dump_lisp,
+    '--bootstrap-emacs', emacs.full_path(),
+    '--source-root',     meson.global_source_root(),
+    '--output-pdmp',     '@OUTPUT@',
+    '--mode',            'pdump',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
+  ],
+  depends : [
+    emacs, charscript_el, emoji_zwj_el, charsets_stamp,
+    compile_main_elcs, loaddefs_stamp,
+  ],
+  build_by_default : false,
+)
