@@ -25,6 +25,29 @@ in
     ncurses
     sqlite
 
+    # Meson + Ninja + Python (for the new build system; see PR #3)
+    meson
+    ninja
+    python3
+
+    # X11 + GTK3 stack (Linux/GTK3 baseline target)
+    gtk3
+    cairo
+    fontconfig
+    freetype
+    xorg.libX11
+    xorg.libXfixes
+    xorg.libXrender
+    xorg.libXrandr
+    xorg.libXcomposite
+    xorg.libXinerama
+    xorg.libXi
+    xorg.libXext
+    xorg.libXtst
+    xorg.libXt
+    xorg.libSM
+    xorg.libICE
+
     # Image libraries
     libjpeg
     libtiff
@@ -210,6 +233,32 @@ in
                     --with-xwidgets \
                     --with-modules \
                     CFLAGS='-O0 -g3'
+      '';
+    };
+
+    # ---- Meson build (PR #3) ----
+    meson-setup = {
+      description = "Configure the meson build dir.";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        meson setup build
+      '';
+    };
+    meson-build = {
+      description = "Build all default Meson targets (lib-src + temacs etc.).";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        meson compile -C build
+      '';
+    };
+    meson-pdmp = {
+      description = "Run the full Meson dump cycle (compile-main + emacs.pdmp).";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        meson compile -C build emacs.pdmp
       '';
     };
   };

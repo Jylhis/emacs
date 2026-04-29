@@ -1,0 +1,164 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Free Software Foundation, Inc.
+#
+# This file is part of GNU Emacs.
+#
+# Build the Meson tree (see .claude/plans/migrate-from-current-build-replicated-gadget.md)
+# inside a devenv.sh shell so the toolchain comes from the same Nix
+# pin as a developer's local environment.  See
+# https://devenv.sh/integrations/github-actions/.
+
+name: meson
+
+on:
+  push:
+    branches:
+      - master
+      - claude/migrate-to-meson-ninja-ZSbvG
+  pull_request:
+  workflow_dispatch:
+
+# Cancel in-progress runs of the same workflow on the same ref so a
+# new push doesn't queue behind a stale build.
+concurrency:
+  group: meson-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: meson + ninja (Linux/GTK3, devenv)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- Nix + devenv setup -----------------------------------------
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Set up Cachix (devenv binary cache)
+        uses: cachix/cachix-action@v15
+        with:
+          name: devenv
+
+      - name: Install devenv
+        run: nix profile install nixpkgs#devenv
+
+      # ---- Caches -----------------------------------------------------
+      # Cache the Meson build dir so incremental rebuilds reuse compiled
+      # objects.  A clean dependency change (new pkg-config dep, new
+      # mesondefine) invalidates via the meson.build hash key.
+      - name: Cache Meson build dir
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: |
+            meson-build-${{ runner.os }}-${{ hashFiles('meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build') }}
+          restore-keys: |
+            meson-build-${{ runner.os }}-
+
+      # Cache the source-tree .elc files produced as a side-effect of
+      # batch-byte-compile.  These dramatically speed up compile-main
+      # on incremental runs.
+      - name: Cache source-tree byte-compile artefacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            lisp/**/*.elc
+            lisp/loaddefs.el
+            lisp/**/*-loaddefs.el
+            lisp/international/charscript.el
+            lisp/international/emoji-zwj.el
+          key: |
+            elc-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
+          restore-keys: |
+            elc-${{ runner.os }}-
+
+      # ---- Build ------------------------------------------------------
+      - name: meson setup
+        shell: devenv shell bash -- -e {0}
+        run: |
+          if [ ! -f build/meson-info/meson-info.json ]; then
+            meson setup build
+          else
+            echo "Reusing cached build/ directory"
+            meson setup --reconfigure build
+          fi
+
+      - name: meson compile (lib-src + temacs + bootstrap-emacs)
+        shell: devenv shell bash -- -e {0}
+        run: meson compile -C build
+
+      - name: meson compile bootstrap-emacs.pdmp
+        shell: devenv shell bash -- -e {0}
+        run: meson compile -C build bootstrap-emacs.pdmp
+
+      - name: meson compile compile-first
+        shell: devenv shell bash -- -e {0}
+        run: meson compile -C build compile-first
+
+      - name: meson compile loaddefs-stamp
+        shell: devenv shell bash -- -e {0}
+        run: meson compile -C build loaddefs-stamp
+
+      - name: meson compile compile-main
+        # Phase 4 work: ~73% of lisp/ byte-compiles cleanly today.
+        # Failure here is informational, not fatal -- the migration is
+        # still in progress.
+        shell: devenv shell bash -- -e {0}
+        continue-on-error: true
+        run: meson compile -C build compile-main
+
+      - name: meson compile emacs.pdmp
+        shell: devenv shell bash -- -e {0}
+        continue-on-error: true
+        run: meson compile -C build emacs.pdmp
+
+      # ---- Smoke tests ------------------------------------------------
+      - name: Smoke test bootstrap-emacs
+        shell: devenv shell bash -- -e {0}
+        run: |
+          test -x build/src/bootstrap-emacs
+          test -f build/src/bootstrap-emacs.pdmp
+          EMACSDATA="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
+            build/src/bootstrap-emacs --batch \
+              --eval '(princ (* 6 7))'
+
+      - name: Verify lib-src binaries
+        shell: devenv shell bash -- -e {0}
+        run: |
+          for bin in etags ebrowse emacsclient hexl make-docfile \
+                    make-fingerprint movemail update-game-score; do
+            echo "=== $bin ==="
+            test -x build/lib-src/$bin
+          done
+          build/lib-src/etags --version | head -1
+
+      # ---- Artefacts --------------------------------------------------
+      - name: Upload Meson logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: meson-logs
+          path: |
+            build/meson-logs/
+          retention-days: 14
+
+      - name: Upload pdumper images
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdumper-images
+          path: |
+            build/src/bootstrap-emacs.pdmp
+            build/src/emacs.pdmp
+          retention-days: 14
+          if-no-files-found: ignore
