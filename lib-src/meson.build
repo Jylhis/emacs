@@ -62,16 +62,13 @@ ebrowse = executable('ebrowse',
   install : true,
 )
 
-# emacsclient depends on file_has_acl which needs libacl detection
-# (m4/acl.m4) and conditional inclusion of lib/file-has-acl.c plus
-# its dependencies.  Deferred to the next phase 2 commit.
-# emacsclient = executable('emacsclient',
-#   sources : files('emacsclient.c'),
-#   include_directories : lib_src_inc,
-#   c_args : lib_src_args,
-#   dependencies : libgnu_dep,
-#   install : true,
-# )
+emacsclient = executable('emacsclient',
+  sources : files('emacsclient.c'),
+  include_directories : lib_src_inc,
+  c_args : lib_src_args,
+  dependencies : libgnu_dep,
+  install : true,
+)
 
 movemail = executable('movemail',
   sources : files('movemail.c', 'pop.c'),

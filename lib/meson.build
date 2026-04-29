@@ -9,14 +9,17 @@
 # Sources currently needed by the simplest lib-src host tools.  This
 # list grows as phase 2 progresses.
 libgnu_sources = files(
+  'acl-errno-valid.c',
   'binary-io.c',
   'c-ctype.c',
   'c-strcasecmp.c',
   'c-strncasecmp.c',
+  'file-has-acl.c',
   'fingerprint.c',
   'memeq.c',
   'sha256.c',
   'streq.c',
+  'strnul.c',
   'unistd.c',
 )
 

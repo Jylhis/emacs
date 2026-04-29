@@ -56,6 +56,17 @@
 #mesondefine HAVE_SYS_TYPES_H
 #mesondefine HAVE_UNISTD_H
 
+/* Linux xattr-based ACL detection (m4/acl.m4).  USE_ACL is 0 here
+   because phase 2 doesn't yet wire libacl/libselinux/libsmack
+   detection; file_has_acl runs purely via listxattr on Linux.  */
+#mesondefine HAVE_LINUX_XATTR_H
+#mesondefine HAVE_LISTXATTR
+#define USE_ACL 0
+
+/* From lib/dirent.in.h (phase-2 stopgap: full dirent.h substitution
+   pending).  */
+#define _GL_DT_NOTDIR 0x100
+
 /* glibc *_unlocked stdio variants used by lib/unlocked-io.h.  */
 #mesondefine HAVE_DECL_CLEARERR_UNLOCKED
 #mesondefine HAVE_DECL_FEOF_UNLOCKED

@@ -98,6 +98,22 @@ foreach fn : unlocked_funcs
   endif
 endforeach
 
+# Linux xattr support drives file_has_acl (m4/acl.m4).  Probed here
+# rather than in lib/meson.build because the result conditions other
+# detection.
+have_linux_xattr_h = cc.has_header('linux/xattr.h')
+have_listxattr = cc.has_function('listxattr',
+                                  prefix : '#include <sys/xattr.h>')
+if have_linux_xattr_h
+  conf_data.set('HAVE_LINUX_XATTR_H', 1)
+endif
+if have_listxattr
+  conf_data.set('HAVE_LISTXATTR', 1)
+endif
+# Don't pull in libacl, libselinux, libsmack at this stage: keep
+# file_has_acl strictly listxattr-driven on Linux for now.  Phase 2
+# follow-ups can wire those when --with-acl support is reintroduced.
+
 # C99 flexible array member support (m4/flexmember.m4).  If the
 # compiler accepts `char name[];` as a flexible array, define
 # FLEXIBLE_ARRAY_MEMBER to nothing; otherwise to 1 (the struct hack).

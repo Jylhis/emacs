@@ -32,6 +32,26 @@ memeq (void const *__s1, void const *__s2, size_t __n)
   return !memcmp (__s1, __s2, __n);
 }
 
+#ifndef _GL_STRNUL_INLINE
+# define _GL_STRNUL_INLINE _GL_INLINE
+#endif
+
+_GL_STRNUL_INLINE const char *gl_strnul (const char *__s);
+_GL_STRNUL_INLINE const char *gl_strnul (const char *__s)
+{
+  return __s + strlen (__s);
+}
+
+/* strnul: type-generic macro that returns a pointer to STRING's
+   terminating NUL byte, preserving const-ness, mirroring gnulib's
+   string.in.h:1287.  */
+#define strnul(s) \
+  _Generic ((1 ? (s) : (void *) 0),     \
+            void *       : (char *) gl_strnul (s), \
+            char *       : (char *) gl_strnul (s), \
+            const void * : gl_strnul (s),          \
+            const char * : gl_strnul (s))
+
 #ifdef __cplusplus
 }
 #endif
