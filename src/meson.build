@@ -256,8 +256,7 @@ src_compile_probe = static_library(
 )
 
 # Phase-3 milestone: link temacs from the same source set.  This is
-# the C-only stage of the bootstrap (src/Makefile.in:624-643);
-# bootstrap-emacs and emacs.pdmp follow once lisp/ is wired.
+# the C-only stage of the bootstrap (src/Makefile.in:624-643).
 temacs = executable(
   'temacs',
   sources : [
@@ -272,7 +271,44 @@ temacs = executable(
   install : false,
 )
 
-# TODO(phase-3): compile base_obj_sources into temacs.o objects, link
-# temacs, run loadup.el via temacs --temacs=pbootstrap to produce
-# bootstrap-emacs.pdmp, then re-run as --temacs=pdump for the final
-# emacs binary.  See src/Makefile.in:563-895.
+# ----------------------------------------------------------------------
+# Bootstrap dump cycle.  Mirrors src/Makefile.in:872-895:
+#
+#     bootstrap-emacs := cp temacs
+#     bootstrap-emacs.pdmp := bootstrap-emacs --batch -l loadup
+#                                             --temacs=pbootstrap
+#
+# Then phase 4 byte-compiles compile-first lisp using bootstrap-emacs,
+# phase 5 native-compiles, and finally:
+#
+#     emacs := cp temacs
+#     emacs.pdmp := emacs --batch -l loadup --temacs=pdump
+#
+# At this point the dump cycle does NOT successfully run end-to-end:
+# loadup.el wants byte-compiled .elc files (phase 4) and the
+# generated etc/charsets/ map files (phase 6).  The custom_targets
+# below capture the dependency chain so phases 4 and 6 can plug in.
+# ----------------------------------------------------------------------
+bootstrap_emacs = custom_target(
+  'bootstrap-emacs',
+  output  : 'bootstrap-emacs',
+  command : ['cp', '-f', temacs.full_path(), '@OUTPUT@'],
+  depends : [temacs],
+  build_by_default : false,
+)
+
+# bootstrap-emacs.pdmp -- runs only after phase 4/6 land.  Disabled
+# build_by_default until then.
+bootstrap_pdmp = custom_target(
+  'bootstrap-emacs.pdmp',
+  output  : 'bootstrap-emacs.pdmp',
+  command : [
+    'env', 'EMACSLOADPATH=' + meson.global_source_root() / 'lisp',
+    bootstrap_emacs.full_path(),
+    '--batch', '-l', 'loadup', '--temacs=pbootstrap',
+    '--bin-dest', meson.current_build_dir() / 'bin',
+    '--eln-dest', meson.current_build_dir() / 'native-lisp',
+  ],
+  depends : [bootstrap_emacs],
+  build_by_default : false,
+)

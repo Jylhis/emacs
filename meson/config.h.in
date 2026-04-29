@@ -186,6 +186,11 @@
 #define MODULES_SUFFIX           ".so"
 #define MODULES_SECONDARY_SUFFIX ""
 
+/* Portable dumper -- mandatory for the meson build per the migration
+   plan (configure.ac:437, --with-pdumper=yes default).  */
+#define HAVE_PDUMPER 1
+#define DUMPING_PDUMPER 1
+
 /* Modern Xlib opaqueness probes (configure.ac AC_CHECK_FUNCS
    block).  All true on Linux/X11R7+.  */
 #define HAVE_XRMSETDATABASE      1
