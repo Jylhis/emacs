@@ -1,22 +1,36 @@
 # lib/meson.build -- gnulib portability library.
 #
-# STATUS: stub.  Phase 2 of the migration plan ports every m4/*.m4
-# feature check and lib/*.in.h header substitution into native Meson.
-# Until that lands, this directory does not build via Meson; the
-# canonical build remains lib/Makefile.in driven by autotools.
-#
-# This stub exposes an empty static library called `libgnu` so that
-# lib-src/meson.build can declare a link dependency on it without
-# Meson erroring out.  Once Phase 2 lands, replace this file with the
-# real implementation.
+# STATUS: Phase 2 in progress.  Currently exposes only a thin libgnu
+# providing the symbols make-docfile / make-fingerprint reach for at
+# link time.  The rest of gnulib (~96 m4 detection blocks, 28 *.in.h
+# header substitutions) lands in subsequent commits.  See
+# .claude/plans/migrate-from-current-build-replicated-gadget.md.
 
-libgnu_stub = static_library(
-  'gnu_stub',
-  sources : files('gl-meson-stub.c'),
+# Sources currently needed by the simplest lib-src host tools.  This
+# list grows as phase 2 progresses.
+libgnu_sources = files(
+  'binary-io.c',
+  'c-ctype.c',
+  'fingerprint.c',
+  'memeq.c',
+  'sha256.c',
+  'streq.c',
+  'unistd.c',
+)
+
+libgnu = static_library(
+  'gnu',
+  # The generated gnulib-common.h is listed as a source so the
+  # dependency graph picks it up; it's a header, not a TU, so the
+  # compiler skips it.
+  sources : [libgnu_sources, gnulib_common_h],
+  include_directories : [top_inc, include_directories('.', '../src')],
   install : false,
+  c_args : ['-DGNULIB_NAMESPACE=gnulib'],
 )
 
 libgnu_dep = declare_dependency(
-  link_with : libgnu_stub,
-  include_directories : include_directories('.'),
+  link_with : libgnu,
+  include_directories : [top_inc, include_directories('.')],
+  sources : gnulib_common_h,
 )

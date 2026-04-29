@@ -1,0 +1,106 @@
+/* config.h template for Meson build of GNU Emacs.
+   See .claude/plans/migrate-from-current-build-replicated-gadget.md.
+
+   Real config.h is generated from this template by meson via
+   configure_file().  Phase 2 of the migration is filling in the
+   feature detection that this template captures.  */
+
+#ifndef EMACS_CONFIG_H
+#define EMACS_CONFIG_H 1
+
+/* Feature test macros enabled by autotools default _AC_DEFINE
+   sequence; gnulib relies on them for *_unlocked stdio, strsep,
+   etc.  */
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE 1
+#endif
+#ifndef _DEFAULT_SOURCE
+# define _DEFAULT_SOURCE 1
+#endif
+
+/* Package metadata.  */
+#define PACKAGE_NAME "@PACKAGE_NAME@"
+#define PACKAGE_TARNAME "@PACKAGE_TARNAME@"
+#define PACKAGE_VERSION "@PACKAGE_VERSION@"
+#define PACKAGE_STRING "@PACKAGE_STRING@"
+#define PACKAGE_BUGREPORT "@PACKAGE_BUGREPORT@"
+#define PACKAGE_URL "@PACKAGE_URL@"
+#define VERSION "@PACKAGE_VERSION@"
+
+/* Copyright string used by lib-src tools.  */
+#define COPYRIGHT "@COPYRIGHT@"
+
+/* Path component separator (':' on Unix, ';' on Windows).  */
+#define SEPCHAR '@SEPCHAR@'
+
+/* Filename separator (configure.ac:5848-5870).  Windows variants
+   land in phase 8 when MinGW support is reintroduced.  */
+#define DIRECTORY_SEP '/'
+#define IS_DEVICE_SEP(_c_) 0
+#define IS_DIRECTORY_SEP(_c_) ((_c_) == DIRECTORY_SEP)
+#define IS_ANY_SEP(_c_) (IS_DIRECTORY_SEP (_c_))
+
+/* C99 flexible array member: empty if supported, "1" otherwise (cf.
+   m4/flexmember.m4).  */
+#define FLEXIBLE_ARRAY_MEMBER @FLEXIBLE_ARRAY_MEMBER@
+
+/* Header presence (probed at meson configure time).  */
+#mesondefine HAVE_FCNTL_H
+#mesondefine HAVE_GETOPT_H
+#mesondefine HAVE_INTTYPES_H
+#mesondefine HAVE_LIMITS_H
+#mesondefine HAVE_PWD_H
+#mesondefine HAVE_SIGNAL_H
+#mesondefine HAVE_STDINT_H
+#mesondefine HAVE_SYS_STAT_H
+#mesondefine HAVE_SYS_TYPES_H
+#mesondefine HAVE_UNISTD_H
+
+/* glibc *_unlocked stdio variants used by lib/unlocked-io.h.  */
+#mesondefine HAVE_DECL_CLEARERR_UNLOCKED
+#mesondefine HAVE_DECL_FEOF_UNLOCKED
+#mesondefine HAVE_DECL_FERROR_UNLOCKED
+#mesondefine HAVE_DECL_FFLUSH_UNLOCKED
+#mesondefine HAVE_DECL_FGETS_UNLOCKED
+#mesondefine HAVE_DECL_FILENO_UNLOCKED
+#mesondefine HAVE_DECL_FPUTC_UNLOCKED
+#mesondefine HAVE_DECL_FPUTS_UNLOCKED
+#mesondefine HAVE_DECL_FREAD_UNLOCKED
+#mesondefine HAVE_DECL_FWRITE_UNLOCKED
+#mesondefine HAVE_DECL_GETC_UNLOCKED
+#mesondefine HAVE_DECL_GETCHAR_UNLOCKED
+#mesondefine HAVE_DECL_PUTC_UNLOCKED
+#mesondefine HAVE_DECL_PUTCHAR_UNLOCKED
+
+/* Pull in the gnulib-common preprocessor block extracted from
+   m4/gnulib-common.m4 by meson/extract_ah_verbatim.py.  This provides
+   _GL_ATTRIBUTE_*, _Noreturn, _GL_GNUC_PREREQ, and friends used by
+   lib/attribute.h and other gnulib headers.  */
+#include "gnulib-common.h"
+
+/* gnulib's fcntl.in.h is processed into lib/fcntl.h by autotools and
+   guarantees O_BINARY exists.  Phase 2 of the Meson migration will
+   process the same .in.h.  Until then, define it to 0 on systems
+   that don't provide it (Linux, macOS).  */
+#include <fcntl.h>
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
+#ifndef O_TEXT
+# define O_TEXT 0
+#endif
+
+/* gnulib expects <stddef.h> types (ptrdiff_t, size_t) to be available
+   transitively via config.h.  */
+#include <stddef.h>
+
+/* AH_BOTTOM equivalent: the autotools build appends conf_post.h to
+   the bottom of config.h.  conf_post.h provides ATTRIBUTE_*,
+   UNINIT, and various platform tweaks used throughout Emacs.  */
+#include <conf_post.h>
+
+/* Phase-2 stopgap: provide streq/memeq until lib/string.in.h is
+   processed natively in Meson.  */
+#include <gl-strextras.h>
+
+#endif /* EMACS_CONFIG_H */
