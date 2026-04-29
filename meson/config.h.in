@@ -30,6 +30,33 @@
 /* Copyright string used by lib-src tools.  */
 #define COPYRIGHT "@COPYRIGHT@"
 
+/* Build configuration metadata reported by system-configuration-*
+   variables (configure.ac:6363-6782).  */
+#define EMACS_CONFIGURATION   "@EMACS_CONFIGURATION@"
+#define EMACS_CONFIG_OPTIONS  "@EMACS_CONFIG_OPTIONS@"
+#define EMACS_CONFIG_FEATURES "@EMACS_CONFIG_FEATURES@"
+#define SYSTEM_TYPE           "@SYSTEM_TYPE@"
+
+/* USER_FULL_NAME on POSIX is pw_gecos (configure.ac:2429).  */
+#define USER_FULL_NAME pw->pw_gecos
+
+/* Shared library file extension (configure.ac:4370-4379).  */
+#define DYNAMIC_LIB_SUFFIX           ".so"
+#define DYNAMIC_LIB_SECONDARY_SUFFIX ""
+
+/* POSIX threads available (configure.ac:2997).  */
+#define HAVE_PTHREAD 1
+
+/* Linux supports SIGIO; let kbd_buffer use it (src/keyboard.c:8083).  */
+#define INTERRUPT_INPUT 1
+
+/* FIONREAD ioctl works on Linux (configure.ac:6247).  */
+#define USABLE_FIONREAD 1
+#define USABLE_SIGIO    1
+
+/* subprocesses are universally supported on POSIX (configure.ac:5847).  */
+#define subprocesses 1
+
 /* Path component separator (':' on Unix, ';' on Windows).  */
 #define SEPCHAR '@SEPCHAR@'
 
@@ -88,6 +115,49 @@
 #mesondefine HAVE_SYS_STAT_H
 #mesondefine HAVE_SYS_TYPES_H
 #mesondefine HAVE_UNISTD_H
+#mesondefine HAVE_SYS_RESOURCE_H
+#mesondefine HAVE_SYS_UTSNAME_H
+#mesondefine HAVE_SYS_SELECT_H
+#mesondefine HAVE_SYS_SOCKET_H
+#mesondefine HAVE_SYS_UN_H
+#mesondefine HAVE_SYS_WAIT_H
+#mesondefine HAVE_SYS_TIME_H
+#mesondefine HAVE_SYS_IOCTL_H
+#mesondefine HAVE_SYS_MMAN_H
+#mesondefine HAVE_SYS_PARAM_H
+#mesondefine HAVE_SYS_RANDOM_H
+#mesondefine HAVE_SYS_SYSINFO_H
+#mesondefine HAVE_SYS_FILE_H
+#mesondefine HAVE_SYS_INOTIFY_H
+#mesondefine HAVE_SYS_EVENTFD_H
+#mesondefine HAVE_SYS_TIMERFD_H
+#mesondefine HAVE_SYS_SYSCALL_H
+#mesondefine HAVE_SYS_PRCTL_H
+#mesondefine HAVE_SYS_PERSONALITY_H
+#mesondefine HAVE_SYS_SYSMACROS_H
+#mesondefine HAVE_ARPA_INET_H
+#mesondefine HAVE_ARPA_NAMESER_H
+#mesondefine HAVE_NETINET_IN_H
+#mesondefine HAVE_NETINET_TCP_H
+#mesondefine HAVE_NET_IF_H
+#mesondefine HAVE_NETDB_H
+#mesondefine HAVE_FENV_H
+#mesondefine HAVE_PTHREAD_H
+#mesondefine HAVE_UTIME_H
+#mesondefine HAVE_UTMP_H
+#mesondefine HAVE_WCHAR_H
+#mesondefine HAVE_WCTYPE_H
+#mesondefine HAVE_SCHED_H
+#mesondefine HAVE_SYSLOG_H
+#mesondefine HAVE_CRYPT_H
+#mesondefine HAVE_MALLOC_H
+#mesondefine HAVE_MALLOC_MALLOC_H
+#mesondefine HAVE_MNTENT_H
+#mesondefine HAVE_PATHS_H
+#mesondefine HAVE_TERMIOS_H
+#mesondefine HAVE_TERMIO_H
+#mesondefine HAVE_SGTTY_H
+#mesondefine HAVE_GRP_H
 
 /* Linux xattr-based ACL detection (m4/acl.m4).  USE_ACL is 0 here
    because phase 2 doesn't yet wire libacl/libselinux/libsmack
@@ -96,9 +166,49 @@
 #mesondefine HAVE_LISTXATTR
 #define USE_ACL 0
 
+/* USE_FILE_NOTIFY: at least one file-notification backend is
+   available (configure.ac:619-).  Linux uses inotify.  */
+#define USE_FILE_NOTIFY 1
+#define HAVE_INOTIFY    1
+
 /* From lib/dirent.in.h (phase-2 stopgap: full dirent.h substitution
    pending).  */
 #define _GL_DT_NOTDIR 0x100
+
+/* AC_CHECK_FUNCS_ONCE block (configure.ac).  */
+#mesondefine HAVE_CFMAKERAW
+#mesondefine HAVE_CFSETSPEED
+#mesondefine HAVE_SENDTO
+#mesondefine HAVE_GETRANDOM
+#mesondefine HAVE_GETENTROPY
+#mesondefine HAVE_PTHREAD_KILL
+#mesondefine HAVE_PTHREAD_SETNAME_NP
+#mesondefine HAVE_GETRUSAGE
+#mesondefine HAVE_GETSOCKNAME
+#mesondefine HAVE_GETHOSTNAME
+#mesondefine HAVE_GETLOADAVG
+#mesondefine HAVE_UTIMENSAT
+#mesondefine HAVE_FUTIMENS
+#mesondefine HAVE_LUTIMES
+#mesondefine HAVE_PIPE2
+#mesondefine HAVE_MKOSTEMP
+#mesondefine HAVE_MKSTEMP
+#mesondefine HAVE_TCDRAIN
+#mesondefine HAVE_SIGSETJMP
+#mesondefine HAVE_EACCESS
+#mesondefine HAVE_FACCESSAT
+#mesondefine HAVE_SYSINFO
+#mesondefine HAVE_LSTAT
+#mesondefine HAVE_SYMLINK
+#mesondefine HAVE_READLINK
+#mesondefine HAVE_FCHMODAT
+#mesondefine HAVE_FDOPENDIR
+#mesondefine HAVE_SCHED_SETAFFINITY
+#mesondefine HAVE_GETPGRP
+#mesondefine HAVE_TGKILL
+#mesondefine HAVE_GETTIMEOFDAY
+#mesondefine HAVE_GETOPT_LONG_ONLY
+#mesondefine HAVE_GNU_GET_LIBC_VERSION
 
 /* glibc *_unlocked stdio variants used by lib/unlocked-io.h.  */
 #mesondefine HAVE_DECL_CLEARERR_UNLOCKED
@@ -142,5 +252,24 @@
    the bottom of config.h.  conf_post.h provides ATTRIBUTE_*,
    UNINIT, and various platform tweaks used throughout Emacs.  */
 #include <conf_post.h>
+
+/* Phase-2 stopgap: gnulib's time_rz module provides timezone_t in
+   the substituted <time.h>.  Until lib/time.in.h substitution
+   lands, declare an opaque type so timefns.c et al compile.  Since
+   this is a typedef and Emacs only handles timezone_t through the
+   tzalloc/tzfree gnulib API, the implementation is opaque enough
+   that a forward declaration suffices for compilation.  */
+typedef struct tm_zone *timezone_t;
+
+/* Phase-2 stopgap for SIG2STR_MAX from gnulib lib/signal.in.h.  */
+#ifndef SIG2STR_MAX
+# define SIG2STR_MAX (5 + 1 + 10 + 1 + 2)
+#endif
+
+/* O_IGNORE_CTTY is a GNU/Hurd extension; no-op on other systems
+   (configure.ac, term.c:2513).  */
+#ifndef O_IGNORE_CTTY
+# define O_IGNORE_CTTY 0
+#endif
 
 #endif /* EMACS_CONFIG_H */

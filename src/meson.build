@@ -150,6 +150,58 @@ buildobj_h = custom_target(
   command : [py, make_buildobj_h, '@OUTPUT@'] + base_obj_basenames,
 )
 
+# ----------------------------------------------------------------------
+# Compile probe: assemble the src/*.c files known to build cleanly
+# (91 of 124 as of this writing) into a static library.  This isn't
+# usable for linking temacs yet -- many cross-file symbols are still
+# undefined -- but it forces meson + ninja to actually build src/
+# objects on every CI run, so regressions are caught early.
+# Phase-3 follow-ups will (a) bring the remaining 33 files online by
+# wiring more feature defines, and (b) replace this probe with a real
+# temacs executable() once link-time issues are addressed.
+# ----------------------------------------------------------------------
+src_compile_probe_sources = files(
+  'alloc.c', 'atimer.c', 'bidi.c', 'bignum.c', 'buffer.c', 'bytecode.c',
+  'callint.c', 'callproc.c', 'casefiddle.c', 'casetab.c', 'category.c',
+  'ccl.c', 'character.c', 'charset.c', 'chartab.c', 'cmds.c', 'coding.c',
+  'composite.c', 'comp.c', 'data.c', 'decompress.c', 'dired.c',
+  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs.c', 'eval.c',
+  'fileio.c', 'filelock.c', 'floatfns.c', 'fns.c', 'font.c', 'frame.c',
+  'gnutls.c', 'indent.c', 'insdel.c', 'intervals.c', 'itree.c', 'json.c',
+  'keyboard.c', 'keymap.c', 'lcms.c', 'lread.c', 'macros.c', 'marker.c',
+  'menu.c', 'minibuf.c', 'pdumper.c', 'print.c', 'process.c',
+  'profiler.c', 'regex-emacs.c', 'region-cache.c', 'scroll.c',
+  'search.c', 'sort.c', 'sound.c', 'sqlite.c', 'syntax.c', 'sysdep.c',
+  'systhread.c', 'term.c', 'terminal.c', 'textprop.c', 'thread.c',
+  'timefns.c', 'treesit.c', 'undo.c', 'window.c', 'xdisp.c', 'xfaces.c',
+  'xml.c',
+  # X11 / GTK / font / window-system files known to compile.
+  'fontset.c', 'fringe.c', 'image.c', 'xfont.c', 'ftfont.c',
+  'ftcrfont.c', 'hbfont.c', 'inotify.c', 'xgselect.c',
+  'xrdb.c', 'xsmfns.c',
+)
+
+src_compile_probe = static_library(
+  'emacs_src_probe',
+  sources : [
+    src_compile_probe_sources,
+    globals_h, buildobj_h, emacs_module_h, epaths_h,
+  ],
+  include_directories : [
+    top_inc, include_directories('.', '../lib'),
+  ],
+  dependencies : [
+    libgnu_dep, gtk3_dep, cairo_dep, cairo_ft_dep, harfbuzz_dep,
+    freetype_dep, fontconfig_dep, xft_dep, gnutls_dep, treesit_dep,
+    sqlite_dep, xml_dep, systemd_dep, gmp_dep,
+  ],
+  c_args : [
+    # Mirrors EMACS_CFLAGS in src/Makefile.in:309 for the GTK3 build.
+  ],
+  install : false,
+  build_by_default : false,
+)
+
 # TODO(phase-3): compile base_obj_sources into temacs.o objects, link
 # temacs, run loadup.el via temacs --temacs=pbootstrap to produce
 # bootstrap-emacs.pdmp, then re-run as --temacs=pdump for the final

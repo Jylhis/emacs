@@ -58,6 +58,22 @@ conf_data.set('PACKAGE_BUGREPORT', 'bug-gnu-emacs@gnu.org')
 conf_data.set('PACKAGE_URL', 'https://www.gnu.org/software/emacs/')
 conf_data.set('PACKAGE_TARNAME', 'emacs')
 
+# configure.ac:6365 / 6782 -- recorded build flags that emacs prints
+# from system-configuration-options / system-configuration-features.
+conf_data.set('EMACS_CONFIG_OPTIONS',
+              'meson setup --buildtype=debug')
+conf_data.set('EMACS_CONFIG_FEATURES',
+              'GTK3 CAIRO HARFBUZZ FREETYPE GNUTLS TREE_SITTER ' +
+              'SQLITE3 LIBXML2 LIBSYSTEMD GMP')
+
+# Canonical build triple, used by system-configuration variable.
+conf_data.set('EMACS_CONFIGURATION',
+              host_machine.cpu_family() + '-pc-' + host_machine.system())
+
+# OS family / opsys, used for system-type symbol and a few code paths.
+# Mirrors configure.ac:2145.
+conf_data.set('SYSTEM_TYPE', host_machine.system())
+
 # COPYRIGHT and SEPCHAR are referenced unquoted in C code (e.g.
 # ebrowse.c uses SEPCHAR as a char literal).  We pass the inner text
 # and let the template add the surrounding quotes/character literal
@@ -75,6 +91,16 @@ endif
 foreach hdr : [
   'fcntl.h', 'getopt.h', 'inttypes.h', 'limits.h', 'pwd.h', 'signal.h',
   'stdint.h', 'sys/stat.h', 'sys/types.h', 'unistd.h',
+  'sys/resource.h', 'sys/utsname.h', 'sys/select.h', 'sys/socket.h',
+  'sys/un.h', 'sys/wait.h', 'sys/time.h', 'sys/ioctl.h', 'sys/mman.h',
+  'sys/param.h', 'sys/random.h', 'sys/sysinfo.h', 'sys/file.h',
+  'sys/inotify.h', 'sys/eventfd.h', 'sys/timerfd.h', 'sys/syscall.h',
+  'sys/prctl.h', 'sys/personality.h', 'sys/sysmacros.h',
+  'arpa/inet.h', 'arpa/nameser.h', 'netinet/in.h', 'netinet/tcp.h',
+  'net/if.h', 'netdb.h', 'fenv.h', 'pthread.h', 'utime.h', 'utmp.h',
+  'wchar.h', 'wctype.h', 'sched.h', 'syslog.h', 'crypt.h',
+  'malloc.h', 'malloc/malloc.h', 'mntent.h', 'paths.h',
+  'termios.h', 'termio.h', 'sgtty.h', 'grp.h',
 ]
   if cc.has_header(hdr)
     conf_data.set('HAVE_' + hdr.to_upper().underscorify(), 1)
@@ -95,6 +121,21 @@ foreach fn : unlocked_funcs
     conf_data.set('HAVE_DECL_' + fn.to_upper(), 1)
   else
     conf_data.set('HAVE_DECL_' + fn.to_upper(), 0)
+  endif
+endforeach
+
+# Misc POSIX function probes (configure.ac AC_CHECK_FUNCS_ONCE list).
+foreach fn : [
+  'cfmakeraw', 'cfsetspeed', 'sendto', 'getrandom', 'getentropy',
+  'pthread_kill', 'pthread_setname_np', 'getrusage', 'getsockname',
+  'gethostname', 'getloadavg', 'utimensat', 'futimens', 'lutimes',
+  'pipe2', 'mkostemp', 'mkstemp', 'tcdrain', 'sigsetjmp',
+  'eaccess', 'faccessat', 'sysinfo', 'lstat', 'symlink', 'readlink',
+  'fchmodat', 'fdopendir', 'sched_setaffinity', 'getpgrp', 'tgkill',
+  'gettimeofday', 'getopt_long_only', 'gnu_get_libc_version',
+]
+  if cc.has_function(fn)
+    conf_data.set('HAVE_' + fn.to_upper(), 1)
   endif
 endforeach
 
