@@ -56,7 +56,6 @@ def main() -> int:
     rel_files = [Path(line.strip())
                  for line in args.manifest.read_text().splitlines()
                  if line.strip()]
-    abs_files = [str(lisp_root / r) for r in rel_files]
 
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
@@ -65,7 +64,7 @@ def main() -> int:
     # Match the BYTE_COMPILE_FLAGS in lisp/Makefile.in:78.
     env["BYTE_COMPILE_DEBUG"] = "1"
 
-    cmd = [
+    base_cmd = [
         args.bootstrap_emacs,
         "--batch",
         "--no-site-file",
@@ -82,10 +81,23 @@ def main() -> int:
         " (setq native-comp-jit-compilation nil"
         "       native-comp-enable-subr-trampolines nil))",
         "-f", "batch-byte-compile",
-    ] + abs_files
-    rc = subprocess.run(cmd, env=env).returncode
-    if rc != 0:
-        return rc
+    ]
+
+    # Chunk to keep the bootstrap-emacs heap manageable.  A single
+    # batch-byte-compile invocation accumulates byte-compiler state
+    # across all files; running 1500+ in one process exhausts memory
+    # on modest hosts.  Split into 200-file chunks.
+    chunk_size = 200
+    for i in range(0, len(rel_files), chunk_size):
+        chunk = rel_files[i:i + chunk_size]
+        cmd = base_cmd + [str(lisp_root / r) for r in chunk]
+        print(f"compiling chunk {i // chunk_size + 1}: "
+              f"{len(chunk)} files starting with {chunk[0]}",
+              file=sys.stderr, flush=True)
+        rc = subprocess.run(cmd, env=env).returncode
+        if rc != 0:
+            print(f"chunk {i // chunk_size + 1} failed (rc={rc}), continuing",
+                  file=sys.stderr, flush=True)
 
     # batch-byte-compile writes the .elc next to each .el.  Move them
     # into the build tree, preserving the relative layout.  Files that
