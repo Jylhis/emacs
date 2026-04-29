@@ -33,6 +33,62 @@ make_fingerprint = executable('make-fingerprint',
   install : false,
 )
 
+# Probe whether each remaining tool compiles with the current libgnu
+# coverage; flip to executable() once the helper compiles.
+# (Re-enabled incrementally as phase 2 fills in more gnulib pieces.)
+hexl = executable('hexl',
+  sources : files('hexl.c'),
+  include_directories : lib_src_inc,
+  c_args : lib_src_args,
+  dependencies : libgnu_dep,
+  install : false,
+)
+
+update_game_score = executable('update-game-score',
+  sources : files('update-game-score.c'),
+  include_directories : lib_src_inc,
+  # configure.ac:656 sets gamedir; use an empty string until phase 9
+  # wires up the install rules and gamedir option.
+  c_args : lib_src_args + ['-DHAVE_SHARED_GAME_DIR=""'],
+  dependencies : libgnu_dep,
+  install : false,
+)
+
+ebrowse = executable('ebrowse',
+  sources : files('ebrowse.c'),
+  include_directories : lib_src_inc,
+  c_args : lib_src_args,
+  dependencies : libgnu_dep,
+  install : true,
+)
+
+# emacsclient depends on file_has_acl which needs libacl detection
+# (m4/acl.m4) and conditional inclusion of lib/file-has-acl.c plus
+# its dependencies.  Deferred to the next phase 2 commit.
+# emacsclient = executable('emacsclient',
+#   sources : files('emacsclient.c'),
+#   include_directories : lib_src_inc,
+#   c_args : lib_src_args,
+#   dependencies : libgnu_dep,
+#   install : true,
+# )
+
+movemail = executable('movemail',
+  sources : files('movemail.c', 'pop.c'),
+  include_directories : lib_src_inc,
+  c_args : lib_src_args,
+  dependencies : libgnu_dep,
+  install : false,
+)
+
+etags = executable('etags',
+  sources : files('etags.c'),
+  include_directories : lib_src_inc,
+  c_args : lib_src_args,
+  dependencies : libgnu_dep,
+  install : true,
+)
+
 # TODO(phase-2): the following tools also need to be wired but require
 # gnulib pieces that have not been ported yet:
 #
