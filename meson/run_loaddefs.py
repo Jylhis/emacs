@@ -19,13 +19,16 @@ import sys
 from pathlib import Path
 
 
+EXCLUDED_DIRS = {"obsolete", "term", "leim/quail"}
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bootstrap-emacs", required=True)
     p.add_argument("--source-root", required=True, type=Path)
     p.add_argument("--stamp", required=True, type=Path)
-    p.add_argument("--subdirs", nargs="+", required=True,
-                   help="lisp/ subdirectories to scan (e.g. emacs-lisp net mail)")
+    p.add_argument("--subdirs", nargs="*", default=[],
+                   help="(deprecated) ignored -- subdirs are auto-enumerated")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
@@ -43,12 +46,27 @@ def main() -> int:
     )
     env["EMACSLOADPATH"] = ":".join(paths)
 
+    # Enumerate every subdirectory of lisp/ except the ones autotools'
+    # SUBDIRS_ALMOST excludes (obsolete/, term/) and a few that don't
+    # need autoloads (leim/quail/ -- Quail input methods are linked
+    # via leim-list.el, not loaddefs).  Mirrors lisp/Makefile.in:121.
+    dirs = [str(lisp)]
+    for d in sorted(lisp.rglob("*")):
+        if not d.is_dir():
+            continue
+        rel = d.relative_to(lisp).as_posix()
+        if rel in EXCLUDED_DIRS or any(
+            rel == ex or rel.startswith(ex + "/") for ex in EXCLUDED_DIRS
+        ):
+            continue
+        dirs.append(str(d))
+
     cmd = [
         args.bootstrap_emacs,
         "--batch", "--no-site-file", "--no-site-lisp",
         "-l", str(lisp / "emacs-lisp/loaddefs-gen.el"),
         "-f", "loaddefs-generate--emacs-batch",
-    ] + [str(lisp / d) if d else str(lisp) for d in args.subdirs]
+    ] + dirs
 
     rc = subprocess.run(cmd, env=env).returncode
     if rc != 0:
