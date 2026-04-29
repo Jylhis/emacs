@@ -199,7 +199,7 @@ src_compile_probe = static_library(
     # Mirrors EMACS_CFLAGS in src/Makefile.in:309 for the GTK3 build.
   ],
   install : false,
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # TODO(phase-3): compile base_obj_sources into temacs.o objects, link
