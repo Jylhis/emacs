@@ -280,9 +280,10 @@ emacs_version = meson.project_version()
 # Subdir wiring.  Each phase fills in another directory.
 # ----------------------------------------------------------------------
 
-subdir('lib')      # Phase 2: full gnulib port (currently a stub)
-subdir('lib-src')  # Phase 1: helper executables (in progress)
-subdir('src')      # Phase 3: globals.h, lisp.mk (compilation TBD)
+subdir('lib')      # Phase 2: full gnulib port (in progress)
+subdir('lib-src')  # Phase 1: helper executables (working)
+subdir('admin')    # Phase 6: charsets + unidata generators (stopgap)
+subdir('src')      # Phase 3: temacs + bootstrap-emacs (working)
 # subdir('lisp')     # Phase 4-5: byte-compile + native-comp
 # subdir('leim')     # Phase 6
 # subdir('admin')    # Phase 6: charsets, grammars, unidata
