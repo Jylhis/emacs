@@ -83,11 +83,13 @@ def main() -> int:
         "-f", "batch-byte-compile",
     ]
 
-    # Chunk to keep the bootstrap-emacs heap manageable.  A single
-    # batch-byte-compile invocation accumulates byte-compiler state
-    # across all files; running 1500+ in one process exhausts memory
-    # on modest hosts.  Split into 200-file chunks.
-    chunk_size = 200
+    # Chunk to keep the bootstrap-emacs heap manageable.  Empirically
+    # batch-byte-compile starts segfaulting around 65-70 accumulated
+    # files on this branch's bootstrap-emacs (the byte-compiler state
+    # carries macro expansions that interact with our SYSTEM_MALLOC +
+    # rpl_realloc redirect in pathological ways).  50 keeps each
+    # chunk well clear.
+    chunk_size = 50
     for i in range(0, len(rel_files), chunk_size):
         chunk = rel_files[i:i + chunk_size]
         cmd = base_cmd + [str(lisp_root / r) for r in chunk]
