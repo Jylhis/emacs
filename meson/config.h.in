@@ -40,6 +40,9 @@
 #define IS_DIRECTORY_SEP(_c_) ((_c_) == DIRECTORY_SEP)
 #define IS_ANY_SEP(_c_) (IS_DIRECTORY_SEP (_c_))
 
+/* Bit-bucket device path (configure.ac AH_TEMPLATE([NULL_DEVICE])).  */
+#define NULL_DEVICE "/dev/null"
+
 /* C99 flexible array member: empty if supported, "1" otherwise (cf.
    m4/flexmember.m4).  */
 #define FLEXIBLE_ARRAY_MEMBER @FLEXIBLE_ARRAY_MEMBER@

@@ -63,6 +63,67 @@ shortlisp_json = custom_target(
   command : [py, make_lisp_mk, '@INPUT@', '@OUTPUT@'],
 )
 
+# ----------------------------------------------------------------------
+# emacs-module.h -- mostly identical to emacs-module.in.h.  The
+# autotools build copies through AC_CONFIG_FILES (configure.ac:4437).
+# ----------------------------------------------------------------------
+fs = import('fs')
+emacs_module_h = fs.copyfile('emacs-module.in.h', 'emacs-module.h')
+
+# ----------------------------------------------------------------------
+# epaths.h -- runtime path defaults baked into the binary.  The
+# autotools build sed-substitutes these from variables that 'configure'
+# resolves (Makefile.in:443-471).  Use a Meson-side template populated
+# from get_option('prefix') etc.
+# ----------------------------------------------------------------------
+epaths_data = configuration_data()
+prefix = get_option('prefix')
+datadir = prefix / get_option('datadir')
+libexecdir = prefix / get_option('libexecdir')
+infodir = prefix / get_option('infodir')
+localstatedir = prefix / get_option('localstatedir')
+
+epaths_data.set_quoted('PATH_LOADSEARCH',
+    datadir + '/emacs/' + emacs_version + '/lisp')
+epaths_data.set_quoted('PATH_REL_LOADSEARCH', '')
+epaths_data.set_quoted('PATH_SITELOADSEARCH',
+    datadir + '/emacs/site-lisp')
+epaths_data.set_quoted('PATH_DUMPLOADSEARCH', '../lisp')
+epaths_data.set_quoted('PATH_EXEC',
+    libexecdir + '/emacs/' + emacs_version + '/' +
+    host_machine.cpu_family() + '-' + host_machine.system())
+epaths_data.set_quoted('PATH_DATA',
+    datadir + '/emacs/' + emacs_version + '/etc')
+epaths_data.set_quoted('PATH_BITMAPS', '/usr/include/X11/bitmaps')
+epaths_data.set_quoted('PATH_DOC',
+    datadir + '/emacs/' + emacs_version + '/etc')
+epaths_data.set_quoted('PATH_INFO', infodir)
+epaths_data.set_quoted('PATH_GAME',
+    localstatedir + '/games/emacs')
+epaths_data.set_quoted('PATH_X_DEFAULTS',
+    '/usr/lib/X11/%L/%T/%N%C%S:/usr/lib/X11/%l/%T/%N%C%S:'
+    + '/usr/lib/X11/%T/%N%C%S:/usr/lib/X11/%L/%T/%N%S:'
+    + '/usr/lib/X11/%l/%T/%N%S:/usr/lib/X11/%T/%N%S')
+
+epaths_h = configure_file(
+  input         : '../meson/epaths.h.in',
+  output        : 'epaths.h',
+  configuration : epaths_data,
+)
+
+# ----------------------------------------------------------------------
+# buildobj.h -- the list of base_obj objects as C string literals.
+# Used by doc.c to attribute primitives to their source files
+# (mirrors src/Makefile.in:591).
+# ----------------------------------------------------------------------
+make_buildobj_h = files('../meson/make_buildobj_h.py')
+
+buildobj_h = custom_target(
+  'buildobj.h',
+  output : 'buildobj.h',
+  command : [py, make_buildobj_h, '@OUTPUT@'] + base_obj_basenames,
+)
+
 # TODO(phase-3): compile base_obj_sources into temacs.o objects, link
 # temacs, run loadup.el via temacs --temacs=pbootstrap to produce
 # bootstrap-emacs.pdmp, then re-run as --temacs=pdump for the final
