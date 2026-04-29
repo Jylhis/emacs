@@ -114,6 +114,26 @@ endif
 # file_has_acl strictly listxattr-driven on Linux for now.  Phase 2
 # follow-ups can wire those when --with-acl support is reintroduced.
 
+# EMACS_INT type and its alignof (configure.ac:2814).  src/lisp.h
+# requires both at preprocessor time.
+emacs_int_probe = '''
+#include <limits.h>
+#include <stdint.h>
+#if INTPTR_MAX <= INT_MAX && !defined WIDE_EMACS_INT
+typedef int emacs_int_type;
+#elif INTPTR_MAX <= LONG_MAX && !defined WIDE_EMACS_INT
+typedef long int emacs_int_type;
+#elif INTPTR_MAX <= LLONG_MAX
+typedef long long int emacs_int_type;
+#endif
+int main(void) { return _Alignof (emacs_int_type); }
+'''
+emacs_int_align = cc.run(emacs_int_probe,
+                          name : 'alignof EMACS_INT').returncode()
+conf_data.set('ALIGNOF_EMACS_INT', emacs_int_align)
+sizeof_emacs_int = cc.sizeof('long')   # matches the 64-bit Linux choice
+conf_data.set('SIZEOF_EMACS_INT', sizeof_emacs_int)
+
 # C99 flexible array member support (m4/flexmember.m4).  If the
 # compiler accepts `char name[];` as a flexible array, define
 # FLEXIBLE_ARRAY_MEMBER to nothing; otherwise to 1 (the struct hack).

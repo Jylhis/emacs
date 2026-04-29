@@ -44,6 +44,11 @@
    m4/flexmember.m4).  */
 #define FLEXIBLE_ARRAY_MEMBER @FLEXIBLE_ARRAY_MEMBER@
 
+/* EMACS_INT type and its alignof (configure.ac:2814).  Used by
+   src/lisp.h.  */
+#mesondefine ALIGNOF_EMACS_INT
+#mesondefine SIZEOF_EMACS_INT
+
 /* Header presence (probed at meson configure time).  */
 #mesondefine HAVE_FCNTL_H
 #mesondefine HAVE_GETOPT_H
