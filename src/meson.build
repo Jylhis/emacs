@@ -297,13 +297,22 @@ bootstrap_emacs = custom_target(
   build_by_default : false,
 )
 
-# bootstrap-emacs.pdmp -- runs only after phase 4/6 land.  Disabled
-# build_by_default until then.
+# bootstrap-emacs.pdmp -- runs only after phase 4/6 land, AND a known
+# bootstrap issue is resolved: when bootstrap-emacs is invoked from
+# any working directory, very early init triggers an error condition
+# that calls debug-early--handler (from C via push_handler_bind in
+# keyboard.c:1165) before lisp/emacs-lisp/debug-early.el has had a
+# chance to define it.  The autotools build avoids this by running
+# from src/ with ../lisp resolving to the source's lisp/ directory
+# AND having generated etc/charsets/ in place.  Our out-of-tree meson
+# build needs both pieces wired (phase 6 charsets) plus possibly a
+# tweak to Vinstallation_directory / PATH_DUMPLOADSEARCH.
 bootstrap_pdmp = custom_target(
   'bootstrap-emacs.pdmp',
   output  : 'bootstrap-emacs.pdmp',
   command : [
     'env', 'EMACSLOADPATH=' + meson.global_source_root() / 'lisp',
+    'EMACSDATA=' + meson.global_source_root() / 'etc',
     bootstrap_emacs.full_path(),
     '--batch', '-l', 'loadup', '--temacs=pbootstrap',
     '--bin-dest', meson.current_build_dir() / 'bin',
