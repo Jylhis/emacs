@@ -34,14 +34,21 @@ def main() -> int:
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
     env["EMACSDOC"] = str(src_root / "etc")
-    env["EMACSLOADPATH"] = str(lisp)
+    # Explicitly enumerate lisp/ subdirs in EMACSLOADPATH because we
+    # don't generate subdirs.el in the build tree.  The autotools
+    # build's `make update-subdirs` does populate them; we'll wire
+    # that via a separate subdirs.el target later.
+    paths = [str(lisp)] + sorted(
+        str(p) for p in lisp.iterdir() if p.is_dir()
+    )
+    env["EMACSLOADPATH"] = ":".join(paths)
 
     cmd = [
         args.bootstrap_emacs,
         "--batch", "--no-site-file", "--no-site-lisp",
         "-l", str(lisp / "emacs-lisp/loaddefs-gen.el"),
         "-f", "loaddefs-generate--emacs-batch",
-    ] + [str(lisp / d) for d in args.subdirs]
+    ] + [str(lisp / d) if d else str(lisp) for d in args.subdirs]
 
     rc = subprocess.run(cmd, env=env).returncode
     if rc != 0:

@@ -25,14 +25,19 @@ run_loaddefs = files('../meson/run_loaddefs.py')
 # source tree (lisp/loaddefs.el etc.) because byte-compile and the
 # final emacs.pdmp expect them there.
 # ----------------------------------------------------------------------
-# Subdirectories to scan, mirroring SUBDIRS_ALMOST in
+# Directories to scan, mirroring SUBDIRS_ALMOST in
 # lisp/Makefile.in:125 (which deliberately excludes obsolete and
-# term to avoid corrupting hand-maintained autoload shims).
+# term to avoid corrupting hand-maintained autoload shims).  The
+# empty string scans the top-level lisp/ itself, where frameset.el
+# and friends live.  Without it, loaddefs.el lacks the
+# frameset-filter-alist autoload that tab-bar.el needs at load
+# time.
 loaddefs_subdirs = [
+  '',  # top-level lisp/
   'calc', 'calendar', 'cedet', 'emacs-lisp', 'emulation', 'erc',
   'eshell', 'gnus', 'image', 'international', 'language', 'leim',
   'mail', 'mh-e', 'net', 'nxml', 'org', 'play',
-  'progmodes', 'textmodes', 'url', 'vc',
+  'progmodes', 'textmodes', 'url', 'use-package', 'vc',
 ]
 loaddefs_stamp = custom_target(
   'loaddefs-stamp',
