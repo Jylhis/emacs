@@ -74,6 +74,13 @@ def main() -> int:
         "(setq load-prefer-newer t byte-compile-warnings 'all)",
         "--eval",
         "(setq org--inhibit-version-check t)",
+        # Disable native-comp's async background compilation while we
+        # batch byte-compile, so a native-comp failure doesn't bubble
+        # up as a non-zero exit from batch-byte-compile.
+        "--eval",
+        "(when (featurep 'native-compile)"
+        " (setq native-comp-jit-compilation nil"
+        "       native-comp-enable-subr-trampolines nil))",
         "-f", "batch-byte-compile",
     ] + abs_files
     rc = subprocess.run(cmd, env=env).returncode
