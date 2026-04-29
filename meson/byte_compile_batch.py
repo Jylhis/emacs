@@ -21,12 +21,17 @@ from pathlib import Path
 
 # Subdirectories of lisp/ added to load-path during byte-compilation.
 # autotools relies on subdirs.el; we enumerate the well-known ones.
+# Order matters: emacs-lisp must come before cedet so that core
+# identifiers like `debug' resolve to lisp/emacs-lisp/debug.elc, not
+# lisp/cedet/semantic/debug.elc.
 LOAD_PATH_SUBDIRS = [
     "",
-    "calc", "calendar", "cedet", "cedet/ede", "cedet/semantic",
+    "emacs-lisp",
+    "calc", "calendar",
+    "cedet", "cedet/ede", "cedet/semantic",
     "cedet/semantic/analyze", "cedet/semantic/bovine",
     "cedet/semantic/decorate", "cedet/semantic/symref",
-    "cedet/semantic/wisent", "cedet/srecode", "emacs-lisp",
+    "cedet/semantic/wisent", "cedet/srecode",
     "emulation", "erc", "eshell", "gnus", "image", "international",
     "language", "leim", "leim/quail", "mail", "mh-e", "net", "nxml",
     "obsolete", "org", "play", "progmodes", "term", "textmodes",
