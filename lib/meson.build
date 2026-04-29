@@ -10,7 +10,10 @@
 # list grows as phase 2 progresses.
 libgnu_sources = files(
   'acl-errno-valid.c',
+  'acl-internal.c',
+  'allocator.c',
   'binary-io.c',
+  'boot-time.c',
   'byteswap.c',
   'c-ctype.c',
   'c-strcasecmp.c',
@@ -31,16 +34,27 @@ libgnu_sources = files(
   'memset_explicit.c',
   'mini-gmp-gnulib.c',
   'mkostemp.c',
+  'mktime.c',
   'nproc.c',
   'nstrftime.c',
+  'openat-die.c',
+  'openat-proc.c',
+  'get-permissions.c',
   'qcopy-acl.c',
   'readlinkat.c',
+  'save-cwd.c',
+  'set-permissions.c',
   'sha1.c',
   'sha256.c',
+  'sha3.c',
+  'sha512.c',
   'sig2str.c',
+  'stat-time.c',
   'streq.c',
   'strnul.c',
   'tempname.c',
+  'timespec.c',
+  'u64.c',
   'time_rz.c',
   'timegm.c',
   'timespec-add.c',
@@ -234,7 +248,9 @@ libgnu = static_library(
   sources : [libgnu_sources, gnulib_common_h, gnulib_substituted_headers],
   include_directories : [top_inc, include_directories('.', '../src')],
   install : false,
-  c_args : ['-DGNULIB_NAMESPACE=gnulib'],
+  # NEED_MKTIME_INTERNAL exports mktime_internal from mktime.c so
+  # time_rz.c can call it at link time (lib/mktime.c:30 + lib/mktime-internal.h).
+  c_args : ['-DGNULIB_NAMESPACE=gnulib', '-DNEED_MKTIME_INTERNAL=1'],
 )
 
 libgnu_dep = declare_dependency(

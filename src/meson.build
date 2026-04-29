@@ -206,8 +206,10 @@ src_compile_probe_sources = files(
   # X11/GTK files compile too.
   'xterm.c', 'xfns.c', 'xmenu.c', 'xselect.c', 'xsettings.c',
   'gtkutil.c', 'emacsgtkfixed.c', 'sound.c', 'textconv.c',
-  # Termcap, dynlib (configure.ac:2349, 4660).
-  'cm.c', 'dynlib.c',
+  # Termcap, dynlib (configure.ac:2349, 4660).  With TERMINFO=yes,
+  # terminfo.c provides tparam/BC/UP linked against -ltinfo;
+  # tparam.c is the !TERMINFO alternative.
+  'cm.c', 'dynlib.c', 'terminfo.c',
 )
 
 # Likewise add 'emacs-module' to the source list for libemacs_src_probe

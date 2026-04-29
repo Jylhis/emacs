@@ -50,6 +50,15 @@
 /* Linux supports SIGIO; let kbd_buffer use it (src/keyboard.c:8083).  */
 #define INTERRUPT_INPUT 1
 
+/* Use system malloc -- skip vm-limit.c, gmalloc.c, ralloc.c.  */
+#define SYSTEM_MALLOC 1
+
+/* GLib is available (transitive dep through GTK3).  */
+#define HAVE_GLIB 1
+
+/* Use terminfo (-ltinfo) over termcap (configure.ac:5541).  */
+#define TERMINFO 1
+
 /* FIONREAD ioctl works on Linux (configure.ac:6247).  */
 #define USABLE_FIONREAD 1
 #define USABLE_SIGIO    1
@@ -254,15 +263,21 @@
 #include "gnulib-common.h"
 
 /* gnulib's fcntl.in.h is processed into lib/fcntl.h by autotools and
-   guarantees O_BINARY exists.  Phase 2 of the Meson migration will
-   process the same .in.h.  Until then, define it to 0 on systems
-   that don't provide it (Linux, macOS).  */
+   guarantees O_BINARY / O_SEARCH / O_EXEC exist.  Phase 2 of the
+   Meson migration will process the same .in.h.  Until then, define
+   them to 0 on systems that don't provide them (Linux, macOS).  */
 #include <fcntl.h>
 #ifndef O_BINARY
 # define O_BINARY 0
 #endif
 #ifndef O_TEXT
 # define O_TEXT 0
+#endif
+#ifndef O_SEARCH
+# define O_SEARCH O_RDONLY
+#endif
+#ifndef O_EXEC
+# define O_EXEC O_RDONLY
 #endif
 
 /* gnulib expects <stddef.h> types (ptrdiff_t, size_t) to be available
@@ -291,6 +306,38 @@ typedef struct tm_zone *timezone_t;
    (configure.ac, term.c:2513).  */
 #ifndef O_IGNORE_CTTY
 # define O_IGNORE_CTTY 0
+#endif
+
+/* Stat-type test macros that gnulib's <sys/stat.h> substitute would
+   otherwise define to 0.  Phase-2 stopgap until lib/sys_stat.in.h is
+   substituted.  */
+#include <sys/stat.h>
+#ifndef S_TYPEISTMO
+# define S_TYPEISTMO(p) 0
+#endif
+#ifndef S_ISCTG
+# define S_ISCTG(m) 0
+#endif
+#ifndef S_ISDOOR
+# define S_ISDOOR(m) 0
+#endif
+#ifndef S_ISMPB
+# define S_ISMPB(m) 0
+#endif
+#ifndef S_ISMPC
+# define S_ISMPC(m) 0
+#endif
+#ifndef S_ISMPX
+# define S_ISMPX(m) 0
+#endif
+#ifndef S_ISNWK
+# define S_ISNWK(m) 0
+#endif
+#ifndef S_ISPORT
+# define S_ISPORT(m) 0
+#endif
+#ifndef S_ISWHT
+# define S_ISWHT(m) 0
 #endif
 
 #endif /* EMACS_CONFIG_H */
