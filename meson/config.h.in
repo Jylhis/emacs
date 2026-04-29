@@ -171,6 +171,27 @@
 #define USE_FILE_NOTIFY 1
 #define HAVE_INOTIFY    1
 
+/* Dynamic module support is universally available where dlopen
+   exists (configure.ac:4421).  */
+#define HAVE_MODULES 1
+#define MODULES_SUFFIX           ".so"
+#define MODULES_SECONDARY_SUFFIX ""
+
+/* Modern Xlib opaqueness probes (configure.ac AC_CHECK_FUNCS
+   block).  All true on Linux/X11R7+.  */
+#define HAVE_XRMSETDATABASE      1
+#define HAVE_XKB                 1
+#define HAVE_XRENDER             1
+#define HAVE_XCOMPOSITE          1
+#define HAVE_XSHAPE              1
+#define HAVE_XKBGETKEYBOARD      1
+#define HAVE_XINERAMA            1
+#define HAVE_XRANDR              1
+#define HAVE_XFIXES              1
+#define HAVE_XSYNC               1
+#define HAVE_XSCREENNUMBEROFSCREEN 1
+#define HAVE_XSCREENRESOURCESTRING 1
+
 /* From lib/dirent.in.h (phase-2 stopgap: full dirent.h substitution
    pending).  */
 #define _GL_DT_NOTDIR 0x100

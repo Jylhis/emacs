@@ -20,7 +20,8 @@ base_obj_core = [
   'callint.c', 'callproc.c', 'casefiddle.c', 'casetab.c', 'category.c',
   'ccl.c', 'character.c', 'charset.c', 'chartab.c', 'cmds.c', 'coding.c',
   'composite.c', 'comp.c', 'data.c', 'decompress.c', 'dired.c',
-  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs.c', 'eval.c',
+  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs-module.c',
+  'emacs.c', 'eval.c',
   'fileio.c', 'filelock.c', 'floatfns.c', 'fns.c', 'font.c', 'frame.c',
   'gnutls.c', 'indent.c', 'insdel.c', 'intervals.c', 'itree.c', 'json.c',
   'keyboard.c', 'keymap.c', 'lcms.c', 'lread.c', 'macros.c', 'marker.c',
@@ -42,7 +43,8 @@ gtk_obj = ['gtkutil.c']
 # Window-system shared (configure.ac:6655).
 window_system_obj = ['fontset.c', 'fringe.c', 'image.c', 'textconv.c']
 
-# Font backend objects (configure.ac:6370 with HAVE_CAIRO).
+# Font backend objects (configure.ac:6370 with HAVE_CAIRO).  With
+# cairo, ftcrfont.c replaces xftfont.c.
 font_obj = ['xfont.c', 'ftfont.c', 'ftcrfont.c', 'hbfont.c']
 
 # inotify (configure.ac:3630, Linux file notification).
@@ -90,11 +92,24 @@ shortlisp_json = custom_target(
 )
 
 # ----------------------------------------------------------------------
-# emacs-module.h -- mostly identical to emacs-module.in.h.  The
-# autotools build copies through AC_CONFIG_FILES (configure.ac:4437).
+# emacs-module.h -- substitute @emacs_major_version@ and inline
+# module-env-NN.h snippets (mirrors AC_SUBST + AC_SUBST_FILE in
+# configure.ac:4437-4452).
 # ----------------------------------------------------------------------
-fs = import('fs')
-emacs_module_h = fs.copyfile('emacs-module.in.h', 'emacs-module.h')
+make_emacs_module_h = files('../meson/make_emacs_module_h.py')
+
+emacs_module_h = custom_target(
+  'emacs-module.h',
+  input  : 'emacs-module.in.h',
+  output : 'emacs-module.h',
+  command : [
+    py, make_emacs_module_h,
+    '--input',         '@INPUT@',
+    '--output',        '@OUTPUT@',
+    '--src-dir',       meson.current_source_dir(),
+    '--major-version', emacs_version.split('.')[0],
+  ],
+)
 
 # ----------------------------------------------------------------------
 # epaths.h -- runtime path defaults baked into the binary.  The
@@ -178,8 +193,16 @@ src_compile_probe_sources = files(
   # X11 / GTK / font / window-system files known to compile.
   'fontset.c', 'fringe.c', 'image.c', 'xfont.c', 'ftfont.c',
   'ftcrfont.c', 'hbfont.c', 'inotify.c', 'xgselect.c',
-  'xrdb.c', 'xsmfns.c',
+  'xrdb.c', 'xsmfns.c', 'emacs-module.c',
+  # Now that HAVE_XRMSETDATABASE et al are set, the heavyweight
+  # X11/GTK files compile too.
+  'xterm.c', 'xfns.c', 'xmenu.c', 'xselect.c', 'xsettings.c',
+  'gtkutil.c', 'sound.c', 'textconv.c',
 )
+
+# Likewise add 'emacs-module' to the source list for libemacs_src_probe
+# (mirrors src/Makefile.in $(MODULES_OBJ) inclusion when modules are
+# enabled, configure.ac:4421).
 
 src_compile_probe = static_library(
   'emacs_src_probe',
