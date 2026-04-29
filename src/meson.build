@@ -216,6 +216,31 @@ src_compile_probe_sources = files(
 # (mirrors src/Makefile.in $(MODULES_OBJ) inclusion when modules are
 # enabled, configure.ac:4421).
 
+# Extra X11 / terminfo libraries that pkg-config doesn't list but
+# xterm.c, xfns.c, etc. directly call (XFixesSelectSelectionInput,
+# XShapeQueryExtension, XRender* ...).
+extra_x_libs = [
+  cc.find_library('X11',        required : true),
+  cc.find_library('Xfixes',     required : true),
+  cc.find_library('Xrender',    required : true),
+  cc.find_library('Xrandr',     required : true),
+  cc.find_library('Xcomposite', required : true),
+  cc.find_library('Xinerama',   required : true),
+  cc.find_library('Xi',         required : true),
+  cc.find_library('Xext',       required : true),
+  cc.find_library('Xtst',       required : true),
+  cc.find_library('SM',         required : true),  # X Session Mgmt
+  cc.find_library('ICE',        required : true),  # X ICE
+  cc.find_library('tinfo',      required : true),  # terminfo
+]
+
+src_deps = [
+  libgnu_dep, gtk3_dep, cairo_dep, cairo_ft_dep, harfbuzz_dep,
+  freetype_dep, fontconfig_dep, xft_dep, gnutls_dep, treesit_dep,
+  sqlite_dep, xml_dep, systemd_dep, gmp_dep,
+  dependency('threads'),
+] + extra_x_libs
+
 src_compile_probe = static_library(
   'emacs_src_probe',
   sources : [
@@ -225,16 +250,26 @@ src_compile_probe = static_library(
   include_directories : [
     top_inc, include_directories('.', '../lib'),
   ],
-  dependencies : [
-    libgnu_dep, gtk3_dep, cairo_dep, cairo_ft_dep, harfbuzz_dep,
-    freetype_dep, fontconfig_dep, xft_dep, gnutls_dep, treesit_dep,
-    sqlite_dep, xml_dep, systemd_dep, gmp_dep,
-  ],
-  c_args : [
-    # Mirrors EMACS_CFLAGS in src/Makefile.in:309 for the GTK3 build.
-  ],
+  dependencies : src_deps,
   install : false,
-  build_by_default : true,
+  build_by_default : false,
+)
+
+# Phase-3 milestone: link temacs from the same source set.  This is
+# the C-only stage of the bootstrap (src/Makefile.in:624-643);
+# bootstrap-emacs and emacs.pdmp follow once lisp/ is wired.
+temacs = executable(
+  'temacs',
+  sources : [
+    src_compile_probe_sources,
+    globals_h, buildobj_h, emacs_module_h, epaths_h,
+  ],
+  include_directories : [
+    top_inc, include_directories('.', '../lib'),
+  ],
+  dependencies : src_deps,
+  link_args : ['-ldl', '-lm'],
+  install : false,
 )
 
 # TODO(phase-3): compile base_obj_sources into temacs.o objects, link
