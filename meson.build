@@ -177,6 +177,21 @@ if not gmp_dep.found()
   gmp_dep = cc.find_library('gmp', required : true)
 endif
 
+# Native compilation via libgccjit (configure.ac:1588).  No pkg-config
+# file ships with libgccjit, so probe for the header directly under
+# the GCC private include tree.
+libgccjit_dep = dependency('', required : false)  # placeholder
+foreach gcc_ver : ['14', '13', '12', '11']
+  inc = '/usr/lib/gcc/x86_64-linux-gnu/' + gcc_ver + '/include'
+  if cc.has_header('libgccjit.h', args : ['-I' + inc])
+    libgccjit_dep = declare_dependency(
+      compile_args : ['-I' + inc],
+      dependencies : cc.find_library('gccjit', required : true),
+    )
+    break
+  endif
+endforeach
+
 # Set the corresponding HAVE_* config.h defines based on what was found.
 if gtk3_dep.found()
   conf_data.set('HAVE_GTK3', 1)
@@ -222,6 +237,9 @@ if systemd_dep.found()
   conf_data.set('HAVE_LIBSYSTEMD', 1)
 endif
 conf_data.set('HAVE_GMP', 1)
+if libgccjit_dep.found()
+  conf_data.set('HAVE_NATIVE_COMP', 1)
+endif
 
 # EMACS_INT type and its alignof (configure.ac:2814).  src/lisp.h
 # requires both at preprocessor time.
