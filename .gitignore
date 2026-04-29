@@ -34,6 +34,11 @@
 /configure
 src/config.in
 
+# Out-of-tree Meson build directories (Meson migration; see
+# .claude/plans/migrate-from-current-build-replicated-gadget.md).
+/build/
+/build-*/
+
 # Built by 'configure'.
 Info.plist
 InfoPlist.strings
