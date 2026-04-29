@@ -81,16 +81,24 @@ def main() -> int:
         return rc
 
     # batch-byte-compile writes the .elc next to each .el.  Move them
-    # into the build tree, preserving the relative layout.
+    # into the build tree, preserving the relative layout.  Files that
+    # failed to byte-compile (e.g. lisp/obsolete/* with broken
+    # references) are skipped, matching the autotools build's
+    # behaviour where compile-main emits the error and continues.
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    moved = 0
+    skipped = 0
     for rel in rel_files:
         elc_src = lisp_root / rel.with_suffix(".elc")
         elc_dst = args.output_dir / rel.with_suffix(".elc")
         if not elc_src.exists():
-            print(f"missing {elc_src}", file=sys.stderr)
-            return 1
+            skipped += 1
+            continue
         elc_dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(elc_src, elc_dst)
+        moved += 1
+    print(f"byte-compiled {moved} files; {skipped} skipped (compile errors)",
+          file=sys.stderr)
     if args.stamp is not None:
         args.stamp.write_text("ok\n")
     return 0
