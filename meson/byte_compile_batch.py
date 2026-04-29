@@ -19,24 +19,21 @@ import sys
 from pathlib import Path
 
 
-# Subdirectories of lisp/ added to load-path during byte-compilation.
-# autotools relies on subdirs.el; we enumerate the well-known ones.
-# Order matters: emacs-lisp must come before cedet so that core
-# identifiers like `debug' resolve to lisp/emacs-lisp/debug.elc, not
-# lisp/cedet/semantic/debug.elc.
-LOAD_PATH_SUBDIRS = [
-    "",
-    "emacs-lisp",
-    "calc", "calendar",
-    "cedet", "cedet/ede", "cedet/semantic",
-    "cedet/semantic/analyze", "cedet/semantic/bovine",
-    "cedet/semantic/decorate", "cedet/semantic/symref",
-    "cedet/semantic/wisent", "cedet/srecode",
-    "emulation", "erc", "eshell", "gnus", "image", "international",
-    "language", "leim", "leim/quail", "mail", "mh-e", "net", "nxml",
-    "obsolete", "org", "play", "progmodes", "term", "textmodes",
-    "url", "vc",
-]
+# Build EMACSLOADPATH from lisp/ recursively.  emacs-lisp must come
+# first so the core 'debug feature resolves to lisp/emacs-lisp/debug,
+# not lisp/cedet/semantic/debug.
+def _load_path(lisp_root: Path) -> list[str]:
+    paths = [str(lisp_root)]
+    paths.append(str(lisp_root / "emacs-lisp"))
+    skip = {"emacs-lisp", "obsolete"}
+    for d in sorted(lisp_root.rglob("*")):
+        if not d.is_dir():
+            continue
+        rel = d.relative_to(lisp_root).as_posix()
+        if rel in skip or any(rel.startswith(s + "/") for s in skip):
+            continue
+        paths.append(str(d))
+    return paths
 
 
 def main() -> int:
@@ -64,7 +61,7 @@ def main() -> int:
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
     env["EMACSDOC"] = str(src_root / "etc")
-    env["EMACSLOADPATH"] = ":".join(str(lisp_root / s) for s in LOAD_PATH_SUBDIRS)
+    env["EMACSLOADPATH"] = ":".join(_load_path(lisp_root))
     # Match the BYTE_COMPILE_FLAGS in lisp/Makefile.in:78.
     env["BYTE_COMPILE_DEBUG"] = "1"
 
