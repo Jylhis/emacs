@@ -42,6 +42,7 @@ libgnu_sources = files(
   'get-permissions.c',
   'qcopy-acl.c',
   'readlinkat.c',
+  'realloc.c',
   'save-cwd.c',
   'set-permissions.c',
   'sha1.c',

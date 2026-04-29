@@ -298,6 +298,17 @@
    UNINIT, and various platform tweaks used throughout Emacs.  */
 #include <conf_post.h>
 
+/* glibc 2.34+ realloc(p, 0) frees p and returns NULL, which
+   src/alloc.c xrealloc() misinterprets as memory exhaustion
+   (lib/realloc.c:42 + m4/realloc.m4 logic).  Only the Emacs core
+   needs the legacy "always non-null" behavior; lib-src tools and
+   gnulib internals rely on the modern semantics.  EMACS_CORE is
+   set on src/ compile lines to opt in.  */
+#ifdef EMACS_CORE
+extern void *rpl_realloc (void *, size_t);
+# define realloc rpl_realloc
+#endif
+
 /* Phase-2 stopgap: gnulib's time_rz module provides timezone_t in
    the substituted <time.h>.  Until lib/time.in.h substitution
    lands, declare an opaque type so timefns.c et al compile.  Since

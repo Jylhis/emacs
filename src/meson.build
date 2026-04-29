@@ -241,6 +241,8 @@ src_deps = [
   dependency('threads'),
 ] + extra_x_libs
 
+src_args = ['-DEMACS_CORE=1']
+
 src_compile_probe = static_library(
   'emacs_src_probe',
   sources : [
@@ -250,6 +252,7 @@ src_compile_probe = static_library(
   include_directories : [
     top_inc, include_directories('.', '../lib'),
   ],
+  c_args : src_args,
   dependencies : src_deps,
   install : false,
   build_by_default : false,
@@ -266,6 +269,7 @@ temacs = executable(
   include_directories : [
     top_inc, include_directories('.', '../lib'),
   ],
+  c_args : src_args,
   dependencies : src_deps,
   link_args : ['-ldl', '-lm'],
   install : false,
