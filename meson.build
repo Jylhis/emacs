@@ -284,6 +284,7 @@ subdir('lib')      # Phase 2: full gnulib port (in progress)
 subdir('lib-src')  # Phase 1: helper executables (working)
 subdir('admin')    # Phase 6: charsets + unidata generators (stopgap)
 subdir('src')      # Phase 3: temacs + bootstrap-emacs (working)
+subdir('lisp')     # Phase 4: byte-compile (pilot)
 # subdir('lisp')     # Phase 4-5: byte-compile + native-comp
 # subdir('leim')     # Phase 6
 # subdir('admin')    # Phase 6: charsets, grammars, unidata
