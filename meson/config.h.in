@@ -110,8 +110,4 @@
    UNINIT, and various platform tweaks used throughout Emacs.  */
 #include <conf_post.h>
 
-/* Phase-2 stopgap: provide streq/memeq until lib/string.in.h is
-   processed natively in Meson.  */
-#include <gl-strextras.h>
-
 #endif /* EMACS_CONFIG_H */

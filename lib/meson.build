@@ -132,6 +132,24 @@ sys_types_overrides = {
   'NEXT_SYS_TYPES_H': '<sys/types.h>',
 }
 
+# ---- string.h: GNU extensions that gnulib portably provides.
+# Enable only the inlines lib/file-has-acl.c, sha256.c, and the
+# lib-src tools currently call (streq, memeq, strnul).  Now that
+# c++defs.h / arg-nonnull.h / warn-on-use.h are spliced in by
+# process_in_h.py, the resulting <string.h> compiles cleanly.  ----
+string_overrides = {
+  'GUARD_PREFIX':   'GL',
+  'NEXT_STRING_H':  '<string.h>',
+  'GNULIB_STREQ':   '1',
+  'GNULIB_MEMEQ':   '1',
+  'GNULIB_STRNUL':  '1',
+  'HAVE_DECL_STREQ':  '0',
+  'HAVE_DECL_MEMEQ':  '0',
+  'HAVE_DECL_STRNUL': '0',
+  '_GL_BEGIN_NAMESPACE': '',
+  '_GL_END_NAMESPACE':   '',
+}
+
 # Master list of headers to substitute.  Order doesn't matter; each
 # call is independent.
 #
@@ -153,6 +171,7 @@ gnulib_in_h_specs = [
   ['errno',     errno_overrides],
   ['stddef',    stddef_overrides],
   ['sys_types', sys_types_overrides],
+  ['string',    string_overrides],
 ]
 
 # Process every header through meson/process_in_h.py, which sets any
