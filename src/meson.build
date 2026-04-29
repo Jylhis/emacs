@@ -8,12 +8,14 @@
 # See .claude/plans/migrate-from-current-build-replicated-gadget.md.
 
 # ----------------------------------------------------------------------
-# base_obj source list (Linux/GTK3, no NS, no Android baseline).
-# Mirrors src/Makefile.in:389-408.  Phase 3 follow-ups will extend
-# this with the platform-conditional groups (XOBJ, GTK_OBJ, NS_OBJ,
-# ANDROID_OBJ, etc.) once their feature flags are ported.
+# base_obj source list (Linux/GTK3 + Cairo + inotify baseline).
+# Mirrors src/Makefile.in:389-408 with the conditional groups
+# expanded for window_system=x11 / with_gtk3=yes / HAVE_CAIRO=yes /
+# HAVE_INOTIFY=yes (configure.ac:6369-6420 + 3313 + 3630).  Phase 3
+# follow-ups can swap in NS / Android / pgtk variants by replacing
+# the X11/GTK groups.
 # ----------------------------------------------------------------------
-base_obj_basenames = [
+base_obj_core = [
   'alloc.c', 'atimer.c', 'bidi.c', 'bignum.c', 'buffer.c', 'bytecode.c',
   'callint.c', 'callproc.c', 'casefiddle.c', 'casetab.c', 'category.c',
   'ccl.c', 'character.c', 'charset.c', 'chartab.c', 'cmds.c', 'coding.c',
@@ -29,6 +31,30 @@ base_obj_basenames = [
   'timefns.c', 'treesit.c', 'undo.c', 'window.c', 'xdisp.c', 'xfaces.c',
   'xml.c',
 ]
+
+# X11 toolkit objects (configure.ac:6369: XOBJ + XMENU_OBJ).
+xobj = ['xterm.c', 'xfns.c', 'xmenu.c', 'xselect.c', 'xrdb.c',
+        'xsmfns.c', 'xsettings.c']
+
+# GTK toolkit support (configure.ac:3313).
+gtk_obj = ['gtkutil.c']
+
+# Window-system shared (configure.ac:6655).
+window_system_obj = ['fontset.c', 'fringe.c', 'image.c', 'textconv.c']
+
+# Font backend objects (configure.ac:6370 with HAVE_CAIRO).
+font_obj = ['xfont.c', 'ftfont.c', 'ftcrfont.c', 'hbfont.c']
+
+# inotify (configure.ac:3630, Linux file notification).
+notify_obj = ['inotify.c']
+
+# X-glib select (configure.ac:3530).
+xgselect_obj = ['xgselect.c']
+
+base_obj_basenames = (
+  base_obj_core + xobj + gtk_obj + window_system_obj
+  + font_obj + notify_obj + xgselect_obj
+)
 base_obj_sources = files(base_obj_basenames)
 
 # ----------------------------------------------------------------------
