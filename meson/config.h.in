@@ -43,6 +43,31 @@
 /* Bit-bucket device path (configure.ac AH_TEMPLATE([NULL_DEVICE])).  */
 #define NULL_DEVICE "/dev/null"
 
+/* Window system / GUI feature flags (configure.ac
+   EMACS_CHECK_MODULES block, lines 2167-4067).  */
+#mesondefine HAVE_GTK3
+#mesondefine HAVE_GTK
+#mesondefine USE_GTK
+#mesondefine HAVE_X_WINDOWS
+#mesondefine HAVE_X11
+#mesondefine HAVE_WINDOW_SYSTEM
+#mesondefine POLL_FOR_INPUT
+#mesondefine HAVE_TEXT_CONVERSION
+#mesondefine TERM_HEADER
+#mesondefine HAVE_CAIRO
+#mesondefine USE_CAIRO
+#mesondefine HAVE_HARFBUZZ
+#mesondefine HAVE_FREETYPE
+#mesondefine USE_FONT_BACKEND
+#mesondefine HAVE_FONTCONFIG
+#mesondefine HAVE_XFT
+#mesondefine HAVE_GNUTLS
+#mesondefine HAVE_TREE_SITTER
+#mesondefine HAVE_SQLITE3
+#mesondefine HAVE_LIBXML2
+#mesondefine HAVE_LIBSYSTEMD
+#mesondefine HAVE_GMP
+
 /* C99 flexible array member: empty if supported, "1" otherwise (cf.
    m4/flexmember.m4).  */
 #define FLEXIBLE_ARRAY_MEMBER @FLEXIBLE_ARRAY_MEMBER@

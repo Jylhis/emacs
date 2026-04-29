@@ -114,6 +114,74 @@ endif
 # file_has_acl strictly listxattr-driven on Linux for now.  Phase 2
 # follow-ups can wire those when --with-acl support is reintroduced.
 
+# ----------------------------------------------------------------------
+# Window system & feature dependencies (configure.ac EMACS_CHECK_MODULES
+# block, lines 2167-4067).  Each one is gated by a meson.options flag
+# so --without-feature works.  Phase 3 baseline: Linux/GTK3 only.
+# ----------------------------------------------------------------------
+gtk3_dep      = dependency('gtk+-3.0',  required : get_option('toolkit') == 'gtk3' or get_option('toolkit') == 'auto')
+cairo_dep     = dependency('cairo',     required : get_option('cairo'))
+cairo_ft_dep  = dependency('cairo-ft',  required : get_option('cairo'))
+harfbuzz_dep  = dependency('harfbuzz',  required : get_option('harfbuzz'))
+freetype_dep  = dependency('freetype2', required : false)
+fontconfig_dep = dependency('fontconfig', required : false)
+xft_dep       = dependency('xft',       required : get_option('xft'))
+gnutls_dep    = dependency('gnutls',    required : get_option('gnutls'))
+treesit_dep   = dependency('tree-sitter', required : get_option('tree-sitter'))
+sqlite_dep    = dependency('sqlite3',   required : get_option('sqlite3'))
+xml_dep       = dependency('libxml-2.0', required : get_option('xml2'))
+systemd_dep   = dependency('libsystemd', required : get_option('libsystemd'))
+gmp_dep       = dependency('gmp',       required : false)
+if not gmp_dep.found()
+  gmp_dep = cc.find_library('gmp', required : true)
+endif
+
+# Set the corresponding HAVE_* config.h defines based on what was found.
+if gtk3_dep.found()
+  conf_data.set('HAVE_GTK3', 1)
+  conf_data.set('USE_GTK', 1)
+  conf_data.set('HAVE_GTK', 1)
+  conf_data.set('HAVE_X_WINDOWS', 1)
+  conf_data.set('HAVE_X11', 1)
+  conf_data.set('HAVE_WINDOW_SYSTEM', 1)
+  conf_data.set('POLL_FOR_INPUT', 1)
+  conf_data.set('HAVE_TEXT_CONVERSION', 1)
+  conf_data.set_quoted('TERM_HEADER', 'gtkutil.h')
+endif
+if cairo_dep.found()
+  conf_data.set('USE_CAIRO', 1)
+  conf_data.set('HAVE_CAIRO', 1)
+endif
+if harfbuzz_dep.found()
+  conf_data.set('HAVE_HARFBUZZ', 1)
+endif
+if freetype_dep.found()
+  conf_data.set('HAVE_FREETYPE', 1)
+  conf_data.set('USE_FONT_BACKEND', 1)
+endif
+if fontconfig_dep.found()
+  conf_data.set('HAVE_FONTCONFIG', 1)
+endif
+if xft_dep.found()
+  conf_data.set('HAVE_XFT', 1)
+endif
+if gnutls_dep.found()
+  conf_data.set('HAVE_GNUTLS', 1)
+endif
+if treesit_dep.found()
+  conf_data.set('HAVE_TREE_SITTER', 1)
+endif
+if sqlite_dep.found()
+  conf_data.set('HAVE_SQLITE3', 1)
+endif
+if xml_dep.found()
+  conf_data.set('HAVE_LIBXML2', 1)
+endif
+if systemd_dep.found()
+  conf_data.set('HAVE_LIBSYSTEMD', 1)
+endif
+conf_data.set('HAVE_GMP', 1)
+
 # EMACS_INT type and its alignof (configure.ac:2814).  src/lisp.h
 # requires both at preprocessor time.
 emacs_int_probe = '''
