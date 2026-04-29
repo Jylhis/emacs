@@ -181,10 +181,14 @@
 #define HAVE_INOTIFY    1
 
 /* Dynamic module support is universally available where dlopen
-   exists (configure.ac:4421).  */
+   exists (configure.ac:4421).  Note: MODULES_SECONDARY_SUFFIX must
+   be UNDEFINED, not empty -- lread.c:1264 treats any non-NULL value
+   as a real suffix to test, and an empty string suffixes every
+   filename, causing all .el loads to be misrouted through
+   Fmodule_load.  */
 #define HAVE_MODULES 1
-#define MODULES_SUFFIX           ".so"
-#define MODULES_SECONDARY_SUFFIX ""
+#define MODULES_SUFFIX ".so"
+#undef MODULES_SECONDARY_SUFFIX
 
 /* Portable dumper -- mandatory for the meson build per the migration
    plan (configure.ac:437, --with-pdumper=yes default).  */
