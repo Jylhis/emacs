@@ -301,27 +301,25 @@ bootstrap_emacs = custom_target(
   build_by_default : false,
 )
 
-# bootstrap-emacs.pdmp -- runs only after phase 4/6 land, AND a known
-# bootstrap issue is resolved: when bootstrap-emacs is invoked from
-# any working directory, very early init triggers an error condition
-# that calls debug-early--handler (from C via push_handler_bind in
-# keyboard.c:1165) before lisp/emacs-lisp/debug-early.el has had a
-# chance to define it.  The autotools build avoids this by running
-# from src/ with ../lisp resolving to the source's lisp/ directory
-# AND having generated etc/charsets/ in place.  Our out-of-tree meson
-# build needs both pieces wired (phase 6 charsets) plus possibly a
-# tweak to Vinstallation_directory / PATH_DUMPLOADSEARCH.
+# bootstrap-emacs.pdmp -- now wired end-to-end.  The custom_target
+# below runs bootstrap-emacs from $srcdir/src/ (so PATH_DUMPLOADSEARCH
+# = "../lisp" resolves to the source's lisp/), with EMACSDATA pointing
+# at etc/ so the charset maps land.  Depends on phase-6 generators
+# (charscript.el, emoji-zwj.el via admin/, etc/charsets/*.map via the
+# autotools-make stopgap) to satisfy loadup.el.
+run_dump = files('../meson/run_dump.py')
 bootstrap_pdmp = custom_target(
   'bootstrap-emacs.pdmp',
   output  : 'bootstrap-emacs.pdmp',
   command : [
-    'env', 'EMACSLOADPATH=' + meson.global_source_root() / 'lisp',
-    'EMACSDATA=' + meson.global_source_root() / 'etc',
-    bootstrap_emacs.full_path(),
-    '--batch', '-l', 'loadup', '--temacs=pbootstrap',
-    '--bin-dest', meson.current_build_dir() / 'bin',
-    '--eln-dest', meson.current_build_dir() / 'native-lisp',
+    py, run_dump,
+    '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--source-root',     meson.global_source_root(),
+    '--output-pdmp',     '@OUTPUT@',
+    '--mode',            'pbootstrap',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
-  depends : [bootstrap_emacs],
+  depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
   build_by_default : false,
 )
