@@ -153,7 +153,7 @@ emacs_version = meson.project_version()
 
 subdir('lib')      # Phase 2: full gnulib port (currently a stub)
 subdir('lib-src')  # Phase 1: helper executables (in progress)
-# subdir('src')      # Phase 3: temacs, emacs binary, dumping
+subdir('src')      # Phase 3: globals.h, lisp.mk (compilation TBD)
 # subdir('lisp')     # Phase 4-5: byte-compile + native-comp
 # subdir('leim')     # Phase 6
 # subdir('admin')    # Phase 6: charsets, grammars, unidata
