@@ -22,6 +22,20 @@ etc/          Data files, NEWS, tutorials, images, DEBUG guide
 
 ## Build
 
+This branch is migrating from Autotools to Meson + Ninja
+(`.claude/plans/migrate-from-current-build-replicated-gadget.md`).
+Both build systems coexist; the Meson tree under `meson.build` /
+`meson/` is the long-term path.
+
+Meson (preferred on this branch):
+```bash
+meson setup build -Dnative-compilation=yes
+meson compile -C build                              # full build
+meson test -C build --suite smoke                   # ERT smoke tests
+meson install -C build --destdir=/tmp/stage         # staged install
+```
+
+Autotools (legacy):
 ```bash
 ./autogen.sh && ./configure && make -j$(nproc)    # first time from repo
 make                                               # rebuild after changes
@@ -35,6 +49,14 @@ Debug build (recommended for development, per etc/DEBUG):
 
 ## Test
 
+Meson:
+```bash
+meson test -C build                # all registered tests
+meson test -C build --suite smoke  # smoke set only
+meson test -C build NAME           # one test by name
+```
+
+Autotools:
 ```bash
 make check                                          # full suite
 make check-expensive                                # include slow tests

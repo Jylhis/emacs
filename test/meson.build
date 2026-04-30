@@ -58,3 +58,87 @@ foreach rel : smoke_tests
     suite : ['lisp', 'smoke'],
   )
 endforeach
+
+# Expanded set: more self-contained ERT files covering core lisp.
+# Mirrors the directories in test/Makefile.in:81-153.  Files that
+# require a dumped emacs (display, gnus, eshell, etc.) are deferred
+# until the test runner can use the dumped emacs in addition to
+# bootstrap-emacs.
+extended_tests = [
+  # Core utilities -- pure-elisp, no display.
+  'lisp/abbrev-tests.el',
+  'lisp/auth-source-tests.el',
+  'lisp/calc/calc-tests.el',
+  'lisp/character-fold-tests.el',
+  'lisp/cmds-tests.el',
+  'lisp/comint-tests.el',
+  'lisp/custom-tests.el',
+  'lisp/dired-aux-tests.el',
+  'lisp/electric-tests.el',
+  'lisp/fileloop-tests.el',
+  'lisp/files-tests.el',
+  'lisp/files-x-tests.el',
+  'lisp/format-spec-tests.el',
+  'lisp/help-tests.el',
+  'lisp/hexl-tests.el',
+  'lisp/json-tests.el',
+  'lisp/jsonrpc-tests.el',
+  'lisp/keymap-tests.el',
+  'lisp/minibuffer-tests.el',
+  'lisp/replace-tests.el',
+  'lisp/rfc2104-tests.el',
+  'lisp/server-tests.el',
+  'lisp/shadowfile-tests.el',
+  'lisp/simple-tests.el',
+  'lisp/subr-x-tests.el',
+  'lisp/textmodes/conf-mode-tests.el',
+  'lisp/thingatpt-tests.el',
+  'lisp/uniquify-tests.el',
+  'lisp/vc/vc-bzr-tests.el',
+  # emacs-lisp/ subset.
+  'lisp/emacs-lisp/advice-tests.el',
+  'lisp/emacs-lisp/avl-tree-tests.el',
+  'lisp/emacs-lisp/backquote-tests.el',
+  'lisp/emacs-lisp/bindat-tests.el',
+  'lisp/emacs-lisp/cconv-tests.el',
+  'lisp/emacs-lisp/cl-extra-tests.el',
+  'lisp/emacs-lisp/cl-generic-tests.el',
+  'lisp/emacs-lisp/cl-lib-tests.el',
+  'lisp/emacs-lisp/cl-print-tests.el',
+  'lisp/emacs-lisp/cl-seq-tests.el',
+  'lisp/emacs-lisp/copyright-tests.el',
+  'lisp/emacs-lisp/edebug-tests.el',
+  'lisp/emacs-lisp/eldoc-tests.el',
+  'lisp/emacs-lisp/ert-tests.el',
+  'lisp/emacs-lisp/ert-x-tests.el',
+  'lisp/emacs-lisp/find-func-tests.el',
+  'lisp/emacs-lisp/generator-tests.el',
+  'lisp/emacs-lisp/macroexp-tests.el',
+  'lisp/emacs-lisp/map-tests.el',
+  'lisp/emacs-lisp/package-tests.el',
+  'lisp/emacs-lisp/pcase-tests.el',
+  'lisp/emacs-lisp/pp-tests.el',
+  'lisp/emacs-lisp/regexp-opt-tests.el',
+  'lisp/emacs-lisp/seq-tests.el',
+  'lisp/emacs-lisp/shortdoc-tests.el',
+  'lisp/emacs-lisp/subr-x-tests.el',
+  'lisp/emacs-lisp/syntax-tests.el',
+  'lisp/emacs-lisp/timer-tests.el',
+]
+
+foreach rel : extended_tests
+  name = rel.replace('/', '_').replace('.el', '')
+  test(
+    name,
+    py,
+    args : [
+      run_test,
+      '--bootstrap-emacs', bootstrap_emacs.full_path(),
+      '--source-root',     meson.global_source_root(),
+      '--test-file',       meson.global_source_root() / 'test' / rel,
+    ],
+    depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
+    timeout : 120,
+    suite : ['lisp', 'extended'],
+  )
+endforeach
