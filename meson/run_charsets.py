@@ -224,15 +224,38 @@ def main() -> int:
                 r'/^<.*[ \t]\/x[a-f]/', "GLIBC-2", None,
                 out_dir / "BIG5.map")
 
-    # BIG5-1, BIG5-2 derived from BIG5.map via sed/big5.awk.
-    big5_map = (out_dir / "BIG5.map").read_text()
-    for name, sed_filter in [("BIG5-1.map", r"^0xa1[4-9a-f0]"),
-                             ("BIG5-2.map", r"^0xc940")]:
-        # Crude: pass the whole map through awk; the original sed/awk
-        # split is for performance, not output difference.  Phase-6
-        # follow-up can tighten this if it matters.
-        pass  # Keep autotools-stopgap until needed; emacs.pdmp doesn't
-              # require BIG5-1/2 maps for basic startup.
+    # BIG5-1, BIG5-2 derived from BIG5.map via sed/big5.awk.  Mirrors
+    # admin/charsets/Makefile.in:236-242:
+    #   BIG5-1: sed -n '/0xa140/,/0xc8fe/p' < BIG5.map | awk -f big5.awk
+    #   BIG5-2: sed -n '/0xc940/,$ p'       < BIG5.map | awk -f big5.awk
+    big5_awk = charsets_dir / "big5.awk"
+    big5_map_lines = (out_dir / "BIG5.map").read_text().splitlines(keepends=True)
+
+    def sed_range(lines, start_pat, end_pat):
+        out, on = [], False
+        for line in lines:
+            if not on and re.search(start_pat, line):
+                on = True
+            if on:
+                out.append(line)
+            if on and end_pat is not None and re.search(end_pat, line):
+                on = False
+        return "".join(out)
+
+    for name, start, end in [("BIG5-1.map", r"0xa140", r"0xc8fe"),
+                             ("BIG5-2.map", r"0xc940", None)]:
+        sliced = sed_range(big5_map_lines, start, end)
+        result = subprocess.run(
+            ["awk", "-f", str(big5_awk)],
+            input=sliced, capture_output=True, text=True,
+        ).stdout
+        (out_dir / name).write_text(
+            f"# Generated from BIG5.map\n" + result)
+
+    # KSC5636 follows the generic glibc rule (Makefile.in:303).
+    run_mapconv(charsets_dir, glibc / "KSC5636.gz",
+                r'/^<.*[ \t]\/x/', "GLIBC-1", compact,
+                out_dir / "KSC5636.map")
 
     # GB180302, GB180304.
     run_mapconv(charsets_dir, glibc / "GB18030.gz",
