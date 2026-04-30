@@ -20,18 +20,25 @@ libgnu_sources = files(
   'c-strncasecmp.c',
   'careadlinkat.c',
   'close-stream.c',
+  'copy-file-range.c',
   'dtoastr.c',
   'dtotimespec.c',
   'file-has-acl.c',
   'filemode.c',
   'filevercmp.c',
   'fingerprint.c',
+  'free.c',
+  'getrandom.c',
+  'getopt.c',
+  'getopt1.c',
   'gettime.c',
   'lstat.c',
   'md5.c',
   'md5-stream.c',
   'memeq.c',
   'memmem.c',
+  'mempcpy.c',
+  'memrchr.c',
   'memset_explicit.c',
   'mini-gmp-gnulib.c',
   'mkostemp.c',
@@ -175,44 +182,148 @@ sys_types_overrides = {
 
 # ---- string.h: GNU extensions that gnulib portably provides.
 # Enable only the inlines lib/file-has-acl.c, sha256.c, and the
-# lib-src tools currently call (streq, memeq, strnul).  Now that
+# lib-src tools currently call (streq, memeq, strnul, mempcpy).
 # c++defs.h / arg-nonnull.h / warn-on-use.h are spliced in by
-# process_in_h.py, the resulting <string.h> compiles cleanly.  ----
+# process_in_h.py, so the resulting <string.h> compiles cleanly.  ----
+have_mempcpy = cc.has_function('mempcpy',
+  prefix : '#define _GNU_SOURCE 1\n#include <string.h>')
 string_overrides = {
   'GUARD_PREFIX':   'GL',
   'NEXT_STRING_H':  '<string.h>',
   'GNULIB_STREQ':   '1',
   'GNULIB_MEMEQ':   '1',
   'GNULIB_STRNUL':  '1',
+  'GNULIB_MEMPCPY': '1',
+  'GNULIB_MEMRCHR': '1',
+  'GNULIB_MEMSET_EXPLICIT': '1',
   'HAVE_DECL_STREQ':  '0',
   'HAVE_DECL_MEMEQ':  '0',
   'HAVE_DECL_STRNUL': '0',
+  'HAVE_MEMPCPY':   have_mempcpy ? '1' : '0',
+  'HAVE_DECL_MEMRCHR': cc.has_header_symbol('string.h', 'memrchr') ? '1' : '0',
+  'HAVE_MEMSET_EXPLICIT': cc.has_function('memset_explicit') ? '1' : '0',
   '_GL_BEGIN_NAMESPACE': '',
   '_GL_END_NAMESPACE':   '',
+}
+
+# ---- getopt-cdefs.h: compiler introspection for getopt.  ----
+getopt_cdefs_overrides = {
+  'HAVE_SYS_CDEFS_H': cc.has_header('sys/cdefs.h') ? '1' : '0',
+}
+
+# ---- getopt.h: gnulib getopt wrapper (m4/getopt.m4).  ----
+# With __GETOPT_PREFIX=rpl_ in config.h, gnulib renames getopt_long
+# to rpl_getopt_long etc., avoiding type clashes with macOS SDK.
+getopt_overrides = {
+  'GUARD_PREFIX':  'GL',
+  'HAVE_GETOPT_H': cc.has_header('getopt.h') ? '1' : '0',
+  'NEXT_GETOPT_H': '<getopt.h>',
+}
+
+# ---- stdlib.h: gnulib <stdlib.h> wrapper.  ----
+# Substituted so that meson-generated build/lib/stdlib.h shadows any
+# stale autotools-generated lib/stdlib.h left over from a previous
+# ./configure && make run.  With default-zero @VAR@, the wrapper just
+# include_next's the system <stdlib.h> and adds nothing.
+stdlib_overrides = {
+  'GUARD_PREFIX':  'GL',
+  'NEXT_STDLIB_H': '<stdlib.h>',
+}
+
+# ---- time.h: gnulib <time.h> wrapper.  ----
+# GNULIB_TIME_RZ enables mktime_z / localtime_rz / tzalloc / tzfree
+# declarations needed by lib/time_rz.c and lib/nstrftime.c (via
+# strftime.c).  HAVE_TIMEZONE_T is set because config.h.in typedefs
+# timezone_t (phase-2 stopgap; eventually time.in.h substitution
+# replaces the typedef).
+time_overrides = {
+  'GUARD_PREFIX':  'GL',
+  'NEXT_TIME_H':   '<time.h>',
+  'GNULIB_TIME_RZ': '1',
+  'HAVE_TIMEZONE_T': '1',
+  'GNULIB_MKTIME':  '1',
+  'GNULIB_TIMEGM':  '1',
+  'GNULIB_TIME_R':  '1',
+  'PTHREAD_H_DEFINES_STRUCT_TIMESPEC': '1',
 }
 
 # Master list of headers to substitute.  Order doesn't matter; each
 # call is independent.
 #
-# Only headers added here have been verified to substitute cleanly on
-# Linux glibc with default-zero @GNULIB_*@ / @REPLACE_*@ values.  The
-# remaining gnulib *.in.h files (string.in.h, stdio.in.h,
-# stdlib.in.h, signal.in.h, sys_stat.in.h, time.in.h, unistd.in.h,
-# fcntl.in.h, dirent.in.h, getopt.in.h, getopt-cdefs.in.h) need
-# per-function feature detection (gl_FUNC_FOO calls in m4/) that
-# isn't ported yet.  See
+# Headers added here have been verified to substitute cleanly with
+# default-zero @GNULIB_*@ / @REPLACE_*@ values on Linux glibc and
+# macOS.  The remaining gnulib *.in.h files (stdio.in.h,
+# signal.in.h, sys_stat.in.h, time.in.h, unistd.in.h, fcntl.in.h,
+# dirent.in.h) need per-function feature detection (gl_FUNC_FOO
+# calls in m4/) that isn't ported yet.  See
 # .claude/plans/migrate-from-current-build-replicated-gadget.md.
 gnulib_in_h_specs = [
-  ['stdckdint', stdckdint_overrides],
-  ['assert',    assert_overrides],
-  ['limits',    limits_overrides],
-  ['endian',    endian_overrides],
-  ['byteswap',  {}],
-  ['ieee754',   {}],
-  ['errno',     errno_overrides],
-  ['stddef',    stddef_overrides],
-  ['sys_types', sys_types_overrides],
-  ['string',    string_overrides],
+  ['stdckdint',    stdckdint_overrides],
+  ['assert',       assert_overrides],
+  ['limits',       limits_overrides],
+  ['endian',       endian_overrides],
+  ['byteswap',     {}],
+  ['ieee754',      {}],
+  ['errno',        errno_overrides],
+  ['stddef',       stddef_overrides],
+  ['sys_types',    sys_types_overrides],
+  ['string',       string_overrides],
+  ['getopt-cdefs', getopt_cdefs_overrides],
+  ['getopt',       getopt_overrides],
+  ['stdlib',       stdlib_overrides],
+  ['time',         time_overrides],
+  ['stdbit',       {
+    'GL_STDC_BIT_CEIL': '1',
+    'GL_STDC_BIT_FLOOR': '1',
+    'GL_STDC_BIT_WIDTH': '1',
+    'GL_STDC_COUNT_ONES': '1',
+    'GL_STDC_COUNT_ZEROS': '1',
+    'GL_STDC_FIRST_LEADING_ONE': '1',
+    'GL_STDC_FIRST_LEADING_ZERO': '1',
+    'GL_STDC_FIRST_TRAILING_ONE': '1',
+    'GL_STDC_FIRST_TRAILING_ZERO': '1',
+    'GL_STDC_HAS_SINGLE_BIT': '1',
+    'GL_STDC_LEADING_ONES': '1',
+    'GL_STDC_LEADING_ZEROS': '1',
+    'GL_STDC_TRAILING_ONES': '1',
+    'GL_STDC_TRAILING_ZEROS': '1',
+  }],
+  ['signal',       {
+    'GUARD_PREFIX': 'GL',
+    'NEXT_SIGNAL_H': '<signal.h>',
+    'GNULIB_SIG2STR': '1',
+    'HAVE_SIG2STR': cc.has_function('sig2str') ? '1' : '0',
+    'HAVE_STR2SIG': cc.has_function('str2sig') ? '1' : '0',
+    'HAVE_POSIX_SIGNALBLOCKING': '1',
+    'HAVE_SIGSET_T': '1',
+    'HAVE_SIGACTION': '1',
+    'HAVE_SIGINFO_T': '1',
+    'HAVE_RAISE': '1',
+    'HAVE_PTHREAD_SIGMASK': '1',
+    'HAVE_TYPE_VOLATILE_SIG_ATOMIC_T': '1',
+    'HAVE_STRUCT_SIGACTION_SA_SIGACTION': '1',
+    'HAVE_SIGHANDLER_T': '1',
+  }],
+  ['stdint',       {
+    'GUARD_PREFIX': 'GL',
+    'NEXT_STDINT_H': '<stdint.h>',
+    'HAVE_STDINT_H': '1',
+    'HAVE_C99_STDINT_H': '1',
+    'HAVE_INTTYPES_H': '1',
+    'HAVE_SYS_TYPES_H': '1',
+    'HAVE_WCHAR_H': '1',
+    'APPLE_UNIVERSAL_BUILD': '0',
+    'BITSIZEOF_PTRDIFF_T': '64',
+    'BITSIZEOF_SIG_ATOMIC_T': '32',
+    'BITSIZEOF_SIZE_T': '64',
+    'BITSIZEOF_WCHAR_T': '32',
+    'BITSIZEOF_WINT_T': '32',
+    'PTRDIFF_T_SUFFIX': 'l',
+    'SIG_ATOMIC_T_SUFFIX': '',
+    'SIZE_T_SUFFIX': 'ul',
+    'WCHAR_T_SUFFIX': '',
+    'WINT_T_SUFFIX': '',
+  }],
 ]
 
 # Process every header through meson/process_in_h.py, which sets any

@@ -33,6 +33,7 @@ in
     # X11 + GTK3 stack (Linux/GTK3 baseline target)
     gtk3
     cairo
+    pango
     fontconfig
     freetype
     xorg.libX11
@@ -44,6 +45,7 @@ in
     xorg.libXi
     xorg.libXext
     xorg.libXtst
+    xorg.libXft
     xorg.libXt
     xorg.libSM
     xorg.libICE
@@ -71,7 +73,9 @@ in
     # Other useful libraries
     lcms2
     dbus
+    acl
     zlib
+    gawk
 
     # Debugging
     # gdb

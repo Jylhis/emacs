@@ -41,27 +41,28 @@
 #define USER_FULL_NAME pw->pw_gecos
 
 /* Shared library file extension (configure.ac:4370-4379).  */
-#define DYNAMIC_LIB_SUFFIX           ".so"
-#define DYNAMIC_LIB_SECONDARY_SUFFIX ""
+#mesondefine DYNAMIC_LIB_SUFFIX
+#mesondefine DYNAMIC_LIB_SECONDARY_SUFFIX
 
 /* POSIX threads available (configure.ac:2997).  */
 #define HAVE_PTHREAD 1
 
-/* Linux supports SIGIO; let kbd_buffer use it (src/keyboard.c:8083).  */
-#define INTERRUPT_INPUT 1
+/* SIGIO-based input (configure.ac:5952).  Defined on Darwin and
+   GNU/Linux.  */
+#mesondefine INTERRUPT_INPUT
 
 /* Use system malloc -- skip vm-limit.c, gmalloc.c, ralloc.c.  */
 #define SYSTEM_MALLOC 1
 
 /* GLib is available (transitive dep through GTK3).  */
-#define HAVE_GLIB 1
+#mesondefine HAVE_GLIB
 
 /* Use terminfo (-ltinfo) over termcap (configure.ac:5541).  */
 #define TERMINFO 1
 
-/* FIONREAD ioctl works on Linux (configure.ac:6247).  */
-#define USABLE_FIONREAD 1
-#define USABLE_SIGIO    1
+/* FIONREAD / SIGIO usability (configure.ac:6230-6277).  */
+#mesondefine USABLE_FIONREAD
+#mesondefine USABLE_SIGIO
 
 /* subprocesses are universally supported on POSIX (configure.ac:5847).  */
 #define subprocesses 1
@@ -176,20 +177,23 @@
 #mesondefine HAVE_LISTXATTR
 #define USE_ACL 0
 
-/* USE_FILE_NOTIFY: at least one file-notification backend is
-   available (configure.ac:619-).  Linux uses inotify.  */
-#define USE_FILE_NOTIFY 1
-#define HAVE_INOTIFY    1
+/* File notification (configure.ac:619-3712).  Backend is selected
+   at configure time: inotify (Linux), kqueue (macOS/BSD), or
+   gfile (GLib fallback).  */
+#mesondefine USE_FILE_NOTIFY
+#mesondefine HAVE_INOTIFY
+#mesondefine HAVE_KQUEUE
+#mesondefine HAVE_GFILENOTIFY
 
 /* Dynamic module support is universally available where dlopen
-   exists (configure.ac:4421).  Note: MODULES_SECONDARY_SUFFIX must
-   be UNDEFINED, not empty -- lread.c:1264 treats any non-NULL value
-   as a real suffix to test, and an empty string suffixes every
-   filename, causing all .el loads to be misrouted through
-   Fmodule_load.  */
+   exists (configure.ac:4421).  */
 #define HAVE_MODULES 1
-#define MODULES_SUFFIX ".so"
-#undef MODULES_SECONDARY_SUFFIX
+#mesondefine MODULES_SUFFIX
+/* MODULES_SECONDARY_SUFFIX: on Darwin this is ".so" (so .so modules
+   work alongside .dylib).  On other systems it is undefined -- NOT
+   empty, because lread.c:1264 treats any non-NULL value as a real
+   suffix to test.  */
+#mesondefine MODULES_SECONDARY_SUFFIX
 
 /* Portable dumper -- mandatory for the meson build per the migration
    plan (configure.ac:437, --with-pdumper=yes default).  */
@@ -200,19 +204,43 @@
 #define NATIVE_ELISP_SUFFIX ".eln"
 
 /* Modern Xlib opaqueness probes (configure.ac AC_CHECK_FUNCS
-   block).  All true on Linux/X11R7+.  */
-#define HAVE_XRMSETDATABASE      1
-#define HAVE_XKB                 1
-#define HAVE_XRENDER             1
-#define HAVE_XCOMPOSITE          1
-#define HAVE_XSHAPE              1
-#define HAVE_XKBGETKEYBOARD      1
-#define HAVE_XINERAMA            1
-#define HAVE_XRANDR              1
-#define HAVE_XFIXES              1
-#define HAVE_XSYNC               1
-#define HAVE_XSCREENNUMBEROFSCREEN 1
-#define HAVE_XSCREENRESOURCESTRING 1
+   block).  Set conditionally in meson.build when GTK3/X11 is
+   found.  */
+#mesondefine HAVE_XRMSETDATABASE
+#mesondefine HAVE_XKB
+#mesondefine HAVE_XRENDER
+#mesondefine HAVE_XCOMPOSITE
+#mesondefine HAVE_XSHAPE
+#mesondefine HAVE_XKBGETKEYBOARD
+#mesondefine HAVE_XINERAMA
+#mesondefine HAVE_XRANDR
+#mesondefine HAVE_XFIXES
+#mesondefine HAVE_XSYNC
+#mesondefine HAVE_XSCREENNUMBEROFSCREEN
+#mesondefine HAVE_XSCREENRESOURCESTRING
+
+/* OS family defines (configure.ac:6187-6196).  */
+#mesondefine DARWIN_OS
+#mesondefine GNU_LINUX
+#mesondefine USG
+
+/* PTY support (configure.ac:5808-6023).  */
+#mesondefine HAVE_PTYS
+#mesondefine UNIX98_PTYS
+#mesondefine DONT_REOPEN_PTY
+#mesondefine HAVE__SETJMP
+#mesondefine GC_SETJMP_WORKS
+#mesondefine SIGNALS_VIA_CHARACTERS
+
+/* PTY iteration/open macros -- defined as string values in meson.build
+   from the same logic as configure.ac:5988-6023.  */
+#mesondefine PTY_ITERATION
+#mesondefine PTY_OPEN
+#mesondefine PTY_NAME_SPRINTF
+#mesondefine PTY_TTY_NAME_SPRINTF
+
+/* TAB3 on Darwin is OXTABS (configure.ac:6074).  */
+#mesondefine TAB3
 
 /* From lib/dirent.in.h (phase-2 stopgap: full dirent.h substitution
    pending).  */
@@ -253,6 +281,19 @@
 #mesondefine HAVE_GETOPT_LONG_ONLY
 #mesondefine HAVE_GNU_GET_LIBC_VERSION
 
+/* Declaration probes (HAVE_DECL_* style, for gnulib headers).  */
+#mesondefine HAVE_DECL_STRMODE
+#mesondefine HAVE_COPY_FILE_RANGE
+#mesondefine HAVE_MEMRCHR
+
+/* Declarations for functions gnulib provides when the system lacks them.  */
+#ifndef HAVE_COPY_FILE_RANGE
+# include <unistd.h>
+extern ssize_t copy_file_range (int __infd, off_t *__pinoff,
+                                int __outfd, off_t *__poutoff,
+                                size_t __length, unsigned int __flags);
+#endif
+
 /* glibc *_unlocked stdio variants used by lib/unlocked-io.h.  */
 #mesondefine HAVE_DECL_CLEARERR_UNLOCKED
 #mesondefine HAVE_DECL_FEOF_UNLOCKED
@@ -268,6 +309,23 @@
 #mesondefine HAVE_DECL_GETCHAR_UNLOCKED
 #mesondefine HAVE_DECL_PUTC_UNLOCKED
 #mesondefine HAVE_DECL_PUTCHAR_UNLOCKED
+
+/* gnulib getopt: prefix all getopt symbols to avoid clashes with the
+   system <getopt.h> (m4/getopt.m4:370, configure.ac via gl_GETOPT).
+   Must appear before any header that might pull in <getopt.h>.  */
+#define __GETOPT_PREFIX rpl_
+
+/* Text domain for gnulib message translation (m4/gettext_h.m4:17).
+   Emacs does not translate gnulib messages, but the macro must be
+   defined so getopt.c's dgettext() calls compile.  */
+#ifndef GNULIB_TEXT_DOMAIN
+# define GNULIB_TEXT_DOMAIN "gnulib"
+#endif
+
+/* Tell gnulib ieee754.h to use the portable (non-glibc) code path
+   (lib/ieee754.in.h:20).  Without this, it includes <features.h>
+   and <bits/endian.h> which only exist on glibc.  */
+#define _GL_GNULIB_HEADER 1
 
 /* Pull in the gnulib-common preprocessor block extracted from
    m4/gnulib-common.m4 by meson/extract_ah_verbatim.py.  This provides
@@ -296,6 +354,14 @@
 /* gnulib expects <stddef.h> types (ptrdiff_t, size_t) to be available
    transitively via config.h.  */
 #include <stddef.h>
+
+/* On macOS, environ is not declared in any header but is available
+   via crt_externs.h or as a plain extern.  Several src/ files
+   (callproc.c, emacs.c) reference it directly.  */
+#ifdef DARWIN_OS
+# include <crt_externs.h>
+# define environ (*_NSGetEnviron())
+#endif
 
 /* AH_BOTTOM equivalent: the autotools build appends conf_post.h to
    the bottom of config.h.  conf_post.h provides ATTRIBUTE_*,
@@ -330,6 +396,26 @@ typedef struct tm_zone *timezone_t;
    (configure.ac, term.c:2513).  */
 #ifndef O_IGNORE_CTTY
 # define O_IGNORE_CTTY 0
+#endif
+
+/* Phase-2 stopgap for getrandom / GRND_* flags.  macOS
+   <sys/random.h> provides getentropy but not getrandom or the GRND_*
+   constants.  gnulib's sys_random.in.h normally wraps these, but
+   until sys/*.in.h substitution lands we define the shims here.  The
+   actual getrandom implementation is in lib/getrandom.c (added to
+   libgnu_sources).  Values match the Linux definitions.  */
+#include <sys/random.h>
+#ifndef GRND_NONBLOCK
+# define GRND_NONBLOCK 1
+#endif
+#ifndef GRND_RANDOM
+# define GRND_RANDOM 2
+#endif
+#ifndef HAVE_GETRANDOM
+# include <stddef.h>
+# include <unistd.h>
+extern ssize_t getrandom (void *__buffer, size_t __length,
+                           unsigned int __flags);
 #endif
 
 /* Stat-type test macros that gnulib's <sys/stat.h> substitute would

@@ -86,6 +86,125 @@ else
   conf_data.set('SEPCHAR', ':')
 endif
 
+# Platform booleans used throughout.
+is_darwin = host_machine.system() == 'darwin'
+is_linux  = host_machine.system() == 'linux'
+
+# Dynamic library / module suffixes (configure.ac:4370-4390).
+if is_darwin
+  conf_data.set_quoted('DYNAMIC_LIB_SUFFIX', '.dylib')
+  conf_data.set_quoted('DYNAMIC_LIB_SECONDARY_SUFFIX', '.so')
+  conf_data.set_quoted('MODULES_SUFFIX', '.dylib')
+  conf_data.set_quoted('MODULES_SECONDARY_SUFFIX', '.so')
+else
+  conf_data.set_quoted('DYNAMIC_LIB_SUFFIX', '.so')
+  conf_data.set_quoted('DYNAMIC_LIB_SECONDARY_SUFFIX', '')
+  conf_data.set_quoted('MODULES_SUFFIX', '.so')
+  # MODULES_SECONDARY_SUFFIX intentionally left undefined on non-Darwin.
+endif
+
+# SIGIO-based input (configure.ac:5952-5955).  Both Darwin and
+# GNU/Linux support INTERRUPT_INPUT.
+if is_darwin or is_linux
+  conf_data.set('INTERRUPT_INPUT', 1)
+endif
+
+# FIONREAD / SIGIO usability (configure.ac:6230-6277).
+# FIONREAD works on both Darwin and Linux.  SIGIO works on Linux and
+# Darwin (configure.ac:5952 sets emacs_broken_SIGIO=no for both).
+conf_data.set('USABLE_FIONREAD', 1)
+if is_darwin or is_linux
+  conf_data.set('USABLE_SIGIO', 1)
+endif
+
+# File notification backend (configure.ac:3630-3712).
+file_notify = get_option('file-notification')
+if file_notify == 'auto' or file_notify == 'yes'
+  if is_linux and cc.has_header('sys/inotify.h')
+    file_notify = 'inotify'
+  elif (is_darwin or host_machine.system() == 'freebsd'
+        or host_machine.system() == 'dragonfly'
+        or host_machine.system() == 'netbsd'
+        or host_machine.system() == 'openbsd')
+    file_notify = 'kqueue'
+  else
+    file_notify = 'no'
+  endif
+endif
+if file_notify == 'inotify'
+  conf_data.set('USE_FILE_NOTIFY', 1)
+  conf_data.set('HAVE_INOTIFY', 1)
+elif file_notify == 'kqueue'
+  conf_data.set('USE_FILE_NOTIFY', 1)
+  conf_data.set('HAVE_KQUEUE', 1)
+elif file_notify == 'gfile'
+  conf_data.set('USE_FILE_NOTIFY', 1)
+  conf_data.set('HAVE_GFILENOTIFY', 1)
+endif
+
+# Darwin-specific defines (configure.ac:6187-6191, 6048, 6074,
+# 5914, 5808, 6122, 6143).
+if is_darwin
+  conf_data.set('DARWIN_OS', 1)
+  conf_data.set('SIGNALS_VIA_CHARACTERS', 1)
+  conf_data.set('TAB3', 'OXTABS')
+  conf_data.set('DONT_REOPEN_PTY', 1)
+  conf_data.set('GC_SETJMP_WORKS', 1)
+endif
+
+# Linux-specific defines (configure.ac:6195-6196).
+if is_linux
+  conf_data.set('USG', 1)
+  conf_data.set('GNU_LINUX', 1)
+  conf_data.set('SIGNALS_VIA_CHARACTERS', 1)
+endif
+
+# PTYs are available on all supported POSIX systems
+# (configure.ac:5808).
+conf_data.set('HAVE_PTYS', 1)
+
+# _setjmp / _longjmp probe (configure.ac:6143).
+if cc.has_function('_setjmp')
+  conf_data.set('HAVE__SETJMP', 1)
+endif
+
+# PTY iteration macros (configure.ac:5988-6023).  Both Darwin and
+# Linux use Unix98 PTYs with posix_openpt/grantpt.
+if cc.has_function('posix_openpt')
+  conf_data.set('UNIX98_PTYS', 1)
+  conf_data.set('PTY_ITERATION', 'int i; for (i = 0; i < 1; i++)')
+  conf_data.set('PTY_OPEN',
+    'do { fd = posix_openpt (O_RDWR | O_CLOEXEC | O_NOCTTY);' +
+    ' if (fd < 0 && errno == EINVAL)' +
+    ' fd = posix_openpt (O_RDWR | O_NOCTTY); } while (false)')
+  conf_data.set('PTY_NAME_SPRINTF', '')
+  conf_data.set('PTY_TTY_NAME_SPRINTF',
+    '{ char *ptyname = 0; sigset_t blocked;' +
+    ' sigemptyset (&blocked);' +
+    ' sigaddset (&blocked, SIGCHLD);' +
+    ' pthread_sigmask (SIG_BLOCK, &blocked, 0);' +
+    ' if (grantpt (fd) != -1 && unlockpt (fd) != -1)' +
+    ' ptyname = ptsname(fd);' +
+    ' pthread_sigmask (SIG_UNBLOCK, &blocked, 0);' +
+    ' if (!ptyname) { emacs_close (fd); return -1; }' +
+    ' snprintf (pty_name, PTY_NAME_SIZE, "%s", ptyname); }')
+elif cc.has_function('getpt')
+  conf_data.set('UNIX98_PTYS', 1)
+  conf_data.set('PTY_ITERATION', 'int i; for (i = 0; i < 1; i++)')
+  conf_data.set('PTY_OPEN', 'fd = getpt ()')
+  conf_data.set('PTY_NAME_SPRINTF', '')
+  conf_data.set('PTY_TTY_NAME_SPRINTF',
+    '{ char *ptyname = 0; sigset_t blocked;' +
+    ' sigemptyset (&blocked);' +
+    ' sigaddset (&blocked, SIGCHLD);' +
+    ' pthread_sigmask (SIG_BLOCK, &blocked, 0);' +
+    ' if (grantpt (fd) != -1 && unlockpt (fd) != -1)' +
+    ' ptyname = ptsname(fd);' +
+    ' pthread_sigmask (SIG_UNBLOCK, &blocked, 0);' +
+    ' if (!ptyname) { emacs_close (fd); return -1; }' +
+    ' snprintf (pty_name, PTY_NAME_SIZE, "%s", ptyname); }')
+endif
+
 # Header presence probes.  TODO(phase-2): grow this to mirror the
 # AC_CHECK_HEADERS calls in configure.ac.
 foreach hdr : [
@@ -133,11 +252,17 @@ foreach fn : [
   'eaccess', 'faccessat', 'sysinfo', 'lstat', 'symlink', 'readlink',
   'fchmodat', 'fdopendir', 'sched_setaffinity', 'getpgrp', 'tgkill',
   'gettimeofday', 'getopt_long_only', 'gnu_get_libc_version',
+  'copy_file_range', 'memrchr',
 ]
   if cc.has_function(fn)
     conf_data.set('HAVE_' + fn.to_upper(), 1)
   endif
 endforeach
+
+# Declaration probes for gnulib headers that use HAVE_DECL_*.
+if cc.has_header_symbol('string.h', 'strmode')
+  conf_data.set('HAVE_DECL_STRMODE', 1)
+endif
 
 # Linux xattr support drives file_has_acl (m4/acl.m4).  Probed here
 # rather than in lib/meson.build because the result conditions other
@@ -160,7 +285,24 @@ endif
 # block, lines 2167-4067).  Each one is gated by a meson.options flag
 # so --without-feature works.  Phase 3 baseline: Linux/GTK3 only.
 # ----------------------------------------------------------------------
-gtk3_dep      = dependency('gtk+-3.0',  required : get_option('toolkit') == 'gtk3' or get_option('toolkit') == 'auto')
+# On macOS, toolkit=auto should NOT require GTK (NS is the native
+# window system).  Only require GTK when explicitly requested.
+_gtk_required = get_option('toolkit') == 'gtk3'
+if get_option('toolkit') == 'auto' and not is_darwin
+  _gtk_required = true
+endif
+gtk3_dep      = dependency('gtk+-3.0',  required : _gtk_required)
+# Verify GTK3 X11 backend is usable (gdk/gdkx.h exists).  On macOS,
+# Nix may provide GTK3 without X11 backend headers.
+if gtk3_dep.found()
+  if not cc.has_header('gdk/gdkx.h',
+                        dependencies : gtk3_dep)
+    if _gtk_required
+      error('GTK3 found but gdk/gdkx.h is missing (no X11 backend)')
+    endif
+    gtk3_dep = dependency('', required : false)
+  endif
+endif
 cairo_dep     = dependency('cairo',     required : get_option('cairo'))
 cairo_ft_dep  = dependency('cairo-ft',  required : get_option('cairo'))
 harfbuzz_dep  = dependency('harfbuzz',  required : get_option('harfbuzz'))
@@ -178,19 +320,28 @@ if not gmp_dep.found()
 endif
 
 # Native compilation via libgccjit (configure.ac:1588).  No pkg-config
-# file ships with libgccjit, so probe for the header directly under
-# the GCC private include tree.
+# file ships with libgccjit, so probe for the header.  Try
+# platform-specific GCC include paths first, then fall back to the
+# default include path (covers Nix, Homebrew, MacPorts).
 libgccjit_dep = dependency('', required : false)  # placeholder
-foreach gcc_ver : ['14', '13', '12', '11']
-  inc = '/usr/lib/gcc/x86_64-linux-gnu/' + gcc_ver + '/include'
-  if cc.has_header('libgccjit.h', args : ['-I' + inc])
-    libgccjit_dep = declare_dependency(
-      compile_args : ['-I' + inc],
-      dependencies : cc.find_library('gccjit', required : true),
-    )
-    break
-  endif
-endforeach
+if is_linux
+  foreach gcc_ver : ['14', '13', '12', '11']
+    inc = '/usr/lib/gcc/x86_64-linux-gnu/' + gcc_ver + '/include'
+    if cc.has_header('libgccjit.h', args : ['-I' + inc])
+      libgccjit_dep = declare_dependency(
+        compile_args : ['-I' + inc],
+        dependencies : cc.find_library('gccjit', required : true),
+      )
+      break
+    endif
+  endforeach
+endif
+# Fallback: header in the default include path (Nix, Homebrew, etc.).
+if not libgccjit_dep.found() and cc.has_header('libgccjit.h')
+  libgccjit_dep = declare_dependency(
+    dependencies : cc.find_library('gccjit', required : true),
+  )
+endif
 
 # Set the corresponding HAVE_* config.h defines based on what was found.
 if gtk3_dep.found()
@@ -203,6 +354,21 @@ if gtk3_dep.found()
   conf_data.set('POLL_FOR_INPUT', 1)
   conf_data.set('HAVE_TEXT_CONVERSION', 1)
   conf_data.set_quoted('TERM_HEADER', 'gtkutil.h')
+  conf_data.set('HAVE_GLIB', 1)
+  # X11 feature probes (configure.ac AC_CHECK_FUNCS block).
+  # All true on Linux/X11R7+ and X11 via Nix on macOS.
+  conf_data.set('HAVE_XRMSETDATABASE', 1)
+  conf_data.set('HAVE_XKB', 1)
+  conf_data.set('HAVE_XRENDER', 1)
+  conf_data.set('HAVE_XCOMPOSITE', 1)
+  conf_data.set('HAVE_XSHAPE', 1)
+  conf_data.set('HAVE_XKBGETKEYBOARD', 1)
+  conf_data.set('HAVE_XINERAMA', 1)
+  conf_data.set('HAVE_XRANDR', 1)
+  conf_data.set('HAVE_XFIXES', 1)
+  conf_data.set('HAVE_XSYNC', 1)
+  conf_data.set('HAVE_XSCREENNUMBEROFSCREEN', 1)
+  conf_data.set('HAVE_XSCREENRESOURCESTRING', 1)
 endif
 if cairo_dep.found()
   conf_data.set('USE_CAIRO', 1)
@@ -324,7 +490,7 @@ mandir = get_option('mandir')            # share/man/
 
 emacs_data = datadir / 'emacs' / meson.project_version()
 emacs_arch = (libexecdir / 'emacs' / meson.project_version()
-              / (host_machine.cpu_family() + '-linux-gnu'))
+              / (host_machine.cpu_family() + '-' + host_machine.system()))
 
 # Install rules driven by meson_install.py.  Custom install script
 # is used (instead of install_data on custom_target outputs) because

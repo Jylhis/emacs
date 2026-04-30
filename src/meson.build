@@ -54,17 +54,32 @@ window_system_obj = ['fontset.c', 'fringe.c', 'image.c', 'textconv.c']
 # cairo, ftcrfont.c replaces xftfont.c.
 font_obj = ['xfont.c', 'ftfont.c', 'ftcrfont.c', 'hbfont.c']
 
-# inotify (configure.ac:3630, Linux file notification).
-notify_obj = ['inotify.c']
+# File notification backend (configure.ac:3630-3679).
+if conf_data.has('HAVE_INOTIFY')
+  notify_obj = ['inotify.c']
+elif conf_data.has('HAVE_KQUEUE')
+  notify_obj = ['kqueue.c']
+else
+  notify_obj = []
+endif
 
 # X-glib select (configure.ac:3530).
 xgselect_obj = ['xgselect.c']
 
-base_obj_basenames = (
-  base_obj_core + xobj + gtk_obj + window_system_obj
-  + font_obj + notify_obj + xgselect_obj
-  + cm_obj + dynlib_obj
-)
+# Assemble base_obj depending on whether we have a GUI toolkit.
+if gtk3_dep.found()
+  base_obj_basenames = (
+    base_obj_core + xobj + gtk_obj + window_system_obj
+    + font_obj + notify_obj + xgselect_obj
+    + cm_obj + dynlib_obj
+  )
+else
+  # Terminal-only or NS build (NS sources not yet wired).
+  base_obj_basenames = (
+    base_obj_core + notify_obj
+    + cm_obj + dynlib_obj
+  )
+endif
 base_obj_sources = files(base_obj_basenames)
 
 # ----------------------------------------------------------------------
@@ -174,72 +189,60 @@ buildobj_h = custom_target(
 )
 
 # ----------------------------------------------------------------------
-# Compile probe: assemble the src/*.c files known to build cleanly
-# (91 of 124 as of this writing) into a static library.  This isn't
-# usable for linking temacs yet -- many cross-file symbols are still
-# undefined -- but it forces meson + ninja to actually build src/
-# objects on every CI run, so regressions are caught early.
-# Phase-3 follow-ups will (a) bring the remaining 33 files online by
-# wiring more feature defines, and (b) replace this probe with a real
-# temacs executable() once link-time issues are addressed.
+# Compile probe / temacs source list.  Built from base_obj_basenames
+# (which is already platform-conditional) plus emacs-module.c and
+# terminfo.c.
 # ----------------------------------------------------------------------
 src_compile_probe_sources = files(
-  'alloc.c', 'atimer.c', 'bidi.c', 'bignum.c', 'buffer.c', 'bytecode.c',
-  'callint.c', 'callproc.c', 'casefiddle.c', 'casetab.c', 'category.c',
-  'ccl.c', 'character.c', 'charset.c', 'chartab.c', 'cmds.c', 'coding.c',
-  'composite.c', 'comp.c', 'data.c', 'decompress.c', 'dired.c',
-  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs.c', 'eval.c',
-  'fileio.c', 'filelock.c', 'floatfns.c', 'fns.c', 'font.c', 'frame.c',
-  'gnutls.c', 'indent.c', 'insdel.c', 'intervals.c', 'itree.c', 'json.c',
-  'keyboard.c', 'keymap.c', 'lcms.c', 'lread.c', 'macros.c', 'marker.c',
-  'menu.c', 'minibuf.c', 'pdumper.c', 'print.c', 'process.c',
-  'profiler.c', 'regex-emacs.c', 'region-cache.c', 'scroll.c',
-  'search.c', 'sort.c', 'sound.c', 'sqlite.c', 'syntax.c', 'sysdep.c',
-  'systhread.c', 'term.c', 'terminal.c', 'textprop.c', 'thread.c',
-  'timefns.c', 'treesit.c', 'undo.c', 'window.c', 'xdisp.c', 'xfaces.c',
-  'xml.c',
-  # X11 / GTK / font / window-system files known to compile.
-  'fontset.c', 'fringe.c', 'image.c', 'xfont.c', 'ftfont.c',
-  'ftcrfont.c', 'hbfont.c', 'inotify.c', 'xgselect.c',
-  'xrdb.c', 'xsmfns.c', 'emacs-module.c',
-  # Now that HAVE_XRMSETDATABASE et al are set, the heavyweight
-  # X11/GTK files compile too.
-  'xterm.c', 'xfns.c', 'xmenu.c', 'xselect.c', 'xsettings.c',
-  'gtkutil.c', 'emacsgtkfixed.c', 'sound.c', 'textconv.c',
-  # Termcap, dynlib (configure.ac:2349, 4660).  With TERMINFO=yes,
-  # terminfo.c provides tparam/BC/UP linked against -ltinfo;
-  # tparam.c is the !TERMINFO alternative.
-  'cm.c', 'dynlib.c', 'terminfo.c',
+  base_obj_basenames + ['emacs-module.c', 'terminfo.c'],
 )
-
-# Likewise add 'emacs-module' to the source list for libemacs_src_probe
-# (mirrors src/Makefile.in $(MODULES_OBJ) inclusion when modules are
-# enabled, configure.ac:4421).
 
 # Extra X11 / terminfo libraries that pkg-config doesn't list but
 # xterm.c, xfns.c, etc. directly call (XFixesSelectSelectionInput,
 # XShapeQueryExtension, XRender* ...).
-extra_x_libs = [
-  cc.find_library('X11',        required : true),
-  cc.find_library('Xfixes',     required : true),
-  cc.find_library('Xrender',    required : true),
-  cc.find_library('Xrandr',     required : true),
-  cc.find_library('Xcomposite', required : true),
-  cc.find_library('Xinerama',   required : true),
-  cc.find_library('Xi',         required : true),
-  cc.find_library('Xext',       required : true),
-  cc.find_library('Xtst',       required : true),
-  cc.find_library('SM',         required : true),  # X Session Mgmt
-  cc.find_library('ICE',        required : true),  # X ICE
-  cc.find_library('tinfo',      required : true),  # terminfo
-]
+extra_x_libs = []
+if gtk3_dep.found()
+  extra_x_libs = [
+    cc.find_library('X11',        required : true),
+    cc.find_library('Xfixes',     required : true),
+    cc.find_library('Xrender',    required : true),
+    cc.find_library('Xrandr',     required : true),
+    cc.find_library('Xcomposite', required : true),
+    cc.find_library('Xinerama',   required : true),
+    cc.find_library('Xi',         required : true),
+    cc.find_library('Xext',       required : true),
+    cc.find_library('Xtst',       required : true),
+    cc.find_library('SM',         required : true),  # X Session Mgmt
+    cc.find_library('ICE',        required : true),  # X ICE
+  ]
+endif
+# terminfo (ncurses).
+tinfo_dep = cc.find_library('tinfo', required : false)
+if not tinfo_dep.found()
+  tinfo_dep = cc.find_library('ncurses', required : true)
+endif
 
 src_deps = [
-  libgnu_dep, gtk3_dep, cairo_dep, cairo_ft_dep, harfbuzz_dep,
-  freetype_dep, fontconfig_dep, xft_dep, gnutls_dep, treesit_dep,
-  sqlite_dep, xml_dep, systemd_dep, gmp_dep,
+  libgnu_dep, gnutls_dep, treesit_dep,
+  sqlite_dep, xml_dep, gmp_dep,
   dependency('threads'),
+  tinfo_dep,
 ] + extra_x_libs
+if gtk3_dep.found()
+  src_deps += [gtk3_dep, cairo_dep, cairo_ft_dep,
+               harfbuzz_dep, freetype_dep, fontconfig_dep, xft_dep]
+else
+  # Without GTK, still link harfbuzz/freetype if found (used by hbfont.c etc.).
+  if harfbuzz_dep.found()
+    src_deps += harfbuzz_dep
+  endif
+  if freetype_dep.found()
+    src_deps += freetype_dep
+  endif
+endif
+if systemd_dep.found()
+  src_deps += systemd_dep
+endif
 if libgccjit_dep.found()
   src_deps += libgccjit_dep
 endif
@@ -274,7 +277,7 @@ temacs = executable(
   ],
   c_args : src_args,
   dependencies : src_deps,
-  link_args : ['-ldl', '-lm'],
+  link_args : is_linux ? ['-ldl', '-lm'] : ['-lm'],
   install : false,
 )
 
