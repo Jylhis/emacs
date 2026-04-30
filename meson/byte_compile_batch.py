@@ -52,6 +52,9 @@ def main() -> int:
                    help="generated lisp/international/charscript.el to stage")
     p.add_argument("--emoji-zwj", type=Path,
                    help="generated lisp/international/emoji-zwj.el to stage")
+    p.add_argument("--retry-failed", action="store_true",
+                   help="when a chunk fails, bisect to recover all "
+                        "compileable files (slow); off by default")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
@@ -120,18 +123,17 @@ def main() -> int:
               f"{len(chunk)} files starting with {chunk[0]}",
               file=sys.stderr, flush=True)
         rc = subprocess.run(cmd, env=env).returncode
-        if rc != 0:
-            # When a chunk fails (typically bootstrap-emacs segfaults
-            # at the first un-compilable file), every file after the
-            # crash point in that chunk is left without a .elc.
-            # Bisect: split the chunk in half and retry each half;
-            # repeat until single files isolate the bad apple.  This
-            # keeps the average cost O(log N) per crash instead of
-            # O(N) full re-runs per file.
+        if rc != 0 and args.retry_failed:
+            # When a chunk fails (bootstrap-emacs segfaults at the
+            # first un-compilable file), files after the crash have
+            # no .elc.  Bisect: split, retry each half; recurse only
+            # into halves whose batch still fails.  Off by default
+            # because each spawn costs several seconds (charscript /
+            # emoji-zwj / loaddefs staging), and on CI the cumulative
+            # cost can exceed the workflow's job timeout.
             stack = [chunk]
             while stack:
                 sub = stack.pop()
-                # Skip files whose .elc has already been produced.
                 missing = [r for r in sub
                            if not (lisp_root / r.with_suffix(".elc")).exists()]
                 if not missing:
