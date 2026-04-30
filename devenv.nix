@@ -1,85 +1,90 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 let
   installDir = "$DEVENV_ROOT/.emacs-dev";
 in
 {
   # https://devenv.sh/packages/
-  packages = with pkgs; [
-    # Nix tooling
-    nil
-    nixfmt
+  packages =
+    # Cross-platform core: Nix tooling, build tools, portable libraries,
+    # and the text/image stack that compiles on both Linux and Darwin.
+    (with pkgs; [
+      # Nix tooling
+      nil
+      nixfmt
 
-    # Nix linting
-    statix
-    deadnix
+      # Nix linting
+      statix
+      deadnix
 
-    # Build dependencies for GNU Emacs
-    autoconf
-    automake
-    pkg-config
-    texinfo
-    gnutls
-    jansson
-    libxml2
-    ncurses
-    sqlite
+      # Build dependencies for GNU Emacs
+      autoconf
+      automake
+      pkg-config
+      texinfo
+      gnutls
+      jansson
+      libxml2
+      ncurses
+      sqlite
 
-    # Meson + Ninja + Python (for the new build system; see PR #3)
-    meson
-    ninja
-    python3
+      # Meson + Ninja + Python (for the new build system; see PR #3)
+      meson
+      ninja
+      python3
 
-    # X11 + GTK3 stack (Linux/GTK3 baseline target)
-    gtk3
-    cairo
-    pango
-    fontconfig
-    freetype
-    xorg.libX11
-    xorg.libXfixes
-    xorg.libXrender
-    xorg.libXrandr
-    xorg.libXcomposite
-    xorg.libXinerama
-    xorg.libXi
-    xorg.libXext
-    xorg.libXtst
-    xorg.libXft
-    xorg.libXt
-    xorg.libSM
-    xorg.libICE
+      # Text/image stack used by both X11/GTK and NS/Cocoa builds
+      cairo
+      pango
+      fontconfig
+      freetype
+      harfbuzz
 
-    # Image libraries
-    libjpeg
-    libtiff
-    giflib
-    libpng
-    librsvg
-    libwebp
+      # Image libraries
+      libjpeg
+      libtiff
+      giflib
+      libpng
+      librsvg
+      libwebp
 
-    # Tree-sitter (modern syntax parsing)
-    tree-sitter
+      # Tree-sitter (modern syntax parsing)
+      tree-sitter
 
-    # Native compilation (Emacs Lisp -> native code)
-    libgccjit
+      # Bignum support (GMP)
+      gmp
 
-    # Text shaping
-    harfbuzz
+      # Other useful libraries
+      lcms2
+      zlib
+      gawk
 
-    # Bignum support (GMP)
-    gmp
-
-    # Other useful libraries
-    lcms2
-    dbus
-    acl
-    zlib
-    gawk
-
-    # Debugging
-    # gdb
-  ];
+      # Debugging
+      # gdb
+    ])
+    # Linux-only: X11/GTK toolkit, Linux POSIX ACL/xattr, D-Bus, and
+    # libgccjit for native compilation.  On macOS the NS/Cocoa build
+    # supplies the GUI stack from the Apple SDK, and `acl` transitively
+    # pulls `attr` which fails to build against macOS xattr headers.
+    ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+      acl
+      dbus
+      libgccjit
+      gtk3
+      xorg.libX11
+      xorg.libXfixes
+      xorg.libXrender
+      xorg.libXrandr
+      xorg.libXcomposite
+      xorg.libXinerama
+      xorg.libXi
+      xorg.libXext
+      xorg.libXtst
+      xorg.libXft
+      xorg.libXt
+      xorg.libSM
+      xorg.libICE
+    ]);
 
   # https://devenv.sh/languages/
   languages = {
