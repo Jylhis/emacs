@@ -60,18 +60,21 @@ jobs:
       # Cache the Meson build dir so incremental rebuilds reuse compiled
       # objects.  A change in any meson.build file invalidates via the
       # hashFiles key.
+      # Cache key includes the workflow file hash so a workflow change
+      # invalidates a stale build/ from a previous toolchain (e.g. the
+      # earlier devenv-based runs).  No restore-keys fallback -- a
+      # partial restore across configs is more harm than help.
       - name: Cache Meson build dir
         id: cache-build
         uses: actions/cache@v4
         with:
           path: build
           key: |
-            meson-build-${{ runner.os }}-${{ hashFiles('meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build') }}
-          restore-keys: |
-            meson-build-${{ runner.os }}-
+            meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build') }}
 
-      # Cache the source-tree .elc files produced as a side-effect of
-      # batch-byte-compile.  Speeds up compile-main on incremental runs.
+      # Source-tree .elc cache (the side-output of batch-byte-compile)
+      # is keyed on the .el contents.  Restoration across .el changes is
+      # safe because byte-compile is idempotent on unchanged sources.
       - name: Cache source-tree byte-compile artefacts
         uses: actions/cache@v4
         with:
@@ -85,8 +88,6 @@ jobs:
             lisp/international/charprop.el
           key: |
             elc-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
-          restore-keys: |
-            elc-${{ runner.os }}-
 
       # ---- Build ------------------------------------------------------
       - name: meson setup
@@ -99,15 +100,45 @@ jobs:
           fi
 
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)
-        run: meson compile -C build --verbose
+        run: |
+          set -o pipefail
+          meson compile -C build --verbose 2>&1 | tee build/compile.log
 
-      - name: Dump meson logs on failure
+      - name: Dump build diagnostics on failure
         if: failure()
         run: |
+          echo "=== last 200 lines of compile.log ==="
+          tail -200 build/compile.log || true
           echo "=== meson-log.txt ==="
           tail -200 build/meson-logs/meson-log.txt || true
-          echo "=== ninja log ==="
-          tail -100 build/.ninja_log || true
+
+      # Post the verbose compile log to the PR so diagnostics are
+      # visible without admin-rights log access.  Only fires on PRs.
+      - name: Post build failure as PR comment
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const sections = [];
+            for (const [name, path] of [
+              ['compile.log (last 8 KB)', 'build/compile.log'],
+              ['meson-log.txt (last 4 KB)', 'build/meson-logs/meson-log.txt'],
+            ]) {
+              try {
+                const text = fs.readFileSync(path, 'utf8');
+                const slice = text.slice(name.includes('8') ? -8192 : -4096);
+                sections.push(`<details><summary>${name}</summary>\n\n\`\`\`\n${slice}\n\`\`\`\n</details>`);
+              } catch (e) {
+                sections.push(`(no ${path}: ${e.message})`);
+              }
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '## Meson build failure on ' + context.sha.slice(0, 7) + '\n\n' + sections.join('\n\n'),
+            });
 
       - name: meson compile bootstrap-emacs.pdmp
         run: meson compile -C build bootstrap-emacs.pdmp
