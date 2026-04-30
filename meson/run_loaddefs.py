@@ -93,6 +93,19 @@ def main() -> int:
     if rc != 0:
         return rc
 
+    # Touch top-level loaddefs.el so it has the newest mtime among
+    # all loaddefs.el files in the tree.  loaddefs-generate writes
+    # cedet/ede/loaddefs.el etc. in addition to lisp/loaddefs.el, and
+    # both `(provide 'loaddefs)`.  When byte-compile sets
+    # load-prefer-newer, `(load "loaddefs")` from loadup.el would
+    # otherwise pick whichever was written last -- typically a
+    # subdir-specific one, which assumes eieio-core is loaded.
+    import time
+    main = lisp / "loaddefs.el"
+    if main.exists():
+        now = time.time()
+        os.utime(main, (now, now))
+
     args.stamp.parent.mkdir(parents=True, exist_ok=True)
     args.stamp.write_text("ok\n")
     return 0
