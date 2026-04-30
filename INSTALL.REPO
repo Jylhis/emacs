@@ -6,6 +6,19 @@ directory on your local machine:
 
     git clone https://git.savannah.gnu.org/git/emacs.git
 
+* This branch supports both Meson and Autotools.  Meson is the
+  preferred path on this branch (claude/migrate-to-meson-ninja-ZSbvG)
+  per .claude/plans/migrate-from-current-build-replicated-gadget.md.
+
+  To build with Meson:
+
+    meson setup build -Dnative-compilation=yes
+    meson compile -C build
+    meson test -C build --suite smoke
+    meson install -C build --destdir=/tmp/stage
+
+  Autotools instructions follow.
+
 To build the repository code, simply run 'make' in the 'emacs'
 directory.  This should work if your files are freshly checked out
 from the repository, and if you have the proper tools installed; the
