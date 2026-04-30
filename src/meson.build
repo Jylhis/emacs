@@ -307,32 +307,12 @@ bootstrap_emacs = custom_target(
   build_by_default : false,
 )
 
-# Unicode tables -- bootstrap-emacs runs admin/unidata/unidata-gen.el
-# to generate lisp/international/uni-*.el and charprop.el before the
-# bootstrap pdump consumes them.  Mirrors admin/unidata/Makefile.in
-# rules but uses bootstrap-emacs (undumped temacs).
-unidata_stamp = custom_target(
-  'unidata-stamp',
-  output  : 'unidata.stamp',
-  command : [
-    py, run_unidata,
-    '--bootstrap-emacs', bootstrap_emacs.full_path(),
-    '--source-root',     meson.global_source_root(),
-    '--stamp',           '@OUTPUT@',
-    '--charscript',      charscript_el.full_path(),
-    '--emoji-zwj',       emoji_zwj_el.full_path(),
-  ],
-  depends : [bootstrap_emacs, charsets_stamp,
-             charscript_el, emoji_zwj_el],
-  build_by_default : false,
-)
-
-# bootstrap-emacs.pdmp -- now wired end-to-end.  The custom_target
-# below runs bootstrap-emacs from $srcdir/src/ (so PATH_DUMPLOADSEARCH
-# = "../lisp" resolves to the source's lisp/), with EMACSDATA pointing
-# at etc/ so the charset maps land.  Depends on phase-6 generators
-# (charscript.el, emoji-zwj.el via admin/, etc/charsets/*.map via the
-# autotools-make stopgap) to satisfy loadup.el.
+# bootstrap-emacs.pdmp -- the workhorse dumped image.  Generated
+# WITHOUT unidata so the chicken-and-egg (uni-*.el needs a working
+# emacs to generate; loadup.el calls (load "charprop.el" t) which is
+# silent on missing) is broken.  bootstrap-emacs.pdmp drives every
+# subsequent script (run_unidata, run_loaddefs, byte_compile_batch);
+# undumped temacs segfaults on those workloads.
 run_dump = files('../meson/run_dump.py')
 bootstrap_pdmp = custom_target(
   'bootstrap-emacs.pdmp',
@@ -347,7 +327,27 @@ bootstrap_pdmp = custom_target(
     '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
   depends : [bootstrap_emacs, charscript_el, emoji_zwj_el,
-             charsets_stamp, unidata_stamp],
+             charsets_stamp],
+  build_by_default : false,
+)
+
+# Unicode tables -- runs admin/unidata/unidata-gen.el against
+# bootstrap-emacs.pdmp to generate lisp/international/uni-*.el and
+# charprop.el.  Mirrors admin/unidata/Makefile.in.
+unidata_stamp = custom_target(
+  'unidata-stamp',
+  output  : 'unidata.stamp',
+  command : [
+    py, run_unidata,
+    '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--dump-file',       bootstrap_pdmp.full_path(),
+    '--source-root',     meson.global_source_root(),
+    '--stamp',           '@OUTPUT@',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
+  ],
+  depends : [bootstrap_emacs, bootstrap_pdmp, charsets_stamp,
+             charscript_el, emoji_zwj_el],
   build_by_default : false,
 )
 

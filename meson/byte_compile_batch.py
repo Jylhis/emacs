@@ -39,6 +39,11 @@ def _load_path(lisp_root: Path) -> list[str]:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bootstrap-emacs", required=True)
+    p.add_argument("--dump-file", type=Path,
+                   help="bootstrap-emacs.pdmp; lets bootstrap-emacs run "
+                        "as the dumped emacs.  Without it, undumped temacs "
+                        "loads loadup.el on each invocation and segfaults "
+                        "under load when batch-byte-compiling many files.")
     p.add_argument("--source-root", required=True, type=Path)
     p.add_argument("--output-dir", required=True, type=Path,
                    help="root of the build/lisp tree")
@@ -89,8 +94,10 @@ def main() -> int:
     # Match the BYTE_COMPILE_FLAGS in lisp/Makefile.in:78.
     env["BYTE_COMPILE_DEBUG"] = "1"
 
-    base_cmd = [
-        args.bootstrap_emacs,
+    base_cmd = [args.bootstrap_emacs]
+    if args.dump_file is not None:
+        base_cmd.append(f"--dump-file={args.dump_file}")
+    base_cmd += [
         "--batch",
         "--no-site-file",
         "--no-site-lisp",

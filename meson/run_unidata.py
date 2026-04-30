@@ -33,6 +33,10 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bootstrap-emacs", required=True,
                    help="path to bootstrap-emacs binary")
+    p.add_argument("--dump-file", type=Path,
+                   help="bootstrap-emacs.pdmp; lets bootstrap-emacs run "
+                        "as the dumped emacs (undumped temacs segfaults "
+                        "on the unidata-gen workload).")
     p.add_argument("--source-root", required=True, type=Path,
                    help="path to Emacs source root")
     p.add_argument("--stamp", required=True, type=Path,
@@ -90,8 +94,10 @@ def main() -> int:
     env["EMACSDOC"] = str(src_root / "etc")
     env["EMACSLOADPATH"] = str(src_root / "lisp")
 
-    base_cmd = [
-        args.bootstrap_emacs,
+    base_cmd = [args.bootstrap_emacs]
+    if args.dump_file is not None:
+        base_cmd.append(f"--dump-file={args.dump_file}")
+    base_cmd += [
         "--batch", "--no-site-file", "--no-site-lisp",
         "-L", str(unidata_dir),
         "-l", "unidata-gen",

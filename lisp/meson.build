@@ -45,13 +45,15 @@ loaddefs_stamp = custom_target(
   command : [
     py, run_loaddefs,
     '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--dump-file',       bootstrap_pdmp.full_path(),
     '--source-root',     meson.global_source_root(),
     '--stamp',           '@OUTPUT@',
     '--charscript',      charscript_el.full_path(),
     '--emoji-zwj',       emoji_zwj_el.full_path(),
     '--subdirs',
   ] + loaddefs_subdirs,
-  depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
+  depends : [bootstrap_emacs, bootstrap_pdmp,
+             charscript_el, emoji_zwj_el, charsets_stamp],
   build_by_default : false,
 )
 
@@ -80,6 +82,7 @@ compile_first_elcs = custom_target(
   command : [
     py, byte_compile_batch,
     '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--dump-file',       bootstrap_pdmp.full_path(),
     '--source-root',     meson.global_source_root(),
     '--lisp-dir',        meson.global_source_root() / 'lisp',
     '--output-dir',      meson.current_build_dir(),
@@ -89,7 +92,8 @@ compile_first_elcs = custom_target(
     '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
   depends : [
-    bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp,
+    bootstrap_emacs, bootstrap_pdmp,
+    charscript_el, emoji_zwj_el, charsets_stamp,
   ],
   build_by_default : false,
 )
@@ -120,6 +124,7 @@ compile_main_elcs = custom_target(
   command : [
     py, byte_compile_batch,
     '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--dump-file',       bootstrap_pdmp.full_path(),
     '--source-root',     meson.global_source_root(),
     '--lisp-dir',        meson.global_source_root() / 'lisp',
     '--output-dir',      meson.current_build_dir(),
@@ -129,7 +134,8 @@ compile_main_elcs = custom_target(
     '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
   depends : [
-    bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp,
+    bootstrap_emacs, bootstrap_pdmp,
+    charscript_el, emoji_zwj_el, charsets_stamp,
     compile_first_elcs, compile_main_manifest, loaddefs_stamp,
   ],
   build_by_default : false,

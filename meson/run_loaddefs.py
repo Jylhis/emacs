@@ -43,6 +43,11 @@ def stage_intl(lisp: Path, charscript: Path | None,
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bootstrap-emacs", required=True)
+    p.add_argument("--dump-file", type=Path,
+                   help="bootstrap-emacs.pdmp; lets bootstrap-emacs run "
+                        "as the dumped emacs (autotools uses the full "
+                        "dumped emacs for loaddefs-generate, and the "
+                        "undumped temacs segfaults at scale).")
     p.add_argument("--source-root", required=True, type=Path)
     p.add_argument("--stamp", required=True, type=Path)
     p.add_argument("--charscript", type=Path)
@@ -98,8 +103,10 @@ def main() -> int:
             continue
         dirs.append(str(d))
 
-    cmd = [
-        args.bootstrap_emacs,
+    cmd = [args.bootstrap_emacs]
+    if args.dump_file is not None:
+        cmd.append(f"--dump-file={args.dump_file}")
+    cmd += [
         "--batch", "--no-site-file", "--no-site-lisp",
         "-l", str(lisp / "emacs-lisp/loaddefs-gen.el"),
         "-f", "loaddefs-generate--emacs-batch",
