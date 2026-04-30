@@ -14,11 +14,15 @@ from pathlib import Path
 
 
 # Files / patterns lisp/Makefile.in:357 skips during byte-compilation:
-#   *loaddefs* -- generated files, not byte-compilable on their own.
-#   COMPILE_FIRST list -- compiled separately first.  We do that
-#                         via the compile-first target.
+#   subdirs.el / leim-list.el -- generated path-tabulators.
 #   no-byte-compile cookie files -- header has ;;; ... -*- ... no-byte-compile: t.
-SKIP_PATTERNS = ("loaddefs", "subdirs.el", "leim-list.el")
+#
+# loaddefs.el and *-loaddefs.el files ARE byte-compiled by autotools
+# (the SUBDIRS glob picks them up).  Without loaddefs.elc the eager
+# macro expander hits autoloaded macros at load time and pdump
+# refuses to autoload during dump.  See lisp/loaddefs.el's defmacro
+# tramp-archive-autoload-file-name-regexp for an example.
+SKIP_PATTERNS = ("subdirs.el", "leim-list.el")
 
 
 def is_no_byte_compile(p: Path) -> bool:

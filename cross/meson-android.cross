@@ -1,0 +1,31 @@
+# Meson cross-file for Android builds.
+#
+# Usage:
+#   meson setup build-android \
+#     --cross-file cross/meson-android.cross \
+#     -Dandroid-ndk=/path/to/android-ndk-r26 \
+#     -Dandroid-api=29
+#
+# Requires Android NDK r26 or newer with Clang.  See java/INSTALL for
+# the full SDK / NDK / Gradle environment Emacs's Android port needs.
+# Phase 8 starter -- the compile path is incomplete; see
+# .claude/plans/migrate-from-current-build-replicated-gadget.md.
+
+[host_machine]
+system     = 'android'
+cpu_family = 'aarch64'
+cpu        = 'aarch64'
+endian     = 'little'
+
+[binaries]
+c    = ['clang', '--target=aarch64-linux-android29']
+ar   = 'llvm-ar'
+strip = 'llvm-strip'
+pkg-config = 'false'
+
+[properties]
+needs_exe_wrapper = true
+
+[built-in options]
+c_args = ['-D__ANDROID__=29', '-DHAVE_ANDROID']
+c_link_args = ['-llog']

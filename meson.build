@@ -300,13 +300,45 @@ emacs_version = meson.project_version()
 
 subdir('lib')      # Phase 2: full gnulib port (in progress)
 subdir('lib-src')  # Phase 1: helper executables (working)
-subdir('admin')    # Phase 6: charsets + unidata generators (stopgap)
-subdir('src')      # Phase 3: temacs + bootstrap-emacs (working)
-subdir('lisp')     # Phase 4: byte-compile (pilot)
-# subdir('lisp')     # Phase 4-5: byte-compile + native-comp
-# subdir('leim')     # Phase 6
-# subdir('admin')    # Phase 6: charsets, grammars, unidata
-# subdir('doc')      # Phase 6: texinfo manuals
-# subdir('test')     # Phase 7: ERT
-# subdir('nextstep') # Phase 8: macOS .app
-# subdir('java')     # Phase 8: Android cross-build
+subdir('admin')    # Phase 6: charsets + unidata generators
+subdir('src')      # Phase 3: temacs + bootstrap-emacs
+subdir('lisp')     # Phase 4-5: byte-compile + native-comp
+subdir('test')     # Phase 7: ERT smoke tests
+# subdir('leim')     # Phase 6 (TODO)
+# subdir('doc')      # Phase 6: texinfo manuals (TODO)
+# subdir('nextstep') # Phase 8: macOS .app (TODO)
+# subdir('java')     # Phase 8: Android cross-build (TODO)
+
+# ----------------------------------------------------------------------
+# Phase 9 -- install rules.  Replicates the bare minimum of
+# Makefile.in's install targets (lines 552-937).  The full set
+# includes desktop / icon / gsettings schema / info / man pages;
+# those land as we move them out of comments below.
+# ----------------------------------------------------------------------
+prefix = get_option('prefix')
+datadir = get_option('datadir')          # share/
+bindir = get_option('bindir')            # bin/
+libexecdir = get_option('libexecdir')    # libexec/
+infodir = get_option('infodir')          # share/info/
+mandir = get_option('mandir')            # share/man/
+
+emacs_data = datadir / 'emacs' / meson.project_version()
+emacs_arch = (libexecdir / 'emacs' / meson.project_version()
+              / (host_machine.cpu_family() + '-linux-gnu'))
+
+# Install rules driven by meson_install.py.  Custom install script
+# is used (instead of install_data on custom_target outputs) because
+# install_data evaluates paths at configure time, but our emacs and
+# emacs.pdmp don't exist until the build runs.  meson.add_install_script
+# runs after the build, by which point the dumped emacs and pdmp
+# image are present.
+meson.add_install_script(
+  py, files('meson/meson_install.py'),
+  '--prefix',     prefix,
+  '--bindir',     bindir,
+  '--datadir',    emacs_data,
+  '--libexecdir', emacs_arch,
+  '--build-root', meson.global_build_root(),
+  '--source-root', meson.global_source_root(),
+  '--version',    meson.project_version(),
+)

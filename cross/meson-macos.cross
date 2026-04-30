@@ -1,0 +1,29 @@
+# Meson cross-file for macOS builds from Linux.
+#
+# Usage (from Linux host with osxcross):
+#   meson setup build-macos \
+#     --cross-file cross/meson-macos.cross \
+#     -Dtoolkit=ns
+#
+# For native macOS builds, do NOT use this cross-file -- just run
+# `meson setup build -Dtoolkit=ns` and meson auto-detects the host
+# clang and frameworks.  Phase 8 starter -- nextstep/ needs the
+# Emacs.app assembly script before this becomes a complete build.
+# See .claude/plans/migrate-from-current-build-replicated-gadget.md.
+
+[host_machine]
+system     = 'darwin'
+cpu_family = 'x86_64'
+cpu        = 'x86_64'
+endian     = 'little'
+
+[binaries]
+c    = 'x86_64-apple-darwin22-clang'
+objc = 'x86_64-apple-darwin22-clang'
+ar   = 'x86_64-apple-darwin22-ar'
+strip = 'x86_64-apple-darwin22-strip'
+pkg-config = 'x86_64-apple-darwin22-pkg-config'
+
+[built-in options]
+c_args   = ['-mmacosx-version-min=10.15']
+objc_args = ['-mmacosx-version-min=10.15', '-fobjc-arc']

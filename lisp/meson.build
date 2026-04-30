@@ -123,6 +123,31 @@ compile_main_elcs = custom_target(
 )
 
 # ----------------------------------------------------------------------
+# Phase 5 -- native compilation (lisp/Makefile.in:446-449).
+# Disabled when libgccjit is absent.  Runs after compile_main_elcs
+# so all .elc are present; .eln files land beside their .el sources
+# (the autotools default) and are picked up by native-comp on
+# emacs startup.
+# ----------------------------------------------------------------------
+native_compile = files('../meson/native_compile.py')
+if libgccjit_dep.found()
+  native_lisp_stamp = custom_target(
+    'native-lisp-stamp',
+    output : 'native-lisp.stamp',
+    command : [
+      py, native_compile,
+      '--emacs',       meson.global_build_root() / 'src/emacs',
+      '--source-root', meson.global_source_root(),
+      '--lisp-dir',    meson.global_source_root() / 'lisp',
+      '--manifest',    compile_main_manifest.full_path(),
+      '--stamp',       '@OUTPUT@',
+    ],
+    depends : [compile_main_elcs, loaddefs_stamp],
+    build_by_default : false,
+  )
+endif
+
+# ----------------------------------------------------------------------
 # Final dump.  emacs --batch -l loadup --temacs=pdump produces
 # emacs.pdmp.  Lives here rather than in src/meson.build because it
 # depends on compile_main_elcs and loaddefs_stamp.  See

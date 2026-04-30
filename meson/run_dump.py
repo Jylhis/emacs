@@ -71,6 +71,24 @@ def main() -> int:
     env["EMACSDOC"] = str(src_root / "etc")
     env["EMACSLOADPATH"] = str(src_root / "lisp")
 
+    # For pdump mode, loadup.el expects to find byte-compiled .elc
+    # files.  Meson puts them in build/lisp/, but the source tree
+    # lisp/ has only .el.  Stage the .elc files alongside their
+    # sources so load() picks them up via PATH_DUMPLOADSEARCH.  The
+    # source tree's .el remains canonical; only .elc is added.
+    if args.mode == "pdump":
+        # Locate build/lisp by walking up from output-pdmp.  The
+        # output is build/src/emacs.pdmp; build/lisp is a sibling.
+        build_lisp = args.output_pdmp.parent.parent / "lisp"
+        if build_lisp.is_dir():
+            for elc in build_lisp.rglob("*.elc"):
+                rel = elc.relative_to(build_lisp)
+                target = src_root / "lisp" / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                if (not target.exists()
+                        or target.stat().st_mtime < elc.stat().st_mtime):
+                    shutil.copy2(elc, target)
+
     out_dir = args.output_pdmp.parent
     out_dir.mkdir(parents=True, exist_ok=True)
 

@@ -90,6 +90,7 @@ def main() -> int:
     # rpl_realloc redirect in pathological ways).  50 keeps each
     # chunk well clear.
     chunk_size = 50
+    failed_individually: list[Path] = []
     for i in range(0, len(rel_files), chunk_size):
         chunk = rel_files[i:i + chunk_size]
         cmd = base_cmd + [str(lisp_root / r) for r in chunk]
@@ -98,8 +99,26 @@ def main() -> int:
               file=sys.stderr, flush=True)
         rc = subprocess.run(cmd, env=env).returncode
         if rc != 0:
-            print(f"chunk {i // chunk_size + 1} failed (rc={rc}), continuing",
+            print(f"chunk {i // chunk_size + 1} failed (rc={rc}); "
+                  f"retrying individually",
                   file=sys.stderr, flush=True)
+            # When a chunk fails (typically bootstrap-emacs segfault
+            # mid-batch), the .elc files for everything after the
+            # crash point are missing.  Retry each file in a fresh
+            # subprocess so a single bad apple doesn't poison the
+            # rest of the chunk.
+            for rel in chunk:
+                if (lisp_root / rel.with_suffix(".elc")).exists():
+                    continue
+                ind_cmd = base_cmd + [str(lisp_root / rel)]
+                ind_rc = subprocess.run(ind_cmd, env=env).returncode
+                if ind_rc != 0:
+                    failed_individually.append(rel)
+    if failed_individually:
+        print(f"  {len(failed_individually)} files still failed individually:",
+              file=sys.stderr, flush=True)
+        for f in failed_individually[:5]:
+            print(f"    {f}", file=sys.stderr, flush=True)
 
     # batch-byte-compile writes the .elc next to each .el.  Move them
     # into the build tree, preserving the relative layout.  Files that
