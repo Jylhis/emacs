@@ -105,6 +105,13 @@ compile_main_manifest = custom_target(
     '--lisp-dir', meson.global_source_root() / 'lisp',
     '--output',   '@OUTPUT@',
   ],
+  # Must enumerate after loaddefs.el is generated, so the manifest
+  # picks up loaddefs.el (and theme-loaddefs.el etc.).  Without
+  # those byte-compiled, the final pdump errors with
+  #   Attempt to autoload rx while preparing to dump
+  # because eager macro expansion of `(autoload 'rx ... nil t)` in
+  # source-loaded loaddefs.el triggers a load that pdump rejects.
+  depends : [loaddefs_stamp],
 )
 
 compile_main_elcs = custom_target(
