@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run a single ERT test file via bootstrap-emacs.
+"""Run a single ERT test file via the dumped emacs.
 
 Mirrors the per-file pattern in test/Makefile.in:81 -- selector
 defaults to (not (or (tag :expensive-test) (tag :unstable))) so
@@ -21,7 +21,10 @@ DEFAULT_SELECTOR = "(not (or (tag :expensive-test) (tag :unstable)))"
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--bootstrap-emacs", required=True)
+    p.add_argument("--emacs", required=True,
+                   help="path to the dumped emacs binary")
+    p.add_argument("--dump-file", required=True,
+                   help="path to emacs.pdmp")
     p.add_argument("--source-root", required=True, type=Path)
     p.add_argument("--test-file", required=True, type=Path)
     p.add_argument("--selector", default=DEFAULT_SELECTOR)
@@ -45,11 +48,11 @@ def main() -> int:
     env["EMACSLOADPATH"] = ":".join(paths)
 
     cmd = [
-        args.bootstrap_emacs,
+        args.emacs,
         "--batch",
-        "--no-site-file",
-        "--no-site-lisp",
-        "-l", "ert",
+        "-Q",
+        f"--dump-file={args.dump_file}",
+        "--eval", "(require (quote ert))",
         "-l", str(args.test_file),
         "--eval",
         f"(ert-run-tests-batch-and-exit (quote {args.selector}))",

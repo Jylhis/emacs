@@ -49,11 +49,12 @@ foreach rel : smoke_tests
     py,
     args : [
       run_test,
-      '--bootstrap-emacs', bootstrap_emacs.full_path(),
-      '--source-root',     meson.global_source_root(),
-      '--test-file',       meson.global_source_root() / 'test' / rel,
+      '--emacs',       emacs.full_path(),
+      '--dump-file',   emacs_pdmp.full_path(),
+      '--source-root', meson.global_source_root(),
+      '--test-file',   meson.global_source_root() / 'test' / rel,
     ],
-    depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
+    depends : [emacs, emacs_pdmp],
     timeout : 120,
     suite : ['lisp', 'smoke'],
   )
@@ -133,11 +134,12 @@ foreach rel : extended_tests
     py,
     args : [
       run_test,
-      '--bootstrap-emacs', bootstrap_emacs.full_path(),
-      '--source-root',     meson.global_source_root(),
-      '--test-file',       meson.global_source_root() / 'test' / rel,
+      '--emacs',       emacs.full_path(),
+      '--dump-file',   emacs_pdmp.full_path(),
+      '--source-root', meson.global_source_root(),
+      '--test-file',   meson.global_source_root() / 'test' / rel,
     ],
-    depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
+    depends : [emacs, emacs_pdmp],
     timeout : 120,
     suite : ['lisp', 'extended'],
   )
