@@ -121,21 +121,35 @@ def main() -> int:
               file=sys.stderr, flush=True)
         rc = subprocess.run(cmd, env=env).returncode
         if rc != 0:
-            print(f"chunk {i // chunk_size + 1} failed (rc={rc}); "
-                  f"retrying individually",
-                  file=sys.stderr, flush=True)
-            # When a chunk fails (typically bootstrap-emacs segfault
-            # mid-batch), the .elc files for everything after the
-            # crash point are missing.  Retry each file in a fresh
-            # subprocess so a single bad apple doesn't poison the
-            # rest of the chunk.
-            for rel in chunk:
-                if (lisp_root / rel.with_suffix(".elc")).exists():
+            # When a chunk fails (typically bootstrap-emacs segfaults
+            # at the first un-compilable file), every file after the
+            # crash point in that chunk is left without a .elc.
+            # Bisect: split the chunk in half and retry each half;
+            # repeat until single files isolate the bad apple.  This
+            # keeps the average cost O(log N) per crash instead of
+            # O(N) full re-runs per file.
+            stack = [chunk]
+            while stack:
+                sub = stack.pop()
+                # Skip files whose .elc has already been produced.
+                missing = [r for r in sub
+                           if not (lisp_root / r.with_suffix(".elc")).exists()]
+                if not missing:
                     continue
-                ind_cmd = base_cmd + [str(lisp_root / rel)]
-                ind_rc = subprocess.run(ind_cmd, env=env).returncode
-                if ind_rc != 0:
-                    failed_individually.append(rel)
+                if len(missing) == 1:
+                    rel = missing[0]
+                    ind_cmd = base_cmd + [str(lisp_root / rel)]
+                    if subprocess.run(ind_cmd, env=env).returncode != 0:
+                        failed_individually.append(rel)
+                    continue
+                rc2 = subprocess.run(
+                    base_cmd + [str(lisp_root / r) for r in missing],
+                    env=env,
+                ).returncode
+                if rc2 != 0:
+                    mid = len(missing) // 2
+                    stack.append(missing[mid:])
+                    stack.append(missing[:mid])
     if failed_individually:
         print(f"  {len(failed_individually)} files still failed individually:",
               file=sys.stderr, flush=True)
