@@ -72,9 +72,12 @@ jobs:
           key: |
             meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build') }}
 
-      # Source-tree .elc cache (the side-output of batch-byte-compile)
-      # is keyed on the .el contents.  Restoration across .el changes is
-      # safe because byte-compile is idempotent on unchanged sources.
+      # Source-tree generated artefacts cache.  Bumping the key prefix
+      # invalidates a stale cache; v2 because v1 left lisp/loaddefs.el
+      # AND a possibly-newer lisp/cedet/ede/loaddefs.el on disk, which
+      # confused load-prefer-newer when bootstrap-emacs auto-loaded
+      # loadup.el during run_loaddefs.py / byte_compile_batch.py.  v3
+      # because some restored .elc files were stale relative to .el.
       - name: Cache source-tree byte-compile artefacts
         uses: actions/cache@v4
         with:
@@ -87,7 +90,7 @@ jobs:
             lisp/international/uni-*.el
             lisp/international/charprop.el
           key: |
-            elc-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
+            elc3-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
 
       # ---- Build ------------------------------------------------------
       - name: meson setup

@@ -55,6 +55,22 @@ def main() -> int:
     lisp = src_root / "lisp"
     stage_intl(lisp, args.charscript, args.emoji_zwj)
 
+    # Remove stale loaddefs files BEFORE running bootstrap-emacs.
+    # If a cache restored lisp/cedet/ede/loaddefs.el etc., bootstrap-emacs's
+    # auto-loaded loadup.el calls (load "loaddefs") which under
+    # load-prefer-newer can resolve to a subtree-local loaddefs whose
+    # first form is (eieio-defclass-autoload ...) -- undefined this
+    # early in the boot.  Wipe them so loaddefs-generate--emacs-batch
+    # can write fresh ones.
+    for loaddefs in [lisp / "loaddefs.el", lisp / "theme-loaddefs.el"]:
+        if loaddefs.exists():
+            loaddefs.unlink()
+    for sub in lisp.rglob("*-loaddefs.el"):
+        sub.unlink()
+    for sub in lisp.rglob("loaddefs.el"):
+        # Subdir loaddefs (e.g. lisp/cedet/ede/loaddefs.el) -- regenerated.
+        sub.unlink()
+
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
     env["EMACSDOC"] = str(src_root / "etc")
