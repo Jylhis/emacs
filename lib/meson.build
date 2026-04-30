@@ -28,7 +28,6 @@ libgnu_sources = files(
   'filevercmp.c',
   'fingerprint.c',
   'free.c',
-  'getrandom.c',
   'getopt.c',
   'getopt1.c',
   'gettime.c',
