@@ -37,12 +37,29 @@ def main() -> int:
                    help="path to Emacs source root")
     p.add_argument("--stamp", required=True, type=Path,
                    help="stamp file written on success")
+    p.add_argument("--charscript", type=Path,
+                   help="generated charscript.el to stage in lisp/international/")
+    p.add_argument("--emoji-zwj", type=Path,
+                   help="generated emoji-zwj.el to stage in lisp/international/")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
     unidata_dir = src_root / "admin/unidata"
     intl_dir = src_root / "lisp/international"
     intl_dir.mkdir(parents=True, exist_ok=True)
+
+    # Stage charscript.el / emoji-zwj.el so bootstrap-emacs's
+    # loadup.el can `(require 'charscript)` while running unidata-gen.
+    import shutil
+    for staged, fname in [
+        (args.charscript, "charscript.el"),
+        (args.emoji_zwj, "emoji-zwj.el"),
+    ]:
+        if staged is None or not staged.exists():
+            continue
+        target = intl_dir / fname
+        if not target.exists() or target.read_bytes() != staged.read_bytes():
+            shutil.copy2(staged, target)
 
     uni_files = discover_uni_files(unidata_dir / "unidata-gen.el")
     if not uni_files:

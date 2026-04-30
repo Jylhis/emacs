@@ -48,10 +48,32 @@ def main() -> int:
                    help="newline-separated list of .el files relative to lisp-dir")
     p.add_argument("--stamp", type=Path,
                    help="touch this file when the batch succeeds")
+    p.add_argument("--charscript", type=Path,
+                   help="generated lisp/international/charscript.el to stage")
+    p.add_argument("--emoji-zwj", type=Path,
+                   help="generated lisp/international/emoji-zwj.el to stage")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
     lisp_root = args.lisp_dir.resolve()
+
+    # Stage charscript.el / emoji-zwj.el into lisp/international/ so
+    # bootstrap-emacs's loadup.el (which reads characters.el) can
+    # resolve `(require 'charscript)` etc.  In the autotools build
+    # these files live in lisp/international/ all the time because
+    # admin/unidata/Makefile generates them in place.  Meson generates
+    # them in the build tree, so they need an explicit copy.
+    intl = lisp_root / "international"
+    intl.mkdir(parents=True, exist_ok=True)
+    for staged, fname in [
+        (args.charscript, "charscript.el"),
+        (args.emoji_zwj, "emoji-zwj.el"),
+    ]:
+        if staged is None or not staged.exists():
+            continue
+        target = intl / fname
+        if not target.exists() or target.read_bytes() != staged.read_bytes():
+            shutil.copy2(staged, target)
 
     rel_files = [Path(line.strip())
                  for line in args.manifest.read_text().splitlines()

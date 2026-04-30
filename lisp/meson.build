@@ -47,6 +47,8 @@ loaddefs_stamp = custom_target(
     '--bootstrap-emacs', bootstrap_emacs.full_path(),
     '--source-root',     meson.global_source_root(),
     '--stamp',           '@OUTPUT@',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
     '--subdirs',
   ] + loaddefs_subdirs,
   depends : [bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp],
@@ -83,6 +85,8 @@ compile_first_elcs = custom_target(
     '--output-dir',      meson.current_build_dir(),
     '--manifest',        compile_first_manifest,
     '--stamp',           '@OUTPUT@',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
   depends : [
     bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp,
@@ -114,6 +118,8 @@ compile_main_elcs = custom_target(
     '--output-dir',      meson.current_build_dir(),
     '--manifest',        compile_main_manifest.full_path(),
     '--stamp',           '@OUTPUT@',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
   depends : [
     bootstrap_emacs, charscript_el, emoji_zwj_el, charsets_stamp,

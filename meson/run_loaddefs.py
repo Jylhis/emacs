@@ -22,17 +22,38 @@ from pathlib import Path
 EXCLUDED_DIRS = {"obsolete", "term", "leim/quail"}
 
 
+def stage_intl(lisp: Path, charscript: Path | None,
+               emoji_zwj: Path | None) -> None:
+    """Stage admin/-generated files into lisp/international/ so
+    bootstrap-emacs's loadup.el can `(require 'charscript)` etc."""
+    import shutil
+    intl = lisp / "international"
+    intl.mkdir(parents=True, exist_ok=True)
+    for staged, fname in [
+        (charscript, "charscript.el"),
+        (emoji_zwj, "emoji-zwj.el"),
+    ]:
+        if staged is None or not staged.exists():
+            continue
+        target = intl / fname
+        if not target.exists() or target.read_bytes() != staged.read_bytes():
+            shutil.copy2(staged, target)
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--bootstrap-emacs", required=True)
     p.add_argument("--source-root", required=True, type=Path)
     p.add_argument("--stamp", required=True, type=Path)
+    p.add_argument("--charscript", type=Path)
+    p.add_argument("--emoji-zwj", type=Path)
     p.add_argument("--subdirs", nargs="*", default=[],
                    help="(deprecated) ignored -- subdirs are auto-enumerated")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
     lisp = src_root / "lisp"
+    stage_intl(lisp, args.charscript, args.emoji_zwj)
 
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")

@@ -316,8 +316,11 @@ unidata_stamp = custom_target(
     '--bootstrap-emacs', bootstrap_emacs.full_path(),
     '--source-root',     meson.global_source_root(),
     '--stamp',           '@OUTPUT@',
+    '--charscript',      charscript_el.full_path(),
+    '--emoji-zwj',       emoji_zwj_el.full_path(),
   ],
-  depends : [bootstrap_emacs, charsets_stamp],
+  depends : [bootstrap_emacs, charsets_stamp,
+             charscript_el, emoji_zwj_el],
   build_by_default : false,
 )
 
