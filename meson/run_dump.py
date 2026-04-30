@@ -34,6 +34,9 @@ def main() -> int:
                    help="generated lisp/international/charscript.el")
     p.add_argument("--emoji-zwj", type=Path,
                    help="generated lisp/international/emoji-zwj.el")
+    p.add_argument("--doc-file", type=Path,
+                   help="generated etc/DOC; required for pdump mode "
+                        "where loadup.el's Snarf-documentation reads it.")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
@@ -52,6 +55,15 @@ def main() -> int:
         target = lisp_intl / fname
         if not target.exists() or target.read_bytes() != staged.read_bytes():
             shutil.copy(staged, target)
+
+    # Stage etc/DOC -- loadup.el's (Snarf-documentation "DOC") looks
+    # for it under EMACSDOC = src_root/etc/.
+    if args.doc_file is not None and args.doc_file.exists():
+        etc_doc = src_root / "etc/DOC"
+        etc_doc.parent.mkdir(parents=True, exist_ok=True)
+        if (not etc_doc.exists()
+                or etc_doc.read_bytes() != args.doc_file.read_bytes()):
+            shutil.copy(args.doc_file, etc_doc)
 
     # For --temacs=pbootstrap, loadup.el reads .el sources rather than
     # generated loaddefs.el (which won't exist yet); but if a stale

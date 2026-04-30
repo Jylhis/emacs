@@ -99,6 +99,23 @@ globals_h = custom_target(
 )
 
 # ----------------------------------------------------------------------
+# etc/DOC -- doc strings extracted from base_obj sources by
+# make-docfile -d.  Snarf-documentation in loadup.el reads it during
+# the final pdump (loadup.el calls (Snarf-documentation "DOC")).
+# Mirrors src/Makefile.in:583.
+# ----------------------------------------------------------------------
+etc_doc = custom_target(
+  'etc-DOC',
+  input  : base_obj_sources,
+  output : 'DOC',
+  command : [
+    make_docfile,
+    '-d', meson.current_source_dir(),
+  ] + base_obj_basenames,
+  capture : true,
+)
+
+# ----------------------------------------------------------------------
 # lisp.mk -- list of Lisp files loadup.el will load, extracted from
 # the (load "...") forms in lisp/loadup.el.  See
 # src/Makefile.in:488-494.  We only need this as a Meson-side data

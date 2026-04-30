@@ -184,10 +184,11 @@ emacs_pdmp = custom_target(
     '--mode',            'pdump',
     '--charscript',      charscript_el.full_path(),
     '--emoji-zwj',       emoji_zwj_el.full_path(),
+    '--doc-file',        etc_doc.full_path(),
   ],
   depends : [
     emacs, charscript_el, emoji_zwj_el, charsets_stamp,
-    compile_main_elcs, loaddefs_stamp,
+    etc_doc, compile_main_elcs, loaddefs_stamp,
   ],
   build_by_default : false,
 )
