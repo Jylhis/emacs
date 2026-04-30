@@ -99,7 +99,15 @@ jobs:
           fi
 
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)
-        run: meson compile -C build
+        run: meson compile -C build --verbose
+
+      - name: Dump meson logs on failure
+        if: failure()
+        run: |
+          echo "=== meson-log.txt ==="
+          tail -200 build/meson-logs/meson-log.txt || true
+          echo "=== ninja log ==="
+          tail -100 build/.ninja_log || true
 
       - name: meson compile bootstrap-emacs.pdmp
         run: meson compile -C build bootstrap-emacs.pdmp
