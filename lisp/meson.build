@@ -101,6 +101,22 @@ compile_first_elcs = custom_target(
 # ----------------------------------------------------------------------
 # compile-main: every other .el under lisp/.
 # ----------------------------------------------------------------------
+# Glob every .el under lisp/ at meson configure time so adding /
+# removing an .el invalidates the manifest target.  meson has no
+# native glob in custom_target, so use run_command.
+_all_lisp_files = run_command(
+  py, list_lisp_files,
+  '--lisp-dir', meson.global_source_root() / 'lisp',
+  '--output',   '/dev/stdout',
+  check : true,
+).stdout().strip().split('\n')
+_all_lisp_paths = []
+foreach rel : _all_lisp_files
+  if rel != ''
+    _all_lisp_paths += meson.global_source_root() / 'lisp' / rel
+  endif
+endforeach
+
 compile_main_manifest = custom_target(
   'compile-main.manifest',
   output : 'compile-main.manifest',
@@ -109,6 +125,7 @@ compile_main_manifest = custom_target(
     '--lisp-dir', meson.global_source_root() / 'lisp',
     '--output',   '@OUTPUT@',
   ],
+  depend_files : _all_lisp_paths,
   # Must enumerate after loaddefs.el is generated, so the manifest
   # picks up loaddefs.el (and theme-loaddefs.el etc.).  Without
   # those byte-compiled, the final pdump errors with

@@ -287,11 +287,18 @@ endif
 # ----------------------------------------------------------------------
 # On macOS, toolkit=auto should NOT require GTK (NS is the native
 # window system).  Only require GTK when explicitly requested.
-_gtk_required = get_option('toolkit') == 'gtk3'
-if get_option('toolkit') == 'auto' and not is_darwin
+# Skip the probe entirely for toolkit=none / pgtk so a developer
+# host with GTK3 installed doesn't silently flip on HAVE_GTK3.
+_toolkit = get_option('toolkit')
+_gtk_required = _toolkit == 'gtk3'
+if _toolkit == 'auto' and not is_darwin
   _gtk_required = true
 endif
-gtk3_dep      = dependency('gtk+-3.0',  required : _gtk_required)
+if _toolkit == 'gtk3' or (_toolkit == 'auto' and not is_darwin)
+  gtk3_dep = dependency('gtk+-3.0', required : _gtk_required)
+else
+  gtk3_dep = dependency('', required : false)
+endif
 # Verify GTK3 X11 backend is usable (gdk/gdkx.h exists).  On macOS,
 # Nix may provide GTK3 without X11 backend headers.
 if gtk3_dep.found()
@@ -306,8 +313,14 @@ endif
 cairo_dep     = dependency('cairo',     required : get_option('cairo'))
 cairo_ft_dep  = dependency('cairo-ft',  required : get_option('cairo'))
 harfbuzz_dep  = dependency('harfbuzz',  required : get_option('harfbuzz'))
-freetype_dep  = dependency('freetype2', required : false)
-fontconfig_dep = dependency('fontconfig', required : false)
+# freetype/fontconfig must be present whenever a window-system
+# build is selected (src/meson.build always compiles ftfont.c +
+# ftcrfont.c + hbfont.c when gtk3_dep is found).  Forcing them
+# required here turns missing-header link errors at compile time
+# into a clear meson-setup failure.
+_font_required = gtk3_dep.found()
+freetype_dep  = dependency('freetype2', required : _font_required)
+fontconfig_dep = dependency('fontconfig', required : _font_required)
 xft_dep       = dependency('xft',       required : get_option('xft'))
 gnutls_dep    = dependency('gnutls',    required : get_option('gnutls'))
 treesit_dep   = dependency('tree-sitter', required : get_option('tree-sitter'))

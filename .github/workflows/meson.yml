@@ -4,18 +4,17 @@
 # This file is part of GNU Emacs.
 #
 # Build the Meson tree (see
-# .claude/plans/migrate-from-current-build-replicated-gadget.md).
-# CI uses Ubuntu's apt-get for dependencies because it's faster and
-# more reliable than Nix/devenv on hosted runners.  Local devs use
-# devenv (devenv.nix) to get the same toolchain.
+# .claude/plans/migrate-from-current-build-replicated-gadget.md)
+# inside a devenv.sh shell so the toolchain comes from the same Nix
+# pin as a developer's local environment.  See
+# https://devenv.sh/integrations/github-actions/.
 
 name: meson
 
 on:
   push:
     branches:
-      - master
-      - claude/migrate-to-meson-ninja-ZSbvG
+      - dev
   pull_request:
   workflow_dispatch:
 
@@ -35,49 +34,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ---- System dependencies ----------------------------------------
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            meson ninja-build python3 pkg-config \
-            gcc libc6-dev \
-            libgtk-3-dev libcairo2-dev libpango1.0-dev \
-            libharfbuzz-dev libfreetype-dev libfontconfig1-dev libxft-dev \
-            libgnutls28-dev libtree-sitter-dev libsqlite3-dev libxml2-dev \
-            libsystemd-dev libgmp-dev libgccjit-13-dev libjansson-dev \
-            libncurses-dev libacl1-dev \
-            libx11-dev libxfixes-dev libxrender-dev libxrandr-dev \
-            libxcomposite-dev libxinerama-dev libxi-dev libxext-dev \
-            libxtst-dev libsm-dev libice-dev libtinfo-dev \
-            libjpeg-dev libtiff-dev libgif-dev libpng-dev librsvg2-dev \
-            libwebp-dev liblcms2-dev libdbus-1-dev zlib1g-dev \
-            texinfo gawk
-          meson --version
-          ninja --version
+      # ---- Nix + devenv setup -----------------------------------------
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Set up Cachix (jylhis + devenv binary caches)
+        uses: cachix/cachix-action@v15
+        with:
+          name: jylhis
+          extraPullNames: devenv
+
+      - name: Install devenv
+        run: nix profile install --accept-flake-config nixpkgs#devenv
 
       # ---- Build cache ------------------------------------------------
       # Cache the Meson build dir so incremental rebuilds reuse compiled
-      # objects.  A change in any meson.build file invalidates via the
-      # hashFiles key.
-      # Cache key includes the workflow file hash so a workflow change
-      # invalidates a stale build/ from a previous toolchain (e.g. the
-      # earlier devenv-based runs).  No restore-keys fallback -- a
-      # partial restore across configs is more harm than help.
+      # objects.  A change in any meson.build / workflow file
+      # invalidates via the hashFiles key.  No restore-keys fallback --
+      # a partial restore across configs is more harm than help.
       - name: Cache Meson build dir
         id: cache-build
         uses: actions/cache@v4
         with:
           path: build
           key: |
-            meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build') }}
+            meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
 
-      # Source-tree generated artefacts cache.  Bumping the key prefix
-      # invalidates a stale cache; v2 because v1 left lisp/loaddefs.el
-      # AND a possibly-newer lisp/cedet/ede/loaddefs.el on disk, which
-      # confused load-prefer-newer when bootstrap-emacs auto-loaded
-      # loadup.el during run_loaddefs.py / byte_compile_batch.py.  v3
-      # because some restored .elc files were stale relative to .el.
+      # Source-tree generated artefacts cache (keyed on .el contents).
       - name: Cache source-tree byte-compile artefacts
         uses: actions/cache@v4
         with:
@@ -93,7 +81,11 @@ jobs:
             elc3-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
 
       # ---- Build ------------------------------------------------------
+      # Every build step runs inside `devenv shell` so the meson, ninja,
+      # gcc, gtk3, libgccjit, etc. all come from the Nix pin in
+      # devenv.nix instead of the runner's apt repositories.
       - name: meson setup
+        shell: devenv shell bash -- -e {0}
         run: |
           if [ ! -f build/meson-info/meson-info.json ]; then
             meson setup build
@@ -103,12 +95,14 @@ jobs:
           fi
 
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)
+        shell: devenv shell bash -- -e {0}
         run: |
           set -o pipefail
           meson compile -C build --verbose 2>&1 | tee build/compile.log
 
       - name: Dump build diagnostics on failure
         if: failure()
+        shell: devenv shell bash -- -e {0}
         run: |
           echo "=== last 200 lines of compile.log ==="
           tail -200 build/compile.log || true
@@ -144,29 +138,32 @@ jobs:
             });
 
       - name: meson compile bootstrap-emacs.pdmp
+        shell: devenv shell bash -- -e {0}
         run: meson compile -C build bootstrap-emacs.pdmp
 
       - name: meson compile compile-first
+        shell: devenv shell bash -- -e {0}
         run: meson compile -C build compile-first
 
       - name: meson compile loaddefs-stamp
+        shell: devenv shell bash -- -e {0}
         run: meson compile -C build loaddefs-stamp
 
       - name: meson compile compile-main
-        # ~75% of lisp/ byte-compiles cleanly today.  A handful of
-        # files in obsolete/, gnus/, and a few other places still
-        # fail; the runner retries individually so the rest gets
-        # produced.  Continue on error.
+        # ~75% of lisp/ byte-compiles cleanly today; the rest fall back
+        # to .el at load time.  Continue on error.
+        shell: devenv shell bash -- -e {0}
         continue-on-error: true
         run: meson compile -C build compile-main
 
       - name: meson compile emacs.pdmp
-        # Final dump: produces build/lisp/emacs.pdmp.
+        shell: devenv shell bash -- -e {0}
         continue-on-error: true
         run: meson compile -C build emacs.pdmp
 
       # ---- Smoke tests ------------------------------------------------
       - name: Smoke test bootstrap-emacs
+        shell: devenv shell bash -- -e {0}
         run: |
           test -x build/src/bootstrap-emacs
           test -f build/src/bootstrap-emacs.pdmp
@@ -175,8 +172,8 @@ jobs:
               --eval '(princ (* 6 7))'
 
       - name: Smoke test full emacs (factorial)
-        # Only runs if emacs.pdmp landed.
         if: success()
+        shell: devenv shell bash -- -e {0}
         continue-on-error: true
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
@@ -190,6 +187,7 @@ jobs:
           fi
 
       - name: Verify lib-src binaries
+        shell: devenv shell bash -- -e {0}
         run: |
           for bin in etags ebrowse emacsclient hexl make-docfile \
                     make-fingerprint movemail update-game-score; do

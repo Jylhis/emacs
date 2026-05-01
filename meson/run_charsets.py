@@ -99,9 +99,13 @@ COPY_RULES = {
 
 def run_mapconv(charsets_dir: Path, input_file: Path, regex: str,
                 style: str, awk_script: Path | None,
-                output: Path) -> int:
+                output: Path) -> None:
     """Invoke admin/charsets/mapconv (an awk wrapper) like
     `run_mapconv $< REGEX STYLE [SCRIPT] > $@`.
+
+    Raises CalledProcessError if mapconv exits non-zero so the
+    overall charsets target fails fast instead of writing a partial
+    /empty .map file and leaving the stamp marker valid.
     """
     cmd = [str(charsets_dir / "mapconv"), str(input_file), regex, style]
     if awk_script is not None:
@@ -109,7 +113,7 @@ def run_mapconv(charsets_dir: Path, input_file: Path, regex: str,
     env = os.environ.copy()
     env["AWK"] = "awk"
     with output.open("w") as fp:
-        return subprocess.run(cmd, env=env, stdout=fp).returncode
+        subprocess.run(cmd, env=env, stdout=fp, check=True)
 
 
 def main() -> int:

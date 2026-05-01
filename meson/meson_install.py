@@ -47,23 +47,31 @@ def main() -> int:
     p.add_argument("--version", required=True)
     args = p.parse_args()
 
-    # meson exports DESTDIR-adjusted paths via MESON_INSTALL_DESTDIR_PREFIX.
-    destdir_prefix = os.environ.get(
-        "MESON_INSTALL_DESTDIR_PREFIX", args.prefix
+    # meson sets MESON_INSTALL_PREFIX (the configured prefix without
+    # any DESTDIR) and MESON_INSTALL_DESTDIR_PREFIX (the staging path
+    # = DESTDIR + prefix when DESTDIR is in scope).
+    install_prefix = Path(
+        os.environ.get("MESON_INSTALL_PREFIX", args.prefix)
     )
-    destdir = Path(destdir_prefix).resolve()
+    destdir_prefix = Path(
+        os.environ.get("MESON_INSTALL_DESTDIR_PREFIX", args.prefix)
+    ).resolve()
 
-    # bindir / libexecdir / datadir come in as $prefix-relative; if they
-    # are absolute we treat them as-is, otherwise prepend destdir.
+    # Resolve a configured directory under the staging root, honouring
+    # DESTDIR for absolute paths too.  When DIR is absolute, strip the
+    # configured prefix and re-anchor under destdir_prefix; otherwise
+    # treat DIR as prefix-relative and join.  Falls back to the raw
+    # absolute path only when the configured prefix is not a parent
+    # (e.g. a developer passed --bindir=/tmp/elsewhere on purpose).
     def resolve(p: str) -> Path:
         path = Path(p)
-        if path.is_absolute():
-            # honour DESTDIR by stripping the prefix prefix and
-            # rebasing.  meson.add_install_script's argv-based prefix
-            # already includes destdir prefix when meson handles it,
-            # so just keep absolute paths.
+        if not path.is_absolute():
+            return destdir_prefix / p
+        try:
+            rel = path.relative_to(install_prefix)
+        except ValueError:
             return path
-        return destdir / p
+        return destdir_prefix / rel
 
     bindir = resolve(args.bindir)
     libexecdir = resolve(args.libexecdir)

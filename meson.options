@@ -124,8 +124,8 @@ option('libsystemd',  type : 'feature', value : 'auto',
   description : 'systemd notification support.')
 option('xml2',        type : 'feature', value : 'auto',
   description : 'libxml2 parsing support.')
-option('tree-sitter', type : 'feature', value : 'auto',
-  description : 'tree-sitter parser library.')
+option('tree-sitter', type : 'feature', value : 'enabled',
+  description : 'tree-sitter parser library (enabled by default).')
 option('gpm',         type : 'feature', value : 'auto',
   description : 'GPM mouse support on GNU/Linux console.')
 option('dbus',        type : 'feature', value : 'auto',
