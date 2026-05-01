@@ -1,0 +1,43 @@
+name: SonarCloud
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarcloud:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf automake autopoint texinfo libgtk-3-dev libgnutls28-dev libjansson-dev libtree-sitter-dev
+
+      - name: Download and unzip Build Wrapper
+        run: |
+          curl -sSLo build-wrapper-linux-x86.zip https://sonarcloud.io/static/cpp/build-wrapper-linux-x86.zip
+          unzip -o build-wrapper-linux-x86.zip
+
+      - name: Configure and build with Build Wrapper
+        run: |
+          ./autogen.sh
+          ./configure --without-x --without-dbus --without-gconf --without-selinux
+          ./build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir bw-output make -j"$(nproc)"
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.cfamily.compile-commands=bw-output/compile_commands.json
+            -Dsonar.cfamily.build-wrapper-output=bw-output
+            -Dsonar.exclusions=java/**
