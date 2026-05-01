@@ -1,0 +1,100 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Free Software Foundation, Inc.
+#
+# This file is part of GNU Emacs.
+#
+# Run SonarCloud's CFamily analyzer using the compile_commands.json
+# Meson emits into build/.  We do NOT use build-wrapper because the
+# compile_commands.json route lets us reuse the cached build/ tree
+# (build-wrapper would require a fresh observed clean compile every
+# run).  If the compile-commands path ever fails to resolve some
+# generated header, swap the `meson compile` step for a build-wrapper
+# invocation and switch the scan arg to
+# `sonar.cfamily.build-wrapper-output=...`.
+
+name: SonarCloud
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+# Cancel in-progress runs of the same workflow on the same ref so a
+# new push doesn't queue behind a stale scan.
+concurrency:
+  group: sonarcloud-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and analyze
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          # Shallow clones should be disabled for blame-based new-code
+          # detection in SonarCloud.
+          fetch-depth: 0
+
+      # ---- System dependencies ----------------------------------------
+      # Same toolchain as .github/workflows/meson.yml so the compile
+      # commands match what the regular build CI produces.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            meson ninja-build python3 pkg-config \
+            gcc libc6-dev \
+            libgtk-3-dev libcairo2-dev libpango1.0-dev \
+            libharfbuzz-dev libfreetype-dev libfontconfig1-dev libxft-dev \
+            libgnutls28-dev libtree-sitter-dev libsqlite3-dev libxml2-dev \
+            libsystemd-dev libgmp-dev libgccjit-13-dev libjansson-dev \
+            libncurses-dev libacl1-dev \
+            libx11-dev libxfixes-dev libxrender-dev libxrandr-dev \
+            libxcomposite-dev libxinerama-dev libxi-dev libxext-dev \
+            libxtst-dev libsm-dev libice-dev libtinfo-dev \
+            libjpeg-dev libtiff-dev libgif-dev libpng-dev librsvg2-dev \
+            libwebp-dev liblcms2-dev libdbus-1-dev zlib1g-dev \
+            texinfo gawk
+          meson --version
+          ninja --version
+
+      # ---- Build cache ------------------------------------------------
+      - name: Cache Meson build dir
+        uses: actions/cache@v4
+        with:
+          path: build
+          key: |
+            sonar-build-${{ runner.os }}-${{ hashFiles('.github/workflows/sonarcloud.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
+
+      # ---- Build ------------------------------------------------------
+      # Meson writes build/compile_commands.json during `meson setup`;
+      # SonarCloud's CFamily analyzer reads it directly.  We still run
+      # `meson compile` so that generated headers (config.h, gnulib
+      # configs, globals.h, charset tables, ...) exist on disk for the
+      # analyzer's preprocessor.  On a cache hit this is incremental.
+      - name: meson setup
+        run: |
+          if [ ! -f build/meson-info/meson-info.json ]; then
+            meson setup build
+          else
+            echo "Reusing cached build/ directory"
+            meson setup --reconfigure build
+          fi
+
+      - name: meson compile (refresh generated sources)
+        run: meson compile -C build
+
+      # ---- SonarCloud scan -------------------------------------------
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602  # v6.0.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            --define "sonar.cfamily.compile-commands=build/compile_commands.json"
