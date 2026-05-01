@@ -337,45 +337,6 @@ ns_string_from_pasteboard (id pb)
      for now so we can see if it causes problems.  */
   return [str lispString];
 
-#if 0
-  const char *utfStr;
-  int length;
-
-  /* assume UTF8 */
-  NS_DURING
-    {
-      /* EOL conversion: PENDING- is this too simple? */
-      NSMutableString *mstr = [[str mutableCopy] autorelease];
-      [mstr replaceOccurrencesOfString: @"\r\n" withString: @"\n"
-            options: NSLiteralSearch range: NSMakeRange (0, [mstr length])];
-      [mstr replaceOccurrencesOfString: @"\r" withString: @"\n"
-            options: NSLiteralSearch range: NSMakeRange (0, [mstr length])];
-
-      utfStr = [mstr UTF8String];
-      length = [mstr lengthOfBytesUsingEncoding: NSUTF8StringEncoding];
-
-#if ! defined (NS_IMPL_COCOA)
-      if (!utfStr)
-        {
-          utfStr = [mstr cString];
-          length = strlen (utfStr);
-        }
-#endif
-    }
-  NS_HANDLER
-    {
-      message1 ("ns_string_from_pasteboard: UTF8String failed\n");
-#if defined (NS_IMPL_COCOA)
-      utfStr = "Conversion failed";
-#else
-      utfStr = [str lossyCString];
-#endif
-      length = strlen (utfStr);
-    }
-  NS_ENDHANDLER
-
-    return make_string (utfStr, length);
-#endif
 }
 
 

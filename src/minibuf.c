@@ -34,9 +34,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "systty.h"
 #include "pdumper.h"
 
-#ifdef HAVE_NTGUI
-#include "w32term.h"
-#endif
 
 /* List of buffers for use as minibuffers.
    The first element of the list is used for the outermost minibuffer
@@ -89,15 +86,6 @@ minibuf_follows_frame (void)
              Qt);
 }
 
-#if 0
-/* Return TRUE when a minibuffer always remains on the frame where it
-   was first invoked. */
-static bool
-minibuf_stays_put (void)
-{
-  return NILP (Fdefault_toplevel_value (Qminibuffer_follows_selected_frame));
-}
-#endif
 
 /* Return TRUE when opening a (recursive) minibuffer causes
    minibuffers on other frames to move to the selected frame.  */
@@ -919,17 +907,7 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
       if (is_tty_frame (sf))
 	combine_updates_for_frame (sf, true);
 
-#ifndef HAVE_NTGUI
       flush_frame (XFRAME (XWINDOW (minibuf_window)->frame));
-#else
-      /* The reason this function isn't `flush_display' in the RIF is
-	 that `flush_frame' is also called in many other circumstances
-	 when some code wants X requests to be sent to the X server,
-	 but there is no corresponding "flush" concept on MS Windows,
-	 and flipping buffers every time `flush_frame' is called
-	 causes flicker.  */
-      w32_flip_buffers_if_dirty (XFRAME (XWINDOW (minibuf_window)->frame));
-#endif
     }
 
   /* Make minibuffer contents into a string.  */
@@ -1159,11 +1137,6 @@ read_minibuf_unwind (void)
   minibuf_save_list = Fcdr (minibuf_save_list);
   Voverriding_local_map = Fcar (minibuf_save_list);
   minibuf_save_list = Fcdr (minibuf_save_list);
-#if 0
-  temp = Fcar (minibuf_save_list);
-  if (FRAME_LIVE_P (XFRAME (WINDOW_FRAME (XWINDOW (temp)))))
-    minibuf_window = temp;
-#endif
   future_mini_window = Fcar (minibuf_save_list);
   minibuf_save_list = Fcdr (minibuf_save_list);
   calling_frame = Fcar (minibuf_save_list);

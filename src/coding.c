@@ -151,39 +151,6 @@ STRUCT CODING_SYSTEM
 
   Below is the template of these functions.  */
 
-#if 0
-static bool
-detect_coding_XXX (struct coding_system *coding,
-		   struct coding_detection_info *detect_info)
-{
-  const unsigned char *src = coding->source;
-  const unsigned char *src_end = coding->source + coding->src_bytes;
-  bool multibytep = coding->src_multibyte;
-  ptrdiff_t consumed_chars = 0;
-  int found = 0;
-  ...;
-
-  while (1)
-    {
-      /* Get one byte from the source.  If the source is exhausted, jump
-	 to no_more_source:.  */
-      ONE_MORE_BYTE (c);
-
-      if (! __C_conforms_to_XXX___ (c))
-	break;
-      if (! __C_strongly_suggests_XXX__ (c))
-	found = CATEGORY_MASK_XXX;
-    }
-  /* The byte sequence is invalid for XXX.  */
-  detect_info->rejected |= CATEGORY_MASK_XXX;
-  return 0;
-
- no_more_source:
-  /* The source exhausted successfully.  */
-  detect_info->found |= found;
-  return 1;
-}
-#endif
 
 /*** GENERAL NOTES on `decode_coding_XXX ()' functions ***
 
@@ -199,45 +166,6 @@ detect_coding_XXX (struct coding_system *coding,
 
   Below is the template of these functions.  */
 
-#if 0
-static void
-decode_coding_XXXX (struct coding_system *coding)
-{
-  const unsigned char *src = coding->source + coding->consumed;
-  const unsigned char *src_end = coding->source + coding->src_bytes;
-  /* SRC_BASE remembers the start position in source in each loop.
-     The loop will be exited when there's not enough source code, or
-     when there's no room in CHARBUF for a decoded character.  */
-  const unsigned char *src_base;
-  /* A buffer to produce decoded characters.  */
-  int *charbuf = coding->charbuf + coding->charbuf_used;
-  int *charbuf_end = coding->charbuf + coding->charbuf_size;
-  bool multibytep = coding->src_multibyte;
-
-  while (1)
-    {
-      src_base = src;
-      if (charbuf < charbuf_end)
-	/* No more room to produce a decoded character.  */
-	break;
-      ONE_MORE_BYTE (c);
-      /* Decode it. */
-    }
-
- no_more_source:
-  if (src_base < src_end
-      && coding->mode & CODING_MODE_LAST_BLOCK)
-    /* If the source ends by partial bytes to construct a character,
-       treat them as eight-bit raw data.  */
-    while (src_base < src_end && charbuf < charbuf_end)
-      *charbuf++ = *src_base++;
-  /* Remember how many bytes and characters we consumed.  If the
-     source is multibyte, the bytes and chars are not identical.  */
-  coding->consumed = coding->consumed_char = src_base - coding->source;
-  /* Remember how many characters we produced.  */
-  coding->charbuf_used = charbuf - coding->charbuf;
-}
-#endif
 
 /*** GENERAL NOTES on `encode_coding_XXX ()' functions ***
 
@@ -256,29 +184,6 @@ decode_coding_XXXX (struct coding_system *coding)
   reaches at the head of not-yet-encoded source text.
 
   Below is a template of these functions.  */
-#if 0
-static void
-encode_coding_XXX (struct coding_system *coding)
-{
-  bool multibytep = coding->dst_multibyte;
-  int *charbuf = coding->charbuf;
-  int *charbuf_end = charbuf->charbuf + coding->charbuf_used;
-  unsigned char *dst = coding->destination + coding->produced;
-  unsigned char *dst_end = coding->destination + coding->dst_bytes;
-  unsigned char *adjusted_dst_end = dst_end - _MAX_BYTES_PRODUCED_IN_LOOP_;
-  ptrdiff_t produced_chars = 0;
-
-  for (; charbuf < charbuf_end && dst < adjusted_dst_end; charbuf++)
-    {
-      int c = *charbuf;
-      /* Encode C into DST, and increment DST.  */
-    }
- label_no_more_destination:
-  /* How many chars and bytes we produced.  */
-  coding->produced_char += produced_chars;
-  coding->produced = dst - coding->destination;
-}
-#endif
 
 
 /*** 1. Preamble ***/
@@ -5988,9 +5893,6 @@ coding_inherit_eol_type (Lisp_Object coding_system, Lisp_Object parent)
 	 This has an effect only for external encoding (i.e., for output to
 	 file and process), not for in-buffer or Lisp string encoding.  */
       Lisp_Object system_eol_type = Qunix;
-      #ifdef DOS_NT
-       system_eol_type = Qdos;
-      #endif
 
       Lisp_Object parent_eol_type = system_eol_type;
       if (! NILP (parent))
@@ -6339,30 +6241,7 @@ check_utf_8 (struct coding_system *coding)
 Lisp_Object
 make_string_from_utf8 (const char *text, ptrdiff_t nbytes)
 {
-#if 0
-  /* This method is on average 2 times slower than if we use
-     decode_string_utf_8.  However, please leave the slower
-     implementation in the code for now, in case it needs to be reused
-     in some situations.  */
-  ptrdiff_t chars, bytes;
-  parse_str_as_multibyte ((const unsigned char *) text, nbytes,
-			  &chars, &bytes);
-  /* If TEXT is a valid UTF-8 string, we can convert it to a Lisp
-     string directly.  Otherwise, we need to decode it.  */
-  if (chars == nbytes || bytes == nbytes)
-    return make_multibyte_string (text, chars, nbytes);
-  else
-    {
-      struct coding_system coding;
-      setup_coding_system (Qutf_8_unix, &coding);
-      coding.mode |= CODING_MODE_LAST_BLOCK;
-      coding.source = (const unsigned char *) text;
-      decode_coding_object (&coding, Qnil, 0, 0, nbytes, nbytes, Qt);
-      return coding.dst_object;
-    }
-#else
   return decode_string_utf_8 (Qnil, text, nbytes, Qnil, false, Qt, Qt);
-#endif
 }
 
 /* Detect how end-of-line of a text of length SRC_BYTES pointed by
@@ -8548,12 +8427,6 @@ from_unicode (Lisp_Object str)
 Lisp_Object
 from_unicode_buffer (const wchar_t *wstr)
 {
-#if defined WINDOWSNT || defined CYGWIN
-  /* We get one of the two final null bytes for free.  */
-  ptrdiff_t len = 1 + sizeof (wchar_t) * wcslen (wstr);
-  AUTO_STRING_WITH_LEN (str, (char *) wstr, len);
-  return from_unicode (str);
-#else
   /* This code is used only on Android, where little endian UTF-16
      strings are extended to 32-bit wchar_t.  */
 
@@ -8572,7 +8445,6 @@ from_unicode_buffer (const wchar_t *wstr)
   AUTO_STRING_WITH_LEN (str, (char *) words,
 			(length - 1) * sizeof *words);
   return unbind_to (sa_count, from_unicode (str));
-#endif
 }
 
 wchar_t *
@@ -10435,21 +10307,12 @@ convert_string_nocopy (Lisp_Object string, Lisp_Object coding_system,
 Lisp_Object
 decode_file_name (Lisp_Object fname)
 {
-#ifdef WINDOWSNT
-  /* The w32 build pretends to use UTF-8 for file-name encoding, and
-     converts the file names either to UTF-16LE or to the system ANSI
-     codepage internally, depending on the underlying OS; see w32.c.  */
-  if (! NILP (Fcoding_system_p (Qutf_8)))
-    return convert_string_nocopy (fname, Qutf_8, 0);
-  return fname;
-#else  /* !WINDOWSNT */
   if (! NILP (Vfile_name_coding_system))
     return convert_string_nocopy (fname, Vfile_name_coding_system, 0);
   else if (! NILP (Vdefault_file_name_coding_system))
     return convert_string_nocopy (fname, Vdefault_file_name_coding_system, 0);
   else
     return fname;
-#endif
 }
 
 static Lisp_Object
@@ -10461,21 +10324,12 @@ encode_file_name_1 (Lisp_Object fname)
      try to encode them.  */
   if (!STRING_MULTIBYTE (fname))
     return fname;
-#ifdef WINDOWSNT
-  /* The w32 build pretends to use UTF-8 for file-name encoding, and
-     converts the file names either to UTF-16LE or to the system ANSI
-     codepage internally, depending on the underlying OS; see w32.c.  */
-  if (! NILP (Fcoding_system_p (Qutf_8)))
-    return convert_string_nocopy (fname, Qutf_8, 1);
-  return fname;
-#else  /* !WINDOWSNT */
   if (! NILP (Vfile_name_coding_system))
     return convert_string_nocopy (fname, Vfile_name_coding_system, 1);
   else if (! NILP (Vdefault_file_name_coding_system))
     return convert_string_nocopy (fname, Vdefault_file_name_coding_system, 1);
   else
     return fname;
-#endif
 }
 
 Lisp_Object

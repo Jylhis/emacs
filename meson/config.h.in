@@ -1,0 +1,453 @@
+/* config.h template for Meson build of GNU Emacs.
+   See .claude/plans/migrate-from-current-build-replicated-gadget.md.
+
+   Real config.h is generated from this template by meson via
+   configure_file().  Phase 2 of the migration is filling in the
+   feature detection that this template captures.  */
+
+#ifndef EMACS_CONFIG_H
+#define EMACS_CONFIG_H 1
+
+/* Feature test macros enabled by autotools default _AC_DEFINE
+   sequence; gnulib relies on them for *_unlocked stdio, strsep,
+   etc.  */
+#ifndef _GNU_SOURCE
+# define _GNU_SOURCE 1
+#endif
+#ifndef _DEFAULT_SOURCE
+# define _DEFAULT_SOURCE 1
+#endif
+
+/* Package metadata.  */
+#define PACKAGE_NAME "@PACKAGE_NAME@"
+#define PACKAGE_TARNAME "@PACKAGE_TARNAME@"
+#define PACKAGE_VERSION "@PACKAGE_VERSION@"
+#define PACKAGE_STRING "@PACKAGE_STRING@"
+#define PACKAGE_BUGREPORT "@PACKAGE_BUGREPORT@"
+#define PACKAGE_URL "@PACKAGE_URL@"
+#define VERSION "@PACKAGE_VERSION@"
+
+/* Copyright string used by lib-src tools.  */
+#define COPYRIGHT "@COPYRIGHT@"
+
+/* Build configuration metadata reported by system-configuration-*
+   variables (configure.ac:6363-6782).  */
+#define EMACS_CONFIGURATION   "@EMACS_CONFIGURATION@"
+#define EMACS_CONFIG_OPTIONS  "@EMACS_CONFIG_OPTIONS@"
+#define EMACS_CONFIG_FEATURES "@EMACS_CONFIG_FEATURES@"
+#define SYSTEM_TYPE           "@SYSTEM_TYPE@"
+
+/* USER_FULL_NAME on POSIX is pw_gecos (configure.ac:2429).  */
+#define USER_FULL_NAME pw->pw_gecos
+
+/* Shared library file extension (configure.ac:4370-4379).  */
+#mesondefine DYNAMIC_LIB_SUFFIX
+#mesondefine DYNAMIC_LIB_SECONDARY_SUFFIX
+
+/* POSIX threads available (configure.ac:2997).  */
+#define HAVE_PTHREAD 1
+
+/* SIGIO-based input (configure.ac:5952).  Defined on Darwin and
+   GNU/Linux.  */
+#mesondefine INTERRUPT_INPUT
+
+/* Use system malloc -- skip vm-limit.c, gmalloc.c, ralloc.c.  */
+#define SYSTEM_MALLOC 1
+
+/* GLib is available (transitive dep through GTK3).  */
+#mesondefine HAVE_GLIB
+
+/* Use terminfo (-ltinfo) over termcap (configure.ac:5541).  */
+#define TERMINFO 1
+
+/* FIONREAD / SIGIO usability (configure.ac:6230-6277).  */
+#mesondefine USABLE_FIONREAD
+#mesondefine USABLE_SIGIO
+
+/* subprocesses are universally supported on POSIX (configure.ac:5847).  */
+#define subprocesses 1
+
+/* Path component separator (':' on Unix, ';' on Windows).  */
+#define SEPCHAR '@SEPCHAR@'
+
+/* Filename separator (configure.ac:5848-5870).  Windows variants
+   land in phase 8 when MinGW support is reintroduced.  */
+#define DIRECTORY_SEP '/'
+#define IS_DEVICE_SEP(_c_) 0
+#define IS_DIRECTORY_SEP(_c_) ((_c_) == DIRECTORY_SEP)
+#define IS_ANY_SEP(_c_) (IS_DIRECTORY_SEP (_c_))
+
+/* Bit-bucket device path (configure.ac AH_TEMPLATE([NULL_DEVICE])).  */
+#define NULL_DEVICE "/dev/null"
+
+/* Window system / GUI feature flags (configure.ac
+   EMACS_CHECK_MODULES block, lines 2167-4067).  */
+#mesondefine HAVE_GTK3
+#mesondefine HAVE_GTK
+#mesondefine USE_GTK
+#mesondefine HAVE_X_WINDOWS
+#mesondefine HAVE_X11
+#mesondefine HAVE_WINDOW_SYSTEM
+#mesondefine POLL_FOR_INPUT
+#mesondefine HAVE_TEXT_CONVERSION
+#mesondefine TERM_HEADER
+#mesondefine HAVE_CAIRO
+#mesondefine USE_CAIRO
+#mesondefine HAVE_HARFBUZZ
+#mesondefine HAVE_FREETYPE
+#mesondefine USE_FONT_BACKEND
+#mesondefine HAVE_FONTCONFIG
+#mesondefine HAVE_XFT
+#mesondefine HAVE_GNUTLS
+#mesondefine HAVE_TREE_SITTER
+#mesondefine HAVE_SQLITE3
+#mesondefine HAVE_LIBXML2
+#mesondefine HAVE_LIBSYSTEMD
+#mesondefine HAVE_GMP
+#mesondefine HAVE_NATIVE_COMP
+
+/* C99 flexible array member: empty if supported, "1" otherwise (cf.
+   m4/flexmember.m4).  */
+#define FLEXIBLE_ARRAY_MEMBER @FLEXIBLE_ARRAY_MEMBER@
+
+/* EMACS_INT type and its alignof (configure.ac:2814).  Used by
+   src/lisp.h.  */
+#mesondefine ALIGNOF_EMACS_INT
+#mesondefine SIZEOF_EMACS_INT
+
+/* Header presence (probed at meson configure time).  */
+#mesondefine HAVE_FCNTL_H
+#mesondefine HAVE_GETOPT_H
+#mesondefine HAVE_INTTYPES_H
+#mesondefine HAVE_LIMITS_H
+#mesondefine HAVE_PWD_H
+#mesondefine HAVE_SIGNAL_H
+#mesondefine HAVE_STDINT_H
+#mesondefine HAVE_SYS_STAT_H
+#mesondefine HAVE_SYS_TYPES_H
+#mesondefine HAVE_UNISTD_H
+#mesondefine HAVE_SYS_RESOURCE_H
+#mesondefine HAVE_SYS_UTSNAME_H
+#mesondefine HAVE_SYS_SELECT_H
+#mesondefine HAVE_SYS_SOCKET_H
+#mesondefine HAVE_SYS_UN_H
+#mesondefine HAVE_SYS_WAIT_H
+#mesondefine HAVE_SYS_TIME_H
+#mesondefine HAVE_SYS_IOCTL_H
+#mesondefine HAVE_SYS_MMAN_H
+#mesondefine HAVE_SYS_PARAM_H
+#mesondefine HAVE_SYS_RANDOM_H
+#mesondefine HAVE_SYS_SYSINFO_H
+#mesondefine HAVE_SYS_FILE_H
+#mesondefine HAVE_SYS_INOTIFY_H
+#mesondefine HAVE_SYS_EVENTFD_H
+#mesondefine HAVE_SYS_TIMERFD_H
+#mesondefine HAVE_SYS_SYSCALL_H
+#mesondefine HAVE_SYS_PRCTL_H
+#mesondefine HAVE_SYS_PERSONALITY_H
+#mesondefine HAVE_SYS_SYSMACROS_H
+#mesondefine HAVE_ARPA_INET_H
+#mesondefine HAVE_ARPA_NAMESER_H
+#mesondefine HAVE_NETINET_IN_H
+#mesondefine HAVE_NETINET_TCP_H
+#mesondefine HAVE_NET_IF_H
+#mesondefine HAVE_NETDB_H
+#mesondefine HAVE_FENV_H
+#mesondefine HAVE_PTHREAD_H
+#mesondefine HAVE_UTIME_H
+#mesondefine HAVE_UTMP_H
+#mesondefine HAVE_WCHAR_H
+#mesondefine HAVE_WCTYPE_H
+#mesondefine HAVE_SCHED_H
+#mesondefine HAVE_SYSLOG_H
+#mesondefine HAVE_CRYPT_H
+#mesondefine HAVE_MALLOC_H
+#mesondefine HAVE_MALLOC_MALLOC_H
+#mesondefine HAVE_MNTENT_H
+#mesondefine HAVE_PATHS_H
+#mesondefine HAVE_TERMIOS_H
+#mesondefine HAVE_TERMIO_H
+#mesondefine HAVE_SGTTY_H
+#mesondefine HAVE_GRP_H
+
+/* Linux xattr-based ACL detection (m4/acl.m4).  USE_ACL is 0 here
+   because phase 2 doesn't yet wire libacl/libselinux/libsmack
+   detection; file_has_acl runs purely via listxattr on Linux.  */
+#mesondefine HAVE_LINUX_XATTR_H
+#mesondefine HAVE_LISTXATTR
+#define USE_ACL 0
+
+/* File notification (configure.ac:619-3712).  Backend is selected
+   at configure time: inotify (Linux), kqueue (macOS/BSD), or
+   gfile (GLib fallback).  */
+#mesondefine USE_FILE_NOTIFY
+#mesondefine HAVE_INOTIFY
+#mesondefine HAVE_KQUEUE
+#mesondefine HAVE_GFILENOTIFY
+
+/* Dynamic module support is universally available where dlopen
+   exists (configure.ac:4421).  */
+#define HAVE_MODULES 1
+#mesondefine MODULES_SUFFIX
+/* MODULES_SECONDARY_SUFFIX: on Darwin this is ".so" (so .so modules
+   work alongside .dylib).  On other systems it is undefined -- NOT
+   empty, because lread.c:1264 treats any non-NULL value as a real
+   suffix to test.  */
+#mesondefine MODULES_SECONDARY_SUFFIX
+
+/* Portable dumper -- mandatory for the meson build per the migration
+   plan (configure.ac:437, --with-pdumper=yes default).  */
+#define HAVE_PDUMPER 1
+#define DUMPING_PDUMPER 1
+
+/* Native-comp .eln file suffix (configure.ac:1755).  */
+#define NATIVE_ELISP_SUFFIX ".eln"
+
+/* Modern Xlib opaqueness probes (configure.ac AC_CHECK_FUNCS
+   block).  Set conditionally in meson.build when GTK3/X11 is
+   found.  */
+#mesondefine HAVE_XRMSETDATABASE
+#mesondefine HAVE_XKB
+#mesondefine HAVE_XRENDER
+#mesondefine HAVE_XCOMPOSITE
+#mesondefine HAVE_XSHAPE
+#mesondefine HAVE_XKBGETKEYBOARD
+#mesondefine HAVE_XINERAMA
+#mesondefine HAVE_XRANDR
+#mesondefine HAVE_XFIXES
+#mesondefine HAVE_XSYNC
+#mesondefine HAVE_XSCREENNUMBEROFSCREEN
+#mesondefine HAVE_XSCREENRESOURCESTRING
+
+/* OS family defines (configure.ac:6187-6196).  */
+#mesondefine DARWIN_OS
+#mesondefine GNU_LINUX
+#mesondefine USG
+
+/* PTY support (configure.ac:5808-6023).  */
+#mesondefine HAVE_PTYS
+#mesondefine UNIX98_PTYS
+#mesondefine DONT_REOPEN_PTY
+#mesondefine HAVE__SETJMP
+#mesondefine GC_SETJMP_WORKS
+#mesondefine SIGNALS_VIA_CHARACTERS
+
+/* PTY iteration/open macros -- defined as string values in meson.build
+   from the same logic as configure.ac:5988-6023.  */
+#mesondefine PTY_ITERATION
+#mesondefine PTY_OPEN
+#mesondefine PTY_NAME_SPRINTF
+#mesondefine PTY_TTY_NAME_SPRINTF
+
+/* TAB3 on Darwin is OXTABS (configure.ac:6074).  */
+#mesondefine TAB3
+
+/* From lib/dirent.in.h (phase-2 stopgap: full dirent.h substitution
+   pending).  */
+#define _GL_DT_NOTDIR 0x100
+
+/* AC_CHECK_FUNCS_ONCE block (configure.ac).  */
+#mesondefine HAVE_CFMAKERAW
+#mesondefine HAVE_CFSETSPEED
+#mesondefine HAVE_SENDTO
+#mesondefine HAVE_GETRANDOM
+#mesondefine HAVE_GETENTROPY
+#mesondefine HAVE_PTHREAD_KILL
+#mesondefine HAVE_PTHREAD_SETNAME_NP
+#mesondefine HAVE_GETRUSAGE
+#mesondefine HAVE_GETSOCKNAME
+#mesondefine HAVE_GETHOSTNAME
+#mesondefine HAVE_GETLOADAVG
+#mesondefine HAVE_UTIMENSAT
+#mesondefine HAVE_FUTIMENS
+#mesondefine HAVE_LUTIMES
+#mesondefine HAVE_PIPE2
+#mesondefine HAVE_MKOSTEMP
+#mesondefine HAVE_MKSTEMP
+#mesondefine HAVE_TCDRAIN
+#mesondefine HAVE_SIGSETJMP
+#mesondefine HAVE_EACCESS
+#mesondefine HAVE_FACCESSAT
+#mesondefine HAVE_SYSINFO
+#mesondefine HAVE_LSTAT
+#mesondefine HAVE_SYMLINK
+#mesondefine HAVE_READLINK
+#mesondefine HAVE_FCHMODAT
+#mesondefine HAVE_FDOPENDIR
+#mesondefine HAVE_SCHED_SETAFFINITY
+#mesondefine HAVE_GETPGRP
+#mesondefine HAVE_TGKILL
+#mesondefine HAVE_GETTIMEOFDAY
+#mesondefine HAVE_GETOPT_LONG_ONLY
+#mesondefine HAVE_GNU_GET_LIBC_VERSION
+
+/* Declaration probes (HAVE_DECL_* style, for gnulib headers).  */
+#mesondefine HAVE_DECL_STRMODE
+#mesondefine HAVE_COPY_FILE_RANGE
+#mesondefine HAVE_MEMRCHR
+
+/* Declarations for functions gnulib provides when the system lacks them.  */
+#ifndef HAVE_COPY_FILE_RANGE
+# include <unistd.h>
+extern ssize_t copy_file_range (int __infd, off_t *__pinoff,
+                                int __outfd, off_t *__poutoff,
+                                size_t __length, unsigned int __flags);
+#endif
+
+/* glibc *_unlocked stdio variants used by lib/unlocked-io.h.  */
+#mesondefine HAVE_DECL_CLEARERR_UNLOCKED
+#mesondefine HAVE_DECL_FEOF_UNLOCKED
+#mesondefine HAVE_DECL_FERROR_UNLOCKED
+#mesondefine HAVE_DECL_FFLUSH_UNLOCKED
+#mesondefine HAVE_DECL_FGETS_UNLOCKED
+#mesondefine HAVE_DECL_FILENO_UNLOCKED
+#mesondefine HAVE_DECL_FPUTC_UNLOCKED
+#mesondefine HAVE_DECL_FPUTS_UNLOCKED
+#mesondefine HAVE_DECL_FREAD_UNLOCKED
+#mesondefine HAVE_DECL_FWRITE_UNLOCKED
+#mesondefine HAVE_DECL_GETC_UNLOCKED
+#mesondefine HAVE_DECL_GETCHAR_UNLOCKED
+#mesondefine HAVE_DECL_PUTC_UNLOCKED
+#mesondefine HAVE_DECL_PUTCHAR_UNLOCKED
+
+/* gnulib getopt: prefix all getopt symbols to avoid clashes with the
+   system <getopt.h> (m4/getopt.m4:370, configure.ac via gl_GETOPT).
+   Must appear before any header that might pull in <getopt.h>.  */
+#define __GETOPT_PREFIX rpl_
+
+/* Text domain for gnulib message translation (m4/gettext_h.m4:17).
+   Emacs does not translate gnulib messages, but the macro must be
+   defined so getopt.c's dgettext() calls compile.  */
+#ifndef GNULIB_TEXT_DOMAIN
+# define GNULIB_TEXT_DOMAIN "gnulib"
+#endif
+
+/* Tell gnulib ieee754.h to use the portable (non-glibc) code path
+   (lib/ieee754.in.h:20).  Without this, it includes <features.h>
+   and <bits/endian.h> which only exist on glibc.  */
+#define _GL_GNULIB_HEADER 1
+
+/* Pull in the gnulib-common preprocessor block extracted from
+   m4/gnulib-common.m4 by meson/extract_ah_verbatim.py.  This provides
+   _GL_ATTRIBUTE_*, _Noreturn, _GL_GNUC_PREREQ, and friends used by
+   lib/attribute.h and other gnulib headers.  */
+#include "gnulib-common.h"
+
+/* gnulib's fcntl.in.h is processed into lib/fcntl.h by autotools and
+   guarantees O_BINARY / O_SEARCH / O_EXEC exist.  Phase 2 of the
+   Meson migration will process the same .in.h.  Until then, define
+   them to 0 on systems that don't provide them (Linux, macOS).  */
+#include <fcntl.h>
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
+#ifndef O_TEXT
+# define O_TEXT 0
+#endif
+#ifndef O_SEARCH
+# define O_SEARCH O_RDONLY
+#endif
+#ifndef O_EXEC
+# define O_EXEC O_RDONLY
+#endif
+
+/* gnulib expects <stddef.h> types (ptrdiff_t, size_t) to be available
+   transitively via config.h.  */
+#include <stddef.h>
+
+/* On macOS, environ is not declared in any header but is available
+   via crt_externs.h or as a plain extern.  Several src/ files
+   (callproc.c, emacs.c) reference it directly.  */
+#ifdef DARWIN_OS
+# include <crt_externs.h>
+# define environ (*_NSGetEnviron())
+#endif
+
+/* AH_BOTTOM equivalent: the autotools build appends conf_post.h to
+   the bottom of config.h.  conf_post.h provides ATTRIBUTE_*,
+   UNINIT, and various platform tweaks used throughout Emacs.  */
+#include <conf_post.h>
+
+/* glibc 2.34+ realloc(p, 0) frees p and returns NULL, which
+   src/alloc.c xrealloc() misinterprets as memory exhaustion
+   (lib/realloc.c:42 + m4/realloc.m4 logic).  Only the Emacs core
+   needs the legacy "always non-null" behavior; lib-src tools and
+   gnulib internals rely on the modern semantics.  EMACS_CORE is
+   set on src/ compile lines to opt in.  */
+#ifdef EMACS_CORE
+extern void *rpl_realloc (void *, size_t);
+# define realloc rpl_realloc
+#endif
+
+/* Phase-2 stopgap: gnulib's time_rz module provides timezone_t in
+   the substituted <time.h>.  Until lib/time.in.h substitution
+   lands, declare an opaque type so timefns.c et al compile.  Since
+   this is a typedef and Emacs only handles timezone_t through the
+   tzalloc/tzfree gnulib API, the implementation is opaque enough
+   that a forward declaration suffices for compilation.  */
+typedef struct tm_zone *timezone_t;
+
+/* Phase-2 stopgap for SIG2STR_MAX from gnulib lib/signal.in.h.  */
+#ifndef SIG2STR_MAX
+# define SIG2STR_MAX (5 + 1 + 10 + 1 + 2)
+#endif
+
+/* O_IGNORE_CTTY is a GNU/Hurd extension; no-op on other systems
+   (configure.ac, term.c:2513).  */
+#ifndef O_IGNORE_CTTY
+# define O_IGNORE_CTTY 0
+#endif
+
+/* Phase-2 stopgap for getrandom / GRND_* flags.  macOS
+   <sys/random.h> provides getentropy but not getrandom or the GRND_*
+   constants.  gnulib's sys_random.in.h normally wraps these, but
+   until sys/*.in.h substitution lands we define the shims here.  The
+   actual getrandom implementation is in lib/getrandom.c (added to
+   libgnu_sources).  Values match the Linux definitions.  */
+#include <sys/random.h>
+#ifndef GRND_NONBLOCK
+# define GRND_NONBLOCK 1
+#endif
+#ifndef GRND_RANDOM
+# define GRND_RANDOM 2
+#endif
+#ifndef HAVE_GETRANDOM
+# include <stddef.h>
+# include <unistd.h>
+extern ssize_t getrandom (void *__buffer, size_t __length,
+                           unsigned int __flags);
+#endif
+
+/* Stat-type test macros that gnulib's <sys/stat.h> substitute would
+   otherwise define to 0.  Phase-2 stopgap until lib/sys_stat.in.h is
+   substituted.  */
+#include <sys/stat.h>
+#ifndef S_TYPEISTMO
+# define S_TYPEISTMO(p) 0
+#endif
+#ifndef S_ISCTG
+# define S_ISCTG(m) 0
+#endif
+#ifndef S_ISDOOR
+# define S_ISDOOR(m) 0
+#endif
+#ifndef S_ISMPB
+# define S_ISMPB(m) 0
+#endif
+#ifndef S_ISMPC
+# define S_ISMPC(m) 0
+#endif
+#ifndef S_ISMPX
+# define S_ISMPX(m) 0
+#endif
+#ifndef S_ISNWK
+# define S_ISNWK(m) 0
+#endif
+#ifndef S_ISPORT
+# define S_ISPORT(m) 0
+#endif
+#ifndef S_ISWHT
+# define S_ISWHT(m) 0
+#endif
+
+#endif /* EMACS_CONFIG_H */

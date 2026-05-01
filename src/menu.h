@@ -19,7 +19,55 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #ifndef MENU_H
 #define MENU_H
 
-#include "../lwlib/lwlib-widget.h"
+#include "lisp.h"
+
+/* Widget value structure used to describe menu items.  Inlined from
+   the former lwlib/lwlib-widget.h.  */
+
+enum button_type
+{
+  BUTTON_TYPE_NONE,
+  BUTTON_TYPE_TOGGLE,
+  BUTTON_TYPE_RADIO
+};
+
+typedef struct _widget_value
+{
+  /* Name of widget.  */
+  Lisp_Object lname;
+  char *name;
+
+  /* Value (meaning depend on widget type).  */
+  char *value;
+
+  /* Keyboard equivalent.  */
+  Lisp_Object lkey;
+  char *key;
+
+  /* Help string or nil if none.  */
+  Lisp_Object help;
+
+  /* True if enabled.  */
+  bool enabled;
+
+  /* True if selected.  */
+  bool selected;
+
+  /* True if was edited (maintained by get_value).  */
+  bool edited;
+
+  /* The type of a button.  */
+  enum button_type button_type;
+
+  /* Contents of the sub-widgets, also selected slot for checkbox.  */
+  struct _widget_value *contents;
+
+  /* Data passed to callback.  */
+  void *call_data;
+
+  /* Next one in the list.  */
+  struct _widget_value *next;
+} widget_value;
 
 /* Bit fields used by terminal-specific menu_show_hook.  */
 
@@ -48,11 +96,6 @@ extern widget_value *digest_single_submenu (int, int, bool);
 extern Lisp_Object x_menu_show (struct frame *, int, int, int,
 				Lisp_Object, const char **);
 extern void x_activate_menubar (struct frame *);
-#endif
-#ifdef HAVE_NTGUI
-extern Lisp_Object w32_menu_show (struct frame *, int, int, int,
-				  Lisp_Object, const char **);
-extern void w32_activate_menubar (struct frame *);
 #endif
 #ifdef HAVE_NS
 extern Lisp_Object ns_menu_show (struct frame *, int, int, int,

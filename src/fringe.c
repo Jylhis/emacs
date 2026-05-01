@@ -1514,19 +1514,6 @@ init_fringe_bitmap (int which, struct fringe_bitmap *fb, int once_p)
 	}
 #endif /* !HAVE_X_WINDOWS && HAVE_PGTK */
 
-#ifdef HAVE_NTGUI
-      unsigned short *bits = fb->bits;
-      int j;
-      for (j = 0; j < fb->height; j++)
-	{
-	  unsigned short b = *bits;
-	  b <<= (16 - fb->width);
-	  /* Windows is little-endian, so the next line is always
-	     needed.  */
-	  b = ((b >> 8) | (b << 8));
-	  *bits++ = b;
-	}
-#endif
     }
 
   if (!once_p)
@@ -1861,20 +1848,3 @@ gui_define_fringe_bitmap (struct frame *f, int n)
   if (fb)
     rif->define_fringe_bitmap (n, fb->bits, fb->height, fb->width);
 }
-
-#ifdef HAVE_NTGUI
-void
-w32_reset_fringes (void)
-{
-  /* Destroy row bitmaps.  */
-  int bt;
-  struct redisplay_interface *rif = FRAME_RIF (SELECTED_FRAME ());
-
-  if (!rif || !rif->destroy_fringe_bitmap)
-    return;
-
-  for (bt = NO_FRINGE_BITMAP + 1; bt < max_used_fringe_bitmap; bt++)
-    rif->destroy_fringe_bitmap (bt);
-}
-
-#endif /* HAVE_NTGUI */

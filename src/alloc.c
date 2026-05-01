@@ -68,9 +68,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <sys/sysinfo.h>
 #endif
 
-#ifdef MSDOS
-#include "dosfns.h"		/* For dos_memory_info.  */
-#endif
 
 #if (defined ENABLE_CHECKING \
      && defined HAVE_VALGRIND_VALGRIND_H && !defined USE_VALGRIND)
@@ -139,10 +136,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #ifdef USE_GTK
 # include "gtkutil.h"
 #endif
-#ifdef WINDOWSNT
-#include "w32.h"
-#include "w32heap.h"	/* for sbrk */
-#endif
 
 /* A type with alignment at least as large as any object that Emacs
    allocates.  This is not max_align_t because some platforms (e.g.,
@@ -173,18 +166,6 @@ union emacs_align_type
      are rejected by some C99 compilers when this union subsequently
      appears in an `alignof' expression.  In practice their alignments
      never exceed that of the structs already listed.  */
-#if 0
-  struct Lisp_Bool_Vector Lisp_Bool_Vector;
-  struct Lisp_Char_Table Lisp_Char_Table;
-  struct Lisp_Sub_Char_Table Lisp_Sub_Char_Table;
-  struct Lisp_Module_Function Lisp_Module_Function;
-  struct Lisp_Process Lisp_Process;
-  struct Lisp_Vector Lisp_Vector;
-  struct save_window_data save_window_data;
-  struct scroll_bar scroll_bar;
-  struct xwidget_view xwidget_view;
-  struct xwidget xwidget;
-#endif
 };
 
 /* MALLOC_SIZE_NEAR (N) is a good number to pass to malloc when
@@ -1380,9 +1361,6 @@ typedef union
      because C99 prohibits a flexible array member from having a type
      that is itself a flexible array.  So, comment this member out here,
      but remember that the option's there when using this union.  */
-#if 0
-  struct sdata u;
-#endif
 
   /* When STRING is null.  */
   struct
@@ -5263,9 +5241,6 @@ flush_stack_call_func1 (void (*func) (void *arg), void *arg)
 static int
 valid_pointer_p (void *p)
 {
-#ifdef WINDOWSNT
-  return w32_valid_pointer_p (p, 16);
-#else
 
   if (ADDRESS_SANITIZER)
     return p ? -1 : 0;
@@ -5292,7 +5267,6 @@ valid_pointer_p (void *p)
     }
 
   return -1;
-#endif
 }
 
 /* Return 2 if OBJ is a killed or special buffer object, 1 if OBJ is a
@@ -5876,9 +5850,6 @@ garbage_collect (void)
   xg_mark_data ();
 #endif
 
-#ifdef HAVE_HAIKU
-  mark_haiku_display ();
-#endif
 
 #ifdef HAVE_WINDOW_SYSTEM
   mark_fringe_data ();
@@ -7571,11 +7542,7 @@ enum defined_HAVE_PGTK { defined_HAVE_PGTK = true };
 enum defined_HAVE_PGTK { defined_HAVE_PGTK = false };
 #endif
 
-#ifdef WINDOWSNT
-enum defined_WINDOWSNT { defined_WINDOWSNT = true };
-#else
 enum defined_WINDOWSNT { defined_WINDOWSNT = false };
-#endif
 
 /* When compiled with GCC, GDB might say "No enum type named
    pvec_type" if we don't have at least one symbol with that type, and

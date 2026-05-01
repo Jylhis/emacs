@@ -35,13 +35,6 @@ typedef unsigned long Time;
 
 /* On some configurations (hpux8.0, X11R4), sys/time.h and X11/Xos.h
    disagree about the name of the guard symbol.  */
-#ifdef HPUX
-#ifdef _STRUCT_TIMEVAL
-#ifndef __TIMEVAL__
-#define __TIMEVAL__
-#endif
-#endif
-#endif
 
 #include <sys/time.h>	/* for 'struct timeval' */
 

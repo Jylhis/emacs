@@ -44,9 +44,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "itree.h"
 #include "pdumper.h"
 
-#ifdef WINDOWSNT
-#include "w32heap.h"		/* for mmap_* */
-#endif
 
 #ifdef HAVE_TREE_SITTER
 #include "treesit.h"

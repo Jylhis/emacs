@@ -55,11 +55,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
    into the same 1-, 2-, or 4-byte allocation unit in the MinGW
    builds.  It was also needed to port to pre-C99 compilers, although
    we don't care about that any more.  */
-#if NS_IMPL_GNUSTEP || defined __MINGW32__
-typedef unsigned int bool_bf;
-#else
 typedef bool bool_bf;
-#endif
 
 /* A substitute for __has_attribute on compilers that lack it.
    It is used only on arguments like cleanup that are handled here.
@@ -98,64 +94,7 @@ typedef bool bool_bf;
    prototyped declarations, which yields a conflicting definition of
    srand48; it tries to redeclare what was once srandom to be srand48.
    So we go with HAVE_LRAND48 being defined.  */
-#ifdef HPUX
-#undef srandom
-#undef random
-#undef HAVE_RANDOM
-#undef HAVE_RINT
-#endif  /* HPUX */
 
-#ifdef MSDOS
-#ifndef __DJGPP__
-You lose; /* Emacs for DOS must be compiled with DJGPP */
-#endif
-#define _NAIVE_DOS_REGS
-
-/* Start of gnulib-related stuff  */
-
-/* lib/ftoastr.c wants strtold, but DJGPP only has _strtold.  DJGPP >
-   2.03 has it, but it also has _strtold as a stub that jumps to
-   strtold, so use _strtold in all versions.  */
-#define strtold _strtold
-
-#if __DJGPP__ > 2 || __DJGPP_MINOR__ > 3
-# define HAVE_LSTAT 1
-#else
-# define lstat stat
-/* DJGPP 2.03 and older don't have the next two.  */
-# define EOVERFLOW ERANGE
-# define SIZE_MAX  4294967295U
-#endif
-
-/* Things that lib/reg* wants.  */
-
-#define mbrtowc(pwc, s, n, ps) mbtowc (pwc, s, n)
-#define wcrtomb(s, wc, ps) wctomb (s, wc)
-#define btowc(b) ((wchar_t) (b))
-#define towupper(chr) toupper (chr)
-#define towlower(chr) tolower (chr)
-#define iswalnum(chr) isalnum (chr)
-#define wctype(name) ((wctype_t) 0)
-#define iswctype(wc, type) false
-#define mbsinit(ps) 1
-
-/* Some things that lib/at-func.c wants.  */
-#define GNULIB_SUPPORT_ONLY_AT_FDCWD
-
-/* Needed by lib/lchmod.c.  */
-#define EOPNOTSUPP EINVAL
-
-/* We must intercept 'opendir' calls to stash away the directory name,
-   so we could reuse it in readlinkat; see msdos.c.  */
-#define opendir sys_opendir
-
-/* End of gnulib-related stuff.  */
-
-#define emacs_raise(sig) msdos_fatal_signal (sig)
-
-/* DATA_START is needed by vm-limit.c. */
-#define DATA_START (&etext + 1)
-#endif  /* MSDOS */
 
 #if defined HAVE_NTGUI && !defined DebPrint
 # ifdef EMACSDEBUG
@@ -166,14 +105,6 @@ extern void _DebPrint (const char *fmt, ...);
 # endif
 #endif
 
-#if defined CYGWIN && defined HAVE_NTGUI
-# define NTGUI_UNICODE /* Cygwin runs only on UNICODE-supporting systems */
-# define _WIN32_WINNT 0x500 /* Win2k */
-/* The following was in /usr/include/string.h prior to Cygwin 1.7.33.  */
-#ifndef strnicmp
-#define strnicmp strncasecmp
-#endif
-#endif
 
 /* Tell time_rz.c to use Emacs's getter and setter for TZ.
    Only Emacs uses time_rz so this is OK.  */
@@ -376,17 +307,6 @@ extern int emacs_setenv_TZ (char const *);
 #define REQUIRE_GNUISH_STRFTIME_AM_PM false
 #define SUPPORT_NON_GREG_CALENDARS_IN_STRFTIME false
 
-#ifdef MSDOS
-/* These are required by file-has-acl.c but defined in dirent.h and
-   errno.h, which are not generated on DOS.  */
-#define _GL_DT_NOTDIR 0x100   /* Not a directory */
-#define ENOTSUP ENOSYS
-# define IFTODT(mode) \
-   (S_ISREG (mode) ? DT_REG : S_ISDIR (mode) ? DT_DIR \
-    : S_ISLNK (mode) ? DT_LNK : S_ISBLK (mode) ? DT_BLK \
-    : S_ISCHR (mode) ? DT_CHR : S_ISFIFO (mode) ? DT_FIFO \
-    : S_ISSOCK (mode) ? DT_SOCK : DT_UNKNOWN)
-#endif /* MSDOS */
 
 #if defined WINDOWSNT && !(defined OMIT_CONSOLESAFE && OMIT_CONSOLESAFE == 1)
 # if !defined _UCRT || !(HAVE_DECL_GETDELIM && HAVE_DECL_GETLINE)

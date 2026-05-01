@@ -53,9 +53,6 @@ enum fullscreen_type
   FULLSCREEN_HEIGHT    = 0x2,
   FULLSCREEN_BOTH      = 0x3, /* Not a typo but means "width and height".  */
   FULLSCREEN_MAXIMIZED = 0x4,
-#ifdef HAVE_NTGUI
-  FULLSCREEN_WAIT      = 0x8
-#endif
 };
 
 enum z_group
@@ -306,17 +303,7 @@ struct frame
   /* Number of elements in `menu_bar_vector' that have meaningful data.  */
   int menu_bar_items_used;
 
-#if defined (USE_X_TOOLKIT) || defined (HAVE_NTGUI)
-  /* A buffer to hold the frame's name.  Since this is used by the
-     window system toolkit, we can't use the Lisp string's pointer
-     (`name', above) because it might get relocated.  */
-  char *namebuf;
-#endif
 
-#ifdef USE_X_TOOLKIT
-  /* Used to pass geometry parameters to toolkit functions.  */
-  char *shell_position;
-#endif
 
   /* Glyph pool and matrix.  */
   struct glyph_pool *current_pool;
@@ -466,10 +453,8 @@ struct frame
   /* Nonzero if we should actually display horizontal scroll bars on this frame.  */
   bool_bf horizontal_scroll_bars : 1;
 
-# ifndef HAVE_NTGUI
   /* True if this is an override_redirect frame.  */
   bool_bf override_redirect : 1;
-#endif
 
   /* Nonzero if this frame's icon should not appear on its display's taskbar.  */
   bool_bf skip_taskbar : 1;
@@ -932,16 +917,8 @@ default_pixels_per_inch_y (void)
 #define FRAME_INITIAL_P(f) ((f)->output_method == output_initial)
 #define FRAME_TERMCAP_P(f) ((f)->output_method == output_termcap)
 #define FRAME_X_P(f) ((f)->output_method == output_x_window)
-#ifndef HAVE_NTGUI
 #define FRAME_W32_P(f) false
-#else
-#define FRAME_W32_P(f) ((f)->output_method == output_w32)
-#endif
-#ifndef MSDOS
 #define FRAME_MSDOS_P(f) false
-#else
-#define FRAME_MSDOS_P(f) ((f)->output_method == output_msdos_raw)
-#endif
 #ifndef HAVE_NS
 #define FRAME_NS_P(f) false
 #else
@@ -952,11 +929,7 @@ default_pixels_per_inch_y (void)
 #else
 #define FRAME_PGTK_P(f) ((f)->output_method == output_pgtk)
 #endif
-#ifndef HAVE_HAIKU
 #define FRAME_HAIKU_P(f) false
-#else
-#define FRAME_HAIKU_P(f) ((f)->output_method == output_haiku)
-#endif
 #ifndef HAVE_ANDROID
 #define FRAME_ANDROID_P(f) false
 #else
@@ -968,17 +941,11 @@ default_pixels_per_inch_y (void)
 #ifdef HAVE_X_WINDOWS
 #define FRAME_WINDOW_P(f) FRAME_X_P (f)
 #endif
-#ifdef HAVE_NTGUI
-#define FRAME_WINDOW_P(f) FRAME_W32_P (f)
-#endif
 #ifdef HAVE_NS
 #define FRAME_WINDOW_P(f) FRAME_NS_P(f)
 #endif
 #ifdef HAVE_PGTK
 #define FRAME_WINDOW_P(f) FRAME_PGTK_P(f)
-#endif
-#ifdef HAVE_HAIKU
-#define FRAME_WINDOW_P(f) FRAME_HAIKU_P (f)
 #endif
 #ifdef HAVE_ANDROID
 #define FRAME_WINDOW_P(f) FRAME_ANDROID_P (f)
@@ -1239,11 +1206,7 @@ FRAME_PARENT_FRAME (struct frame *f)
 #define FRAME_UNDECORATED(f) ((f)->undecorated)
 
 #if defined (HAVE_WINDOW_SYSTEM)
-#ifdef HAVE_NTGUI
-#define FRAME_OVERRIDE_REDIRECT(f) ((void) (f), 0)
-#else
 #define FRAME_OVERRIDE_REDIRECT(f) ((f)->override_redirect)
-#endif
 #define FRAME_SKIP_TASKBAR(f) ((f)->skip_taskbar)
 #define FRAME_NO_FOCUS_ON_MAP(f) ((f)->no_focus_on_map)
 #define FRAME_NO_ACCEPT_FOCUS(f) ((f)->no_accept_focus)
@@ -1884,9 +1847,7 @@ extern void free_frame_menubar (struct frame *);
 
 #if defined HAVE_X_WINDOWS
 extern void x_wm_set_icon_position (struct frame *, int, int);
-#if !defined USE_X_TOOLKIT
 extern const char *x_get_resource_string (const char *, const char *);
-#endif
 #endif /* HAVE_X_WINDOWS */
 
 #if !defined (HAVE_NS) && !defined (HAVE_PGTK)

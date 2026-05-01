@@ -236,11 +236,7 @@ enum font_property_index
 #define FONT_SET_STYLE(font, prop, val)	\
   ASET (font, prop, make_fixnum (font_style_to_value (prop, val, true)))
 
-#ifndef MSDOS
 #define FONT_WIDTH(f) ((f)->max_width)
-#else
-#define FONT_WIDTH(f) 1
-#endif
 #define FONT_HEIGHT(f) ((f)->height)
 #define FONT_BASE(f) ((f)->ascent)
 #define FONT_DESCENT(f) ((f)->descent)
@@ -973,14 +969,6 @@ extern void syms_of_xftfont (void);
 extern void syms_of_bdffont (void);
 #endif	/* HAVE_BDFFONT */
 #endif	/* HAVE_X_WINDOWS */
-#ifdef HAVE_NTGUI
-extern struct font_driver w32font_driver;
-extern struct font_driver uniscribe_font_driver;
-#ifdef HAVE_HARFBUZZ
-extern struct font_driver harfbuzz_font_driver;
-#endif
-extern void syms_of_w32font (void);
-#endif	/* HAVE_NTGUI */
 #ifdef HAVE_NS
 extern struct font_driver const nsfont_driver;
 extern void syms_of_nsfont (void);

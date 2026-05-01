@@ -247,17 +247,9 @@ sfntfont_android_over_8888_1 (unsigned int *src, unsigned int *dst)
   v3 = vmulq_u16 (v1, alpha_c16);
   r = vqadd_u8 (v2, vshrn_n_u16 (v3, 8));
 
-#if 0
-  /* Aout = Asrc + Adst * alpha_c.  */
-  v1 = vaddl_u8 (_dst.val[3], v5);
-  v2 = _src.val[3];
-  v3 = vmulq_u16 (v1, alpha_c16);
-  a = vqadd_u8 (v2, vshrn_n_u16 (v3, 8));
-#else
   /* We know that Adst is always 1, so Asrc + Adst * (1 - Asrc) is
      always 1.  */
   a = vdup_n_u8 (255);
-#endif
 
   /* Store back in dst.  */
   _dst.val[0] = r;

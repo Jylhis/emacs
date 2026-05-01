@@ -1,0 +1,31 @@
+/* epaths.h template for the Meson build.
+
+   Copyright (C) 1993-2026 Free Software Foundation, Inc.
+   This file is part of GNU Emacs.
+
+   GNU Emacs is free software: you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published
+   by the Free Software Foundation, either version 3 of the License,
+   or (at your option) any later version.
+
+   GNU Emacs is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   See src/epaths.in for the canonical autotools version of this
+   file.  The Meson build populates the substitutions below from
+   get_option('prefix') and friends; see
+   .claude/plans/migrate-from-current-build-replicated-gadget.md.  */
+
+#define PATH_LOADSEARCH @PATH_LOADSEARCH@
+#define PATH_REL_LOADSEARCH @PATH_REL_LOADSEARCH@
+#define PATH_SITELOADSEARCH @PATH_SITELOADSEARCH@
+#define PATH_DUMPLOADSEARCH @PATH_DUMPLOADSEARCH@
+#define PATH_EXEC @PATH_EXEC@
+#define PATH_DATA @PATH_DATA@
+#define PATH_BITMAPS @PATH_BITMAPS@
+#define PATH_DOC @PATH_DOC@
+#define PATH_INFO @PATH_INFO@
+#define PATH_GAME @PATH_GAME@
+#define PATH_X_DEFAULTS @PATH_X_DEFAULTS@

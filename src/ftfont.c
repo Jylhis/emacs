@@ -940,33 +940,6 @@ ftfont_list (struct frame *f, Lisp_Object spec)
   fontset = FcFontList (NULL, pattern, objset);
   if (! fontset || fontset->nfont == 0)
     goto finish;
-#if 0
-  /* Need fix because this finds any fonts.  */
-  if (fontset->nfont == 0 && ! NILP (family))
-    {
-      /* Try matching with configuration.  For instance, the
-	 configuration may specify "Nimbus Mono L" as an alias of
-	 "Courier".  */
-      FcPattern *pat = FcPatternBuild (0, FC_FAMILY, FcTypeString,
-				       SYMBOL_FcChar8 (family), NULL);
-      FcChar8 *fam;
-
-      if (FcConfigSubstitute (NULL, pat, FcMatchPattern) == FcTrue)
-	{
-	  for (i = 0;
-	       FcPatternGetString (pat, FC_FAMILY, i, &fam) == FcResultMatch;
-	       i++)
-	    {
-	      FcPatternDel (pattern, FC_FAMILY);
-	      FcPatternAddString (pattern, FC_FAMILY, fam);
-	      FcFontSetDestroy (fontset);
-	      fontset = FcFontList (NULL, pattern, objset);
-	      if (fontset && fontset->nfont > 0)
-		break;
-	    }
-	}
-    }
-#endif
   for (i = 0; i < fontset->nfont; i++)
     {
       Lisp_Object entity;
@@ -3192,9 +3165,6 @@ syms_of_ftfont (void)
   Fput (Qfreetype, Qfont_driver_superseded_by, Qfreetypehb);
 #endif	/* HAVE_HARFBUZZ */
 
-#ifdef HAVE_HAIKU
-  DEFSYM (Qmono, "mono");
-#endif
 
   /* Fontconfig's generic families and their aliases.  */
   DEFSYM (Qmonospace, "monospace");

@@ -37,9 +37,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include TERM_HEADER
 #endif /* HAVE_WINDOW_SYSTEM */
 
-#ifdef HAVE_NTGUI
-extern AppendMenuW_Proc unicode_append_menu;
-#endif /* HAVE_NTGUI  */
 
 #include "menu.h"
 
@@ -1374,19 +1371,6 @@ x_popup_menu_1 (Lisp_Object position, Lisp_Object menu)
     Fx_hide_tip ();
 #endif
 
-#ifdef HAVE_NTGUI     /* FIXME: Is it really w32-specific?  --Stef  */
-  /* If resources from a previous popup menu still exist, does nothing
-     until the `menu_free_timer' has freed them (see w32fns.c). This
-     can occur if you press ESC or click outside a menu without selecting
-     a menu item.
-  */
-  if (current_popup_menu && FRAME_W32_P (f))
-    {
-      discard_menu_items ();
-      FRAME_DISPLAY_INFO (f)->grabbed = 0;
-      return Qnil;
-    }
-#endif
 
   record_unwind_protect_void (discard_menu_items);
 
@@ -1417,14 +1401,6 @@ x_popup_menu_1 (Lisp_Object position, Lisp_Object menu)
 
   unbind_to (specpdl_count, Qnil);
 
-#ifdef HAVE_NTGUI     /* W32 specific because other terminals clear
-			 the grab inside their `menu_show_hook's if
-			 it's actually required (i.e. there isn't a
-			 way to query the buttons currently held down
-			 after XMenuActivate). */
-  if (FRAME_W32_P (f))
-    FRAME_DISPLAY_INFO (f)->grabbed = 0;
-#endif
 
   if (error_name) error ("%s", error_name);
   return selection;
@@ -1597,13 +1573,6 @@ for instance using the window manager, then this produces a quit and
     {
       Lisp_Object selection
 	= FRAME_TERMINAL (f)->popup_dialog_hook (f, header, contents);
-#ifdef HAVE_NTGUI
-      /* NTGUI on Windows versions before Vista supports only simple
-	 dialogs with Yes/No choices.  For other dialogs, it returns the
-	 symbol 'unsupported--w32-dialog', as a signal for the caller to
-	 fall back to the emulation code.  */
-      if (!EQ (selection, Qunsupported__w32_dialog))
-#endif
 	return selection;
     }
   /* ... or emulate it with a menu.  */

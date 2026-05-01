@@ -1,0 +1,247 @@
+# meson.options -- translation of configure.ac AC_ARG_WITH and
+# AC_ARG_ENABLE declarations.  Source line references point at the
+# original definition in configure.ac.  See
+# .claude/plans/migrate-from-current-build-replicated-gadget.md for the
+# plan that drives this migration.
+
+# ----------------------------------------------------------------------
+# Top-level switch -- mirrors --without-all (configure.ac:295).
+# ----------------------------------------------------------------------
+option('all-features',
+  type : 'boolean', value : true,
+  description : 'Build with all default features enabled (--without-all turns this off).'
+)
+
+# ----------------------------------------------------------------------
+# Mail / POP (configure.ac:358-419).
+# ----------------------------------------------------------------------
+option('mailutils',     type : 'feature', value : 'auto',
+  description : 'Rely on GNU Mailutils for mail handling.')
+option('pop',           type : 'feature', value : 'auto',
+  description : 'Support POP3 in movemail.')
+option('mailhost',      type : 'string',  value : '',
+  description : 'Default POP mail host.')
+option('kerberos',      type : 'feature', value : 'disabled',
+  description : 'Support Kerberos-authenticated POP.')
+option('kerberos5',     type : 'feature', value : 'disabled',
+  description : 'Support Kerberos v5 authenticated POP.')
+option('hesiod',        type : 'feature', value : 'disabled',
+  description : 'Support Hesiod to get the POP server host.')
+option('mail-unlink',   type : 'boolean', value : false,
+  description : 'Unlink, rather than empty, mail spool after reading.')
+
+# ----------------------------------------------------------------------
+# Sound / dumping (configure.ac:424-463).
+# ----------------------------------------------------------------------
+option('sound', type : 'combo',
+  choices : ['auto', 'yes', 'no', 'alsa', 'oss', 'bsd-ossaudio'],
+  value : 'auto',
+  description : 'Sound support backend (Linux/*BSD).'
+)
+option('pdumper', type : 'combo',
+  choices : ['auto', 'yes', 'no'], value : 'auto',
+  description : 'Enable portable dumper support.'
+)
+option('dumping', type : 'combo',
+  choices : ['pdumper', 'none'], value : 'pdumper',
+  description : 'Kind of dumping to use for initial Emacs build.'
+)
+
+# ----------------------------------------------------------------------
+# Window system / toolkit (configure.ac:511-567).
+# ----------------------------------------------------------------------
+# The branch only supports gtk3, pgtk, ns, and android per the migration
+# plan; legacy X toolkits (lucid, athena, motif) have been dropped.
+option('toolkit', type : 'combo',
+  choices : ['auto', 'gtk3', 'pgtk', 'none'], value : 'auto',
+  description : 'X toolkit selection.'
+)
+option('ns', type : 'feature', value : 'auto',
+  description : 'Build the Cocoa (NextStep) port (macOS).'
+)
+option('pgtk', type : 'feature', value : 'auto',
+  description : 'Use GTK to support window systems other than X.'
+)
+
+# ----------------------------------------------------------------------
+# Image libraries and rendering (configure.ac:537-562).
+# ----------------------------------------------------------------------
+option('xpm',           type : 'feature', value : 'auto',
+  description : 'XPM image support.')
+option('jpeg',          type : 'feature', value : 'auto',
+  description : 'JPEG image support.')
+option('tiff',          type : 'feature', value : 'auto',
+  description : 'TIFF image support.')
+option('gif',           type : 'feature', value : 'auto',
+  description : 'GIF image support.')
+option('png',           type : 'feature', value : 'auto',
+  description : 'PNG image support.')
+option('rsvg',          type : 'feature', value : 'auto',
+  description : 'SVG image support via librsvg.')
+option('webp',          type : 'feature', value : 'auto',
+  description : 'WebP image support.')
+option('imagemagick',   type : 'feature', value : 'disabled',
+  description : 'ImageMagick image support.')
+option('cairo',         type : 'feature', value : 'auto',
+  description : 'Cairo drawing.')
+option('cairo-xcb',     type : 'feature', value : 'disabled',
+  description : 'Use XCB surfaces for Cairo support.')
+
+# ----------------------------------------------------------------------
+# Fonts and text shaping (configure.ac:554-562).
+# ----------------------------------------------------------------------
+option('xft',       type : 'feature', value : 'auto',
+  description : 'Use XFT for anti-aliased fonts.')
+option('harfbuzz',  type : 'feature', value : 'auto',
+  description : 'Use HarfBuzz for text shaping.')
+option('libotf',    type : 'feature', value : 'auto',
+  description : 'libotf for OpenType font support.')
+option('m17n-flt',  type : 'feature', value : 'auto',
+  description : 'm17n-flt for text shaping.')
+
+# ----------------------------------------------------------------------
+# X11 features (configure.ac:559-591).
+# ----------------------------------------------------------------------
+option('toolkit-scroll-bars', type : 'feature', value : 'auto',
+  description : 'Use Motif/Xaw3d/GTK toolkit scroll bars.')
+option('xim',     type : 'feature', value : 'auto',
+  description : 'Default X11 XIM at runtime.')
+option('xdbe',    type : 'feature', value : 'auto',
+  description : 'X11 double buffering support.')
+option('xinput2', type : 'feature', value : 'auto',
+  description : 'Use version 2 of the X Input Extension.')
+option('xaw3d',   type : 'feature', value : 'disabled',
+  description : 'Use Xaw3d (legacy).')
+
+# ----------------------------------------------------------------------
+# Other libraries / features (configure.ac:544-591).
+# ----------------------------------------------------------------------
+option('sqlite3',     type : 'feature', value : 'auto',
+  description : 'SQLite 3 support.')
+option('lcms2',       type : 'feature', value : 'auto',
+  description : 'Little CMS color management.')
+option('libsystemd',  type : 'feature', value : 'auto',
+  description : 'systemd notification support.')
+option('xml2',        type : 'feature', value : 'auto',
+  description : 'libxml2 parsing support.')
+option('tree-sitter', type : 'feature', value : 'enabled',
+  description : 'tree-sitter parser library (enabled by default).')
+option('gpm',         type : 'feature', value : 'auto',
+  description : 'GPM mouse support on GNU/Linux console.')
+option('dbus',        type : 'feature', value : 'auto',
+  description : 'D-Bus IPC support.')
+option('gconf',       type : 'feature', value : 'disabled',
+  description : 'GConf settings support.')
+option('gsettings',   type : 'feature', value : 'auto',
+  description : 'GSettings support.')
+option('selinux',     type : 'feature', value : 'auto',
+  description : 'SELinux file context support.')
+option('gnutls',      type : 'feature', value : 'auto',
+  description : 'GnuTLS for SSL/TLS.')
+option('zlib',        type : 'feature', value : 'auto',
+  description : 'zlib decompression support.')
+option('modules',     type : 'feature', value : 'auto',
+  description : 'Dynamic modules support.')
+option('threads',     type : 'feature', value : 'auto',
+  description : 'Elisp threading support.')
+
+# ----------------------------------------------------------------------
+# File notification (configure.ac:619).
+# ----------------------------------------------------------------------
+option('file-notification', type : 'combo',
+  choices : ['auto', 'inotify', 'kqueue', 'gfile', 'no', 'yes'],
+  value : 'auto',
+  description : 'File-notification backend.'
+)
+
+# ----------------------------------------------------------------------
+# Game directory ownership (configure.ac:656-680).
+# ----------------------------------------------------------------------
+option('gameuser',     type : 'string', value : '',
+  description : 'User or group for update-game-score.')
+option('gnustep-conf', type : 'string', value : '',
+  description : 'Path to GNUstep.conf.')
+option('shared-user-id', type : 'boolean', value : false,
+  description : 'Allow Emacs to share a user with apps that have shared.')
+option('systemduserunitdir', type : 'string', value : '',
+  description : 'Directory for systemd user unit file.')
+
+# ----------------------------------------------------------------------
+# NS-specific (configure.ac:679).
+# ----------------------------------------------------------------------
+option('ns-self-contained', type : 'feature', value : 'auto',
+  description : 'Build a self-contained Emacs.app on macOS.')
+
+# ----------------------------------------------------------------------
+# Lisp paths (configure.ac:686).
+# ----------------------------------------------------------------------
+option('locallisppath', type : 'string', value : '',
+  description : 'Override the default site-lisp search path.')
+
+# ----------------------------------------------------------------------
+# Debugging / development (configure.ac:696-820).
+# ----------------------------------------------------------------------
+option('checking', type : 'array',
+  choices : ['no', 'yes', 'all', 'glyphs', 'stringbytes', 'stringoverrun',
+             'stringfreelist', 'xmallocoverrun', 'conslist',
+             'structs'],
+  value : ['no'],
+  description : '--enable-checking equivalents (multiple allowed).'
+)
+option('check-lisp-object-type', type : 'boolean', value : false,
+  description : 'Compile Lisp_Object as a struct for type checking.'
+)
+option('gc-mark-trace', type : 'boolean', value : false,
+  description : 'GC mark-tracing diagnostics.'
+)
+option('profiling', type : 'boolean', value : false,
+  description : 'Build for profiling (gprof).'
+)
+option('autodepend', type : 'feature', value : 'auto',
+  description : 'Auto-generate header dependency files.'
+)
+option('gtk-deprecation-warnings', type : 'boolean', value : false,
+  description : 'Show GTK deprecation warnings.'
+)
+option('build-details', type : 'boolean', value : true,
+  description : 'Embed build details (date, host) into the binary.'
+)
+
+# ----------------------------------------------------------------------
+# Native compilation (configure.ac:1588).
+# ----------------------------------------------------------------------
+option('native-compilation', type : 'combo',
+  choices : ['no', 'yes', 'aot'], value : 'no',
+  description : 'Native compilation via libgccjit.'
+)
+
+# ----------------------------------------------------------------------
+# Compiler hardening / optimisation (configure.ac:1561-1840).
+# ----------------------------------------------------------------------
+option('gcc-warnings', type : 'combo',
+  choices : ['no', 'yes', 'warn-only'], value : 'no',
+  description : 'Enable extensive GCC warnings (developer mode).'
+)
+option('lto', type : 'boolean', value : false,
+  description : 'Link-time optimisation.'
+)
+option('silent-rules', type : 'boolean', value : true,
+  description : 'Quiet build output.'
+)
+
+# ----------------------------------------------------------------------
+# Cross-compilation targets (configure.ac:593).
+# ----------------------------------------------------------------------
+option('android', type : 'feature', value : 'disabled',
+  description : 'Cross-compile Android application package.'
+)
+option('android-debug', type : 'boolean', value : true,
+  description : 'Build Android package as a debug build.'
+)
+
+# ----------------------------------------------------------------------
+# Locale data subset (configure.ac:592).
+# ----------------------------------------------------------------------
+option('small-ja-dic', type : 'boolean', value : false,
+  description : 'Generate a smaller Japanese dictionary.'
+)

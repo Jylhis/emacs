@@ -308,11 +308,6 @@
       (load "term/common-win")
       (load "term/x-win")))
 
-(if (featurep 'haiku)
-    (progn
-      (load "term/common-win")
-      (load "term/haiku-win")))
-
 (if (featurep 'android)
     (progn
       (load "ls-lisp")
@@ -320,30 +315,6 @@
       (load "term/common-win")
       (load "term/android-win")))
 
-(if (or (eq system-type 'windows-nt)
-        (featurep 'w32))
-    (progn
-      (load "term/common-win")
-      (load "w32-vars")
-      (load "term/w32-win")
-      (load "disp-table")
-      (when (eq system-type 'windows-nt)
-        (load "term/w32-nt")
-        (load "w32-fns")
-        (load "ls-lisp")
-        (load "dos-w32"))
-      (load "touch-screen")))
-(if (eq system-type 'ms-dos)
-    (progn
-      (load "dos-w32")
-      (load "dos-fns")
-      (load "dos-vars")
-      ;; Don't load term/common-win: it isn't appropriate for the `pc'
-      ;; ``window system'', which generally behaves like a terminal.
-      (load "term/internal")
-      (load "term/pc-win")
-      (load "ls-lisp")
-      (load "disp-table"))) ; needed to setup ibm-pc char set, see internal.el
 (if (featurep 'ns)
     (progn
       (load "term/common-win")
@@ -365,10 +336,6 @@
     ;; mouse-wheel-*-event vars depends on those files being loaded or not.
     (load "mwheel"))
 
-;; progmodes/elisp-mode.el must be after w32-fns.el, to avoid this:
-;;"Eager macro-expansion failure: (void-function w32-convert-standard-filename)"
-;; which happens while processing 'elisp-flymake-byte-compile', when
-;; elisp-mode.elc is outdated.
 (load "progmodes/elisp-mode")
 
 ;; Preload some constants and floating point functions.
@@ -441,14 +408,12 @@ lost after dumping")))
 
 ;; Determine which build number to use
 ;; based on the executables that now exist.
-(if (and (or
-          (and (equal dump-mode "dump")
-               (fboundp 'dump-emacs))
-          (and (equal dump-mode "pdump")
-               (fboundp 'dump-emacs-portable)))
-	 (not (eq system-type 'ms-dos)))
+(if (or (and (equal dump-mode "dump")
+             (fboundp 'dump-emacs))
+        (and (equal dump-mode "pdump")
+             (fboundp 'dump-emacs-portable)))
     (let* ((base (concat "emacs-" emacs-version "."))
-	   (exelen (if (eq system-type 'windows-nt) -4))
+	   (exelen nil)
 	   (files (file-name-all-completions base default-directory))
 	   (versions (mapcar (lambda (name)
                                (string-to-number
@@ -597,10 +562,7 @@ directory got moved.  This is set to be a pair in the form of:
               (error nil))))))
   (if dump-mode
       (let ((output (cond ((equal dump-mode "pdump") "emacs.pdmp")
-                          ((equal dump-mode "pbootstrap")
-                           (if (eq system-type 'ms-dos)
-                               "b-emacs.pdmp"
-                             "bootstrap-emacs.pdmp"))
+                          ((equal dump-mode "pbootstrap") "bootstrap-emacs.pdmp")
                           (t (error "Unrecognized dump mode %s" dump-mode)))))
         (when (and (featurep 'native-compile)
                    (equal dump-mode "pdump"))
@@ -622,29 +584,18 @@ directory got moved.  This is set to be a pair in the form of:
                     (lexical-binding (default-toplevel-value 'lexical-binding)))
                 (if (member tmp-dump-mode '("pdump" "pbootstrap"))
                     (dump-emacs-portable (expand-file-name output invocation-directory))
-                  (dump-emacs output (if (eq system-type 'ms-dos)
-                                         "temacs.exe"
-                                       "temacs")))
+                  (dump-emacs output "temacs"))
                 (setq success t))
             (unless success
               (ignore-errors
                 (delete-file output)))))
         ;; Recompute NAME now, so that it isn't set when we dump.
-        (if (not (or (eq system-type 'ms-dos)
-                     (eq system-type 'haiku) ;; BFS doesn't support hard links
-                     ;; There's no point keeping old dumps around for
-                     ;; the binary used to build Lisp on the build
-                     ;; machine.
-                     (or (featurep 'android)
-                         ;; And if this branch is reached with
-                         ;; `system-type' set to Android, this is a
-                         ;; regular Emacs TTY build.  (bug#65339)
-                         (eq system-type 'android))
+        (if (not (or (featurep 'android)
                      ;; Don't bother adding another name if we're just
                      ;; building bootstrap-emacs.
                      (member dump-mode '("pbootstrap"))))
             (let ((name (format "emacs-%s.%d" emacs-version emacs-build-number))
-                  (exe (if (eq system-type 'windows-nt) ".exe" "")))
+                  (exe ""))
               (while (string-match "[^-+_.a-zA-Z0-9]+" name)
                 (setq name (concat (downcase (substring name 0 (match-beginning 0)))
                                    "-"

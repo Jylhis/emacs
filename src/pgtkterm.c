@@ -3207,64 +3207,6 @@ pgtk_bitmap_icon (struct frame *f, Lisp_Object file)
      because leaving it intact would require image.c to retain a
      reference to a GdkPixbuf (which are no longer used) within new
      bitmaps.  */
-#if 0
-  ptrdiff_t bitmap_id;
-
-  if (FRAME_GTK_WIDGET (f) == 0)
-    return true;
-
-  /* Free up our existing icon bitmap and mask if any.  */
-  if (f->output_data.pgtk->icon_bitmap > 0)
-    image_destroy_bitmap (f, f->output_data.pgtk->icon_bitmap);
-  f->output_data.pgtk->icon_bitmap = 0;
-
-  if (STRINGP (file))
-    {
-      /* Use gtk_window_set_icon_from_file () if available,
-	 It's not restricted to bitmaps */
-      if (xg_set_icon (f, file))
-	return false;
-      bitmap_id = image_create_bitmap_from_file (f, file);
-    }
-  else
-    {
-      /* Create the GNU bitmap and mask if necessary.  */
-      if (FRAME_DISPLAY_INFO (f)->icon_bitmap_id < 0)
-	{
-	  ptrdiff_t rc = -1;
-
-          if (xg_set_icon (f, xg_default_icon_file)
-              || xg_set_icon_from_xpm_data (f, gnu_xpm_bits))
-            {
-              FRAME_DISPLAY_INFO (f)->icon_bitmap_id = -2;
-              return false;
-            }
-
-	  /* If all else fails, use the (black and white) xbm image. */
-	  if (rc == -1)
-	    {
-              rc = image_create_bitmap_from_data (f,
-                                                  (char *) gnu_xbm_bits,
-                                                  gnu_xbm_width,
-                                                  gnu_xbm_height);
-	      if (rc == -1)
-		return true;
-
-	      FRAME_DISPLAY_INFO (f)->icon_bitmap_id = rc;
-	    }
-	}
-
-      /* The first time we create the GNU bitmap and mask,
-	 this increments the ref-count one extra time.
-	 As a result, the GNU bitmap and mask are never freed.
-	 That way, we don't have to worry about allocating it again.  */
-      image_reference_bitmap (f, FRAME_DISPLAY_INFO (f)->icon_bitmap_id);
-
-      bitmap_id = FRAME_DISPLAY_INFO (f)->icon_bitmap_id;
-    }
-
-  f->output_data.pgtk->icon_bitmap = bitmap_id;
-#endif /* 0 */
   return false;
 }
 
@@ -5348,13 +5290,6 @@ key_press_event (GtkWidget *widget, GdkEvent *event, gpointer *user_data)
 #endif
 	   || IsCursorKey (keysym)	/* 0xff50 <= x < 0xff60 */
 	   || IsMiscFunctionKey (keysym)	/* 0xff60 <= x < VARIES */
-#ifdef HPUX
-	   /* This recognizes the "extended function
-	      keys".  It seems there's no cleaner way.
-	      Test IsModifierKey to avoid handling
-	      mode_switch incorrectly.  */
-	   || (GDK_KEY_Select <= keysym && keysym < GDK_KEY_KP_Space)
-#endif
 #ifdef GDK_KEY_dead_circumflex
 	   || orig_keysym == GDK_KEY_dead_circumflex
 #endif

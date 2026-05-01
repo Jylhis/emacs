@@ -656,10 +656,6 @@ static NSString
         /* XXX: iso10646 is passed in for non-ascii latin-1 characters
            (which causes box rendering if we don't treat it like iso8858-1)
            but also for ascii (which causes unnecessary font substitution).  */
-#if 0
-        if (EQ (reg, Qiso10646_1))
-          reg = Qiso8859_1;
-#endif
         return ns_registry_to_script (SSDATA (SYMBOL_NAME (reg)));
       }
 
