@@ -1,58 +1,90 @@
-{ pkgs, ... }:
+{ pkgs, lib, ... }:
 
 let
   installDir = "$DEVENV_ROOT/.emacs-dev";
 in
 {
   # https://devenv.sh/packages/
-  packages = with pkgs; [
-    # Nix tooling
-    nil
-    nixfmt
+  packages =
+    # Cross-platform core: Nix tooling, build tools, portable libraries,
+    # and the text/image stack that compiles on both Linux and Darwin.
+    (with pkgs; [
+      # Nix tooling
+      nil
+      nixfmt
 
-    # Nix linting
-    statix
-    deadnix
+      # Nix linting
+      statix
+      deadnix
 
-    # Build dependencies for GNU Emacs
-    autoconf
-    automake
-    pkg-config
-    texinfo
-    gnutls
-    jansson
-    libxml2
-    ncurses
-    sqlite
+      # Build dependencies for GNU Emacs
+      autoconf
+      automake
+      pkg-config
+      texinfo
+      gnutls
+      jansson
+      libxml2
+      ncurses
+      sqlite
 
-    # Image libraries
-    libjpeg
-    libtiff
-    giflib
-    libpng
-    librsvg
-    libwebp
+      # Meson + Ninja + Python (for the new build system; see PR #3)
+      meson
+      ninja
+      python3
 
-    # Tree-sitter (modern syntax parsing)
-    tree-sitter
+      # Text/image stack used by both X11/GTK and NS/Cocoa builds
+      cairo
+      pango
+      fontconfig
+      freetype
+      harfbuzz
 
-    # Native compilation (Emacs Lisp -> native code)
-    libgccjit
+      # Image libraries
+      libjpeg
+      libtiff
+      giflib
+      libpng
+      librsvg
+      libwebp
 
-    # Text shaping
-    harfbuzz
+      # Tree-sitter (modern syntax parsing)
+      tree-sitter
 
-    # Bignum support (GMP)
-    gmp
+      # Bignum support (GMP)
+      gmp
 
-    # Other useful libraries
-    lcms2
-    dbus
-    zlib
+      # Other useful libraries
+      lcms2
+      zlib
+      gawk
 
-    # Debugging
-    # gdb
-  ];
+      # Debugging
+      # gdb
+    ])
+    # Linux-only: X11/GTK toolkit, Linux POSIX ACL/xattr, D-Bus, and
+    # libgccjit for native compilation.  On macOS the NS/Cocoa build
+    # supplies the GUI stack from the Apple SDK, and `acl` transitively
+    # pulls `attr` which fails to build against macOS xattr headers.
+    ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
+      acl
+      dbus
+      libgccjit
+      gtk3
+      xorg.libX11
+      xorg.libXfixes
+      xorg.libXrender
+      xorg.libXrandr
+      xorg.libXcomposite
+      xorg.libXinerama
+      xorg.libXi
+      xorg.libXext
+      xorg.libXtst
+      xorg.libXft
+      xorg.libXt
+      xorg.libSM
+      xorg.libICE
+    ]);
 
   # https://devenv.sh/languages/
   languages = {
@@ -210,6 +242,32 @@ in
                     --with-xwidgets \
                     --with-modules \
                     CFLAGS='-O0 -g3'
+      '';
+    };
+
+    # ---- Meson build (PR #3) ----
+    meson-setup = {
+      description = "Configure the meson build dir.";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        meson setup build
+      '';
+    };
+    meson-build = {
+      description = "Build all default Meson targets (lib-src + temacs etc.).";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        meson compile -C build
+      '';
+    };
+    meson-pdmp = {
+      description = "Run the full Meson dump cycle (compile-main + emacs.pdmp).";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        meson compile -C build emacs.pdmp
       '';
     };
   };

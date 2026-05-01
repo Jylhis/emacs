@@ -22,28 +22,36 @@ etc/          Data files, NEWS, tutorials, images, DEBUG guide
 
 ## Build
 
+This branch's only supported build system is Meson + Ninja.  See
+`.claude/plans/migrate-from-current-build-replicated-gadget.md` for
+the migration history; the autotools entry points (configure.ac,
+autogen.sh, every Makefile.in, GNUmakefile, make-dist) were
+removed at phase 10.
+
 ```bash
-./autogen.sh && ./configure && make -j$(nproc)    # first time from repo
-make                                               # rebuild after changes
-make bootstrap                                     # clean full rebuild
+meson setup build -Dnative-compilation=yes
+meson compile -C build                              # full build
+meson test -C build --suite smoke                   # ERT smoke tests
+meson install -C build --destdir=/tmp/stage         # staged install
 ```
 
 Debug build (recommended for development, per etc/DEBUG):
 ```bash
-./configure --enable-checking='yes,glyphs' --enable-check-lisp-object-type CFLAGS='-O0 -g3'
+meson setup build --buildtype=debug \
+  -Dcheck=yes,glyphs -Dcheck-lisp-object-type=true
 ```
 
 ## Test
 
 ```bash
-make check                                          # full suite
-make check-expensive                                # include slow tests
-make -C test lisp/foo/bar-tests                     # single test file
-make -C test lisp/foo/bar-tests SELECTOR='test-name'  # single test
-make -C test src/eval-tests                         # C source tests
+meson test -C build                # all registered tests
+meson test -C build --suite smoke  # smoke set only
+meson test -C build NAME           # one test by name
 ```
 
-Do not use `make -j` for tests -- parallel test runs cause flaky failures.
+`meson test` defaults to a single worker; force a higher count
+explicitly only when you've verified the test in question is
+parallel-safe (`--num-processes N`).
 
 ## Key Conventions
 

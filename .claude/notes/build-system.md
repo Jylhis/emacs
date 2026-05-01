@@ -3,7 +3,35 @@
 Sources: INSTALL, INSTALL.REPO, nextstep/INSTALL, etc/DEBUG,
 admin/README, admin/make-emacs, admin/quick-install-emacs.
 
-## First-time build from repository
+## Branch state: dual build
+
+This branch (`claude/migrate-to-meson-ninja-ZSbvG`) is migrating from
+Autotools to Meson + Ninja per
+`.claude/plans/migrate-from-current-build-replicated-gadget.md`.
+Both build systems coexist until phase-10 cutover.
+
+## Meson build (preferred on this branch)
+
+    meson setup build -Dnative-compilation=yes
+    meson compile -C build
+    build/src/emacs --batch --eval '(princ (* 6 7))'   # -> 42
+    meson test -C build --suite smoke
+    meson install -C build --destdir=/tmp/stage
+
+Bootstrap dance (custom_targets):
+
+    libgnu (lib/)              # gnulib subset
+    lib-src/* (8 helpers)      # make-docfile, etags, emacsclient, ...
+    temacs                     # undumped, bootstrap host
+    bootstrap-emacs            # cp of temacs
+    unidata-stamp              # uni-*.el + charprop.el
+    bootstrap-emacs.pdmp       # initial pdumper image
+    loaddefs-stamp             # autoload extraction
+    compile-first / compile-main  # byte-compile lisp/
+    native-lisp-stamp          # .eln (with -Dnative-compilation=yes)
+    emacs / emacs.pdmp         # final pdumped image
+
+## First-time autotools build (legacy on this branch)
 
     ./autogen.sh    # generates configure (needs autoconf, git, texinfo)
     ./configure
