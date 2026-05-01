@@ -470,8 +470,8 @@ subdir('admin')    # Phase 6: charsets + unidata generators
 subdir('src')      # Phase 3: temacs + bootstrap-emacs
 subdir('lisp')     # Phase 4-5: byte-compile + native-comp
 subdir('test')     # Phase 7: ERT smoke tests
+subdir('doc')      # Phase 6: texinfo info manuals
 # subdir('leim')     # Phase 6 (TODO)
-# subdir('doc')      # Phase 6: texinfo manuals (TODO)
 # subdir('nextstep') # Phase 8: macOS .app (TODO)
 # subdir('java')     # Phase 8: Android cross-build (TODO)
 
