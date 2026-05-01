@@ -16,6 +16,12 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -32,6 +38,12 @@ jobs:
           ./configure --without-x --without-dbus --without-gconf --without-selinux
           ./build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir bw-output make -j"$(nproc)"
 
+      - name: Build Java sources for SonarJava
+        run: |
+          mkdir -p java/build/classes
+          curl -sSLo android.jar https://repo1.maven.org/maven2/com/google/android/android/4.1.1.4/android-4.1.1.4.jar
+          find java/org -name '*.java' -print0 | xargs -0 javac -classpath android.jar -d java/build/classes
+
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
@@ -40,3 +52,4 @@ jobs:
           args: >
             -Dsonar.cfamily.compile-commands=bw-output/compile_commands.json
             -Dsonar.cfamily.build-wrapper-output=bw-output
+            -Dsonar.java.binaries=java/build/classes
