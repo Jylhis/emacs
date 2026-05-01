@@ -144,16 +144,15 @@ def main() -> int:
     gb180304 = charsets_dir / "gb180304.awk"
     kuten = charsets_dir / "kuten.awk"
 
-    # Single-byte rules.
+    # Single-byte rules.  run_mapconv now raises on non-zero
+    # mapconv exit (check=True), so we don't branch on a return code.
     for name, (glibc_name, regex) in SINGLE_BYTE_RULES.items():
         src = glibc / glibc_name
         if not src.exists():
             print(f"missing glibc charmap: {src}", file=sys.stderr)
             return 1
-        rc = run_mapconv(charsets_dir, src, regex, "GLIBC-1",
-                         compact, out_dir / name)
-        if rc != 0:
-            return rc
+        run_mapconv(charsets_dir, src, regex, "GLIBC-1",
+                    compact, out_dir / name)
 
     # Hand-copied mapfiles.
     import shutil

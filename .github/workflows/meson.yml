@@ -77,8 +77,10 @@ jobs:
             lisp/international/emoji-zwj.el
             lisp/international/uni-*.el
             lisp/international/charprop.el
+            etc/charsets/**
+            etc/DOC
           key: |
-            elc3-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
+            elc4-${{ runner.os }}-${{ hashFiles('lisp/**/*.el', 'admin/charsets/**', 'admin/unidata/**') }}
 
       # ---- Build ------------------------------------------------------
       - name: meson setup
