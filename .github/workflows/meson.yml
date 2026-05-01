@@ -52,11 +52,25 @@ jobs:
       - name: Install devenv
         run: nix profile install --accept-flake-config nixpkgs#devenv
 
+      # Pre-warm the devenv shell in its own step so the first run's
+      # Nix download doesn't blow the timeout for the build step that
+      # actually consumes it.  Also surfaces the resolved cc/ld pair.
+      - name: Activate devenv shell
+        run: |
+          devenv shell -- bash -c '
+            set -e
+            echo "PATH=$PATH" | tr : "\n" | head
+            echo "---"
+            echo "cc:  $(command -v cc)"
+            echo "gcc: $(command -v gcc)"
+            echo "ld:  $(command -v ld)"
+            cc --version | head -1
+            ld --version | head -1
+            meson --version
+            ninja --version
+          '
+
       # ---- Build cache ------------------------------------------------
-      # Cache the Meson build dir so incremental rebuilds reuse compiled
-      # objects.  A change in any meson.build / workflow file
-      # invalidates via the hashFiles key.  No restore-keys fallback --
-      # a partial restore across configs is more harm than help.
       - name: Cache Meson build dir
         id: cache-build
         uses: actions/cache@v4
@@ -65,7 +79,6 @@ jobs:
           key: |
             meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
 
-      # Source-tree generated artefacts cache (keyed on .el contents).
       - name: Cache source-tree byte-compile artefacts
         uses: actions/cache@v4
         with:
@@ -81,28 +94,35 @@ jobs:
             elc3-${{ runner.os }}-${{ hashFiles('lisp/**/*.el') }}
 
       # ---- Build ------------------------------------------------------
-      # Every build step runs inside `devenv shell` so the meson, ninja,
-      # gcc, gtk3, libgccjit, etc. all come from the Nix pin in
-      # devenv.nix instead of the runner's apt repositories.
+      # Each step uses `devenv shell -- bash -c "..."` so the Nix
+      # toolchain (gcc + binutils-wrapper + glibc-dev) is on PATH and
+      # the wrapper can find Scrt1.o / crti.o / -lgcc_s.  The bare
+      # `shell: devenv shell bash -- -e {0}` form was unreliable on
+      # hosted runners (the wrapper hooks lost their NIX_CC_WRAPPER_*
+      # env vars somewhere between bash invocations).
       - name: meson setup
-        shell: devenv shell bash -- -e {0}
         run: |
-          if [ ! -f build/meson-info/meson-info.json ]; then
-            meson setup build
-          else
-            echo "Reusing cached build/ directory"
-            meson setup --reconfigure build
-          fi
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            if [ ! -f build/meson-info/meson-info.json ]; then
+              meson setup build
+            else
+              echo "Reusing cached build/ directory"
+              meson setup --reconfigure build
+            fi
+          '
 
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)
-        shell: devenv shell bash -- -e {0}
         run: |
-          set -o pipefail
-          meson compile -C build --verbose 2>&1 | tee build/compile.log
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            meson compile -C build --verbose 2>&1 | tee build/compile.log
+          '
 
       - name: Dump build diagnostics on failure
         if: failure()
-        shell: devenv shell bash -- -e {0}
         run: |
           echo "=== last 200 lines of compile.log ==="
           tail -200 build/compile.log || true
@@ -138,63 +158,85 @@ jobs:
             });
 
       - name: meson compile bootstrap-emacs.pdmp
-        shell: devenv shell bash -- -e {0}
-        run: meson compile -C build bootstrap-emacs.pdmp
+        run: |
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            meson compile -C build bootstrap-emacs.pdmp
+          '
 
       - name: meson compile compile-first
-        shell: devenv shell bash -- -e {0}
-        run: meson compile -C build compile-first
+        run: |
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            meson compile -C build compile-first
+          '
 
       - name: meson compile loaddefs-stamp
-        shell: devenv shell bash -- -e {0}
-        run: meson compile -C build loaddefs-stamp
+        run: |
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            meson compile -C build loaddefs-stamp
+          '
 
       - name: meson compile compile-main
         # ~75% of lisp/ byte-compiles cleanly today; the rest fall back
         # to .el at load time.  Continue on error.
-        shell: devenv shell bash -- -e {0}
         continue-on-error: true
-        run: meson compile -C build compile-main
+        run: |
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            meson compile -C build compile-main
+          '
 
       - name: meson compile emacs.pdmp
-        shell: devenv shell bash -- -e {0}
         continue-on-error: true
-        run: meson compile -C build emacs.pdmp
+        run: |
+          devenv shell -- bash -c '
+            set -euo pipefail
+            export CC=cc
+            meson compile -C build emacs.pdmp
+          '
 
       # ---- Smoke tests ------------------------------------------------
       - name: Smoke test bootstrap-emacs
-        shell: devenv shell bash -- -e {0}
         run: |
-          test -x build/src/bootstrap-emacs
-          test -f build/src/bootstrap-emacs.pdmp
-          EMACSDATA="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
-            build/src/bootstrap-emacs --batch \
-              --eval '(princ (* 6 7))'
+          devenv shell -- bash -c '
+            set -euo pipefail
+            test -x build/src/bootstrap-emacs
+            test -f build/src/bootstrap-emacs.pdmp
+            EMACSDATA="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
+              build/src/bootstrap-emacs --batch \
+                --eval "(princ (* 6 7))"
+          '
 
       - name: Smoke test full emacs (factorial)
         if: success()
-        shell: devenv shell bash -- -e {0}
         continue-on-error: true
         run: |
-          if [ -f build/lisp/emacs.pdmp ]; then
-            EMACSDATA="$PWD/etc" EMACSDOC="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
-              build/src/emacs --batch -Q \
-                --dump-file=build/lisp/emacs.pdmp \
-                --eval '(progn (defun f (n) (if (= 0 n) 1 (* n (f (- n 1)))))
-                              (princ (f 10)))'
-          else
-            echo "build/lisp/emacs.pdmp not produced; skipping factorial test"
-          fi
+          devenv shell -- bash -c '
+            set -euo pipefail
+            if [ -f build/lisp/emacs.pdmp ]; then
+              EMACSDATA="$PWD/etc" EMACSDOC="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
+                build/src/emacs --batch -Q \
+                  --dump-file=build/lisp/emacs.pdmp \
+                  --eval "(progn (defun f (n) (if (= 0 n) 1 (* n (f (- n 1))))) (princ (f 10)))"
+            else
+              echo "build/lisp/emacs.pdmp not produced; skipping factorial test"
+            fi
+          '
 
       - name: Verify lib-src binaries
-        shell: devenv shell bash -- -e {0}
         run: |
           for bin in etags ebrowse emacsclient hexl make-docfile \
                     make-fingerprint movemail update-game-score; do
             echo "=== $bin ==="
             test -x build/lib-src/$bin
           done
-          build/lib-src/etags --version | head -1
+          devenv shell -- bash -c 'build/lib-src/etags --version | head -1'
 
       # ---- Artefacts --------------------------------------------------
       - name: Upload Meson logs
