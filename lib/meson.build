@@ -27,6 +27,7 @@ libgnu_sources = files(
   'filemode.c',
   'filevercmp.c',
   'fingerprint.c',
+  'fpending.c',
   'free.c',
   'getopt.c',
   'getopt1.c',
@@ -60,6 +61,13 @@ libgnu_sources = files(
   'stat-time.c',
   'streq.c',
   'strnul.c',
+  'getrandom.c',
+  'malloc/dynarray_at_failure.c',
+  'malloc/dynarray_emplace_enlarge.c',
+  'malloc/dynarray_finalize.c',
+  'malloc/dynarray_resize.c',
+  'malloc/dynarray_resize_clear.c',
+  'regex.c',
   'tempname.c',
   'timespec.c',
   'u64.c',
@@ -70,6 +78,16 @@ libgnu_sources = files(
   'unistd.c',
   'utimens.c',
 )
+
+# Gnulib replacement sources for functions the system may lack.
+# Added conditionally to avoid duplicate-symbol clashes on systems
+# that provide them natively.
+if not conf_data.has('HAVE_PIPE2')
+  libgnu_sources += files('pipe2.c')
+endif
+if not conf_data.has('HAVE_SIGDESCR_NP')
+  libgnu_sources += files('sigdescr_np.c')
+endif
 
 # ----------------------------------------------------------------------
 # *.in.h -> *.h substitution.
@@ -186,6 +204,8 @@ sys_types_overrides = {
 # process_in_h.py, so the resulting <string.h> compiles cleanly.  ----
 have_mempcpy = cc.has_function('mempcpy',
   prefix : '#define _GNU_SOURCE 1\n#include <string.h>')
+have_sigdescr_np = cc.has_function('sigdescr_np',
+  prefix : '#define _GNU_SOURCE 1\n#include <string.h>')
 string_overrides = {
   'GUARD_PREFIX':   'GL',
   'NEXT_STRING_H':  '<string.h>',
@@ -195,12 +215,14 @@ string_overrides = {
   'GNULIB_MEMPCPY': '1',
   'GNULIB_MEMRCHR': '1',
   'GNULIB_MEMSET_EXPLICIT': '1',
+  'GNULIB_SIGDESCR_NP': '1',
   'HAVE_DECL_STREQ':  '0',
   'HAVE_DECL_MEMEQ':  '0',
   'HAVE_DECL_STRNUL': '0',
   'HAVE_MEMPCPY':   have_mempcpy ? '1' : '0',
   'HAVE_DECL_MEMRCHR': cc.has_header_symbol('string.h', 'memrchr') ? '1' : '0',
   'HAVE_MEMSET_EXPLICIT': cc.has_function('memset_explicit') ? '1' : '0',
+  'HAVE_SIGDESCR_NP': have_sigdescr_np ? '1' : '0',
   '_GL_BEGIN_NAMESPACE': '',
   '_GL_END_NAMESPACE':   '',
 }

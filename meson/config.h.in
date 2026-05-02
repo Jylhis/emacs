@@ -280,6 +280,8 @@
 #mesondefine HAVE_GETTIMEOFDAY
 #mesondefine HAVE_GETOPT_LONG_ONLY
 #mesondefine HAVE_GNU_GET_LIBC_VERSION
+#mesondefine HAVE_SNPRINTF
+#mesondefine HAVE_SIGDESCR_NP
 
 /* Declaration probes (HAVE_DECL_* style, for gnulib headers).  */
 #mesondefine HAVE_DECL_STRMODE
@@ -401,9 +403,9 @@ typedef struct tm_zone *timezone_t;
 /* Phase-2 stopgap for getrandom / GRND_* flags.  macOS
    <sys/random.h> provides getentropy but not getrandom or the GRND_*
    constants.  gnulib's sys_random.in.h normally wraps these, but
-   until sys/*.in.h substitution lands we define the shims here.  The
-   actual getrandom implementation is in lib/getrandom.c (added to
-   libgnu_sources).  Values match the Linux definitions.  */
+   until sys_random.in.h substitution lands we define the shims here.
+   The actual getrandom implementation is in lib/getrandom.c (added
+   to libgnu_sources).  Values match the Linux definitions.  */
 #include <sys/random.h>
 #ifndef GRND_NONBLOCK
 # define GRND_NONBLOCK 1
@@ -416,6 +418,23 @@ typedef struct tm_zone *timezone_t;
 # include <unistd.h>
 extern ssize_t getrandom (void *__buffer, size_t __length,
                            unsigned int __flags);
+#endif
+
+/* Phase-2 stopgap for pipe2.  macOS does not provide pipe2;
+   gnulib's unistd.in.h normally declares it, but until that
+   substitution lands we declare it here.  The implementation
+   is in lib/pipe2.c (conditionally added to libgnu_sources).  */
+#ifndef HAVE_PIPE2
+extern int pipe2 (int fd[2], int flags);
+#endif
+
+/* Phase-2 stopgap for sigdescr_np.  macOS does not provide
+   sigdescr_np; gnulib's string.in.h declares it when
+   GNULIB_SIGDESCR_NP is set.  Belt-and-suspenders declaration
+   here ensures all compilation units see the prototype.  The
+   implementation is in lib/sigdescr_np.c.  */
+#ifndef HAVE_SIGDESCR_NP
+extern const char *sigdescr_np (int sig);
 #endif
 
 /* Stat-type test macros that gnulib's <sys/stat.h> substitute would

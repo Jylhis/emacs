@@ -252,7 +252,7 @@ foreach fn : [
   'eaccess', 'faccessat', 'sysinfo', 'lstat', 'symlink', 'readlink',
   'fchmodat', 'fdopendir', 'sched_setaffinity', 'getpgrp', 'tgkill',
   'gettimeofday', 'getopt_long_only', 'gnu_get_libc_version',
-  'copy_file_range', 'memrchr',
+  'copy_file_range', 'memrchr', 'snprintf', 'sigdescr_np',
 ]
   if cc.has_function(fn)
     conf_data.set('HAVE_' + fn.to_upper(), 1)
