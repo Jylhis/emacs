@@ -27,8 +27,142 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: meson + ninja (Linux/GTK3)
+  # ================================================================
+  # Stage 1 -- Lint (cheap checks, no compilation)
+  # ================================================================
+  lint:
+    name: lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history for git diff
+
+      # Whitespace check (replicates .git/hooks/pre-commit:84-85).
+      - name: Check whitespace errors
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+            if [ "$base" = "0000000000000000000000000000000000000000" ]; then
+              echo "Initial push; skipping whitespace check"
+              exit 0
+            fi
+          fi
+          git diff --check "$base" HEAD -- || {
+            echo "::error::Whitespace errors found (trailing whitespace or SPC before TAB)"
+            exit 1
+          }
+
+      # File naming (replicates .git/hooks/pre-commit:52-73).
+      - name: Check new file names
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+            if [ "$base" = "0000000000000000000000000000000000000000" ]; then
+              echo "Initial push; skipping file name check"
+              exit 0
+            fi
+          fi
+          bad=0
+          for f in $(git diff --name-only --diff-filter=A "$base" HEAD); do
+            case "$f" in
+              -*|*/-*)
+                echo "::error file=$f::File name component begins with '-'"
+                bad=1 ;;
+              ChangeLog.android) ;;
+              ChangeLog|*/ChangeLog)
+                echo "::error file=$f::Use git commit messages, not ChangeLog files"
+                bad=1 ;;
+            esac
+            if echo "$f" | LC_ALL=C grep -qE '[^-+./_0-9A-Za-z]'; then
+              echo "::error file=$f::File name contains non-ASCII or disallowed characters"
+              bad=1
+            fi
+          done
+          exit $bad
+
+      # Commit message validation (replicates .git/hooks/commit-msg).
+      # Only on PRs; pushes to dev already passed local hooks.
+      - name: Validate commit messages
+        if: github.event_name == 'pull_request'
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          status=0
+          for sha in $(git rev-list "$base"..HEAD); do
+            msg=$(git log --format=%B -n1 "$sha")
+            # Skip merge commits
+            if [ "$(git rev-list --parents -n1 "$sha" | wc -w)" -gt 2 ]; then
+              continue
+            fi
+            # Skip Dependabot commits
+            author=$(git log --format=%an -n1 "$sha")
+            if [ "$author" = "dependabot[bot]" ]; then
+              continue
+            fi
+            short=$(echo "$msg" | head -1)
+            # First line must not start with whitespace
+            if echo "$short" | grep -qE '^\s'; then
+              echo "::error::Commit $sha: first line starts with whitespace"
+              status=1
+            fi
+            # Second line must be blank (if it exists)
+            second=$(echo "$msg" | sed -n '2p')
+            if [ -n "$second" ] && echo "$second" | grep -qE '\S'; then
+              echo "::error::Commit $sha: second line is not blank"
+              status=1
+            fi
+            # No Signed-off-by
+            if echo "$msg" | grep -q '^Signed-off-by: '; then
+              echo "::error::Commit $sha: contains Signed-off-by"
+              status=1
+            fi
+            # Line length (max 78 with spaces, 140 for single words)
+            while IFS= read -r line; do
+              expanded=$(echo "$line" | expand)
+              len=${#expanded}
+              if [ "$len" -gt 78 ] && echo "$expanded" | grep -q ' '; then
+                echo "::error::Commit $sha: line >78 chars: $(echo "$expanded" | cut -c1-60)..."
+                status=1
+              fi
+              if [ "$len" -gt 140 ]; then
+                echo "::error::Commit $sha: word >140 chars"
+                status=1
+              fi
+            done < <(echo "$msg" | grep -v '^#')
+          done
+          exit $status
+
+      # Python syntax check for build scripts.
+      - name: Check Python syntax (meson/*.py)
+        run: |
+          status=0
+          for f in meson/*.py; do
+            if ! python3 -m py_compile "$f"; then
+              status=1
+            fi
+          done
+          exit $status
+
+      # Workflow YAML lint.
+      - name: Lint GitHub Actions workflows
+        run: |
+          # Download actionlint
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
+  # ================================================================
+  # Stage 2+3 -- Build, then test
+  # ================================================================
+  build-and-test:
+    name: build + test (Linux/GTK3)
+    needs: [lint]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
 
@@ -185,6 +319,26 @@ jobs:
             test -x build/lib-src/$bin
           done
           build/lib-src/etags --version | head -1
+
+      # ---- ERT test suites ---------------------------------------------
+      - name: ERT smoke tests (meson)
+        continue-on-error: true
+        run: |
+          if [ -f build/lisp/emacs.pdmp ]; then
+            meson test -C build --suite smoke --print-errorlogs
+          else
+            echo "emacs.pdmp not produced; skipping ERT smoke tests"
+          fi
+
+      - name: ERT normal tests (excludes expensive/unstable)
+        continue-on-error: true
+        run: |
+          if [ -f build/lisp/emacs.pdmp ]; then
+            meson test -C build --no-suite smoke --print-errorlogs \
+              --timeout-multiplier 2
+          else
+            echo "emacs.pdmp not produced; skipping ERT tests"
+          fi
 
       # ---- Artefacts --------------------------------------------------
       - name: Upload Meson logs

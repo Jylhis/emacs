@@ -4,13 +4,11 @@
 # This file is part of GNU Emacs.
 #
 # Run SonarCloud's CFamily analyzer using the compile_commands.json
-# Meson emits into build/.  We do NOT use build-wrapper because the
-# compile_commands.json route lets us reuse the cached build/ tree
-# (build-wrapper would require a fresh observed clean compile every
-# run).  If the compile-commands path ever fails to resolve some
-# generated header, swap the `meson compile` step for a build-wrapper
-# invocation and switch the scan arg to
-# `sonar.cfamily.build-wrapper-output=...`.
+# that Meson emits during `meson setup`.  No full compilation is
+# needed -- config.h is generated at setup time, and the analyzer
+# handles missing generated headers (globals.h, buildobj.h) with
+# reduced precision.  If this ever causes analysis gaps, add a
+# targeted `meson compile -C build globals.h buildobj.h` step.
 
 name: SonarCloud
 
@@ -28,10 +26,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build and analyze
+  analyze:
+    name: SonarCloud analysis
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 30
     # GitHub does not expose repository secrets (SONAR_TOKEN) to
     # workflows triggered from forked PRs, so the scan step would
     # fail with auth errors.  Skip the whole job for fork PRs --
@@ -51,7 +49,7 @@ jobs:
 
       # ---- System dependencies ----------------------------------------
       # Same toolchain as .github/workflows/meson.yml so the compile
-      # commands match what the regular build CI produces.
+      # commands and config.h probes match the regular build.
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -69,35 +67,11 @@ jobs:
             libjpeg-dev libtiff-dev libgif-dev libpng-dev librsvg2-dev \
             libwebp-dev liblcms2-dev libdbus-1-dev zlib1g-dev \
             texinfo gawk
-          meson --version
-          ninja --version
 
-      # ---- Build cache ------------------------------------------------
-      - name: Cache Meson build dir
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
-        with:
-          path: build
-          key: sonar-build-${{ runner.os }}-${{ hashFiles('.github/workflows/sonarcloud.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
-          restore-keys: |
-            sonar-build-${{ runner.os }}-
-
-      # ---- Build ------------------------------------------------------
-      # Meson writes build/compile_commands.json during `meson setup`;
-      # SonarCloud's CFamily analyzer reads it directly.  We still run
-      # `meson compile` so that generated headers (config.h, gnulib
-      # configs, globals.h, charset tables, ...) exist on disk for the
-      # analyzer's preprocessor.  On a cache hit this is incremental.
+      # ---- Configure (no compile) ------------------------------------
+      # Meson writes compile_commands.json and config.h during setup.
       - name: meson setup
-        run: |
-          if [ ! -f build/meson-info/meson-info.json ]; then
-            meson setup build
-          else
-            echo "Reusing cached build/ directory"
-            meson setup --reconfigure build
-          fi
-
-      - name: meson compile (refresh generated sources)
-        run: meson compile -C build
+        run: meson setup build
 
       # ---- SonarCloud scan -------------------------------------------
       - name: SonarQube Scan

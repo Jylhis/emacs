@@ -58,6 +58,8 @@ def main() -> int:
     paths.append(str(args.test_file.parent))
     env["EMACSLOADPATH"] = ":".join(paths)
 
+    selector = os.environ.get("EMACS_TEST_SELECTOR", args.selector)
+
     cmd = [
         args.emacs,
         "--batch",
@@ -66,7 +68,7 @@ def main() -> int:
         "--eval", "(require (quote ert))",
         "-l", str(args.test_file),
         "--eval",
-        f"(ert-run-tests-batch-and-exit (quote {args.selector}))",
+        f"(ert-run-tests-batch-and-exit (quote {selector}))",
     ]
     return subprocess.run(cmd, env=env).returncode
 
