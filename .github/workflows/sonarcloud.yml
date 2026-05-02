@@ -74,11 +74,12 @@ jobs:
 
       # ---- Build cache ------------------------------------------------
       - name: Cache Meson build dir
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: build
-          key: |
-            sonar-build-${{ runner.os }}-${{ hashFiles('.github/workflows/sonarcloud.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
+          key: sonar-build-${{ runner.os }}-${{ hashFiles('.github/workflows/sonarcloud.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
+          restore-keys: |
+            sonar-build-${{ runner.os }}-
 
       # ---- Build ------------------------------------------------------
       # Meson writes build/compile_commands.json during `meson setup`;

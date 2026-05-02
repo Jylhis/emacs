@@ -60,14 +60,15 @@ jobs:
       # ---- Build cache ------------------------------------------------
       - name: Cache Meson build dir
         id: cache-build
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: build
-          key: |
-            meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
+          key: meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
+          restore-keys: |
+            meson-build-${{ runner.os }}-
 
       - name: Cache source-tree byte-compile artefacts
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: |
             lisp/**/*.elc
@@ -79,8 +80,9 @@ jobs:
             lisp/international/charprop.el
             etc/charsets/**
             etc/DOC
-          key: |
-            elc4-${{ runner.os }}-${{ hashFiles('lisp/**/*.el', 'admin/charsets/**', 'admin/unidata/**') }}
+          key: elc4-${{ runner.os }}-${{ hashFiles('lisp/**/*.el', 'admin/charsets/**', 'admin/unidata/**') }}
+          restore-keys: |
+            elc4-${{ runner.os }}-
 
       # ---- Build ------------------------------------------------------
       - name: meson setup
