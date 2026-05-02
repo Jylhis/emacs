@@ -37,12 +37,23 @@ def main() -> int:
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
     env["EMACSDOC"] = str(src_root / "etc")
-    # Test files in test/lisp/foo-tests.el load lisp/foo.el; need
-    # the lisp/ tree on load-path.  Plus the test directory itself
-    # so test/foo-tests.el can require sibling helpers.
-    paths = [str(lisp_root)] + sorted(
-        str(p) for p in lisp_root.iterdir() if p.is_dir()
-    )
+    # Build load path recursively (see byte_compile_batch.py).
+    # emacs-lisp must come right after lisp/ root so the core
+    # 'debug feature resolves to lisp/emacs-lisp/debug, not
+    # lisp/cedet/semantic/debug.  Unlike byte_compile_batch.py,
+    # do NOT skip obsolete/ -- tests in test/lisp/obsolete/ need
+    # lisp/obsolete/ on the path.
+    paths = [str(lisp_root), str(lisp_root / "emacs-lisp")]
+    seen = {"emacs-lisp"}
+    for d in sorted(lisp_root.rglob("*")):
+        if not d.is_dir():
+            continue
+        rel = d.relative_to(lisp_root).as_posix()
+        if rel in seen:
+            continue
+        seen.add(rel)
+        paths.append(str(d))
+    # Test directory itself + test file's parent for sibling helpers.
     paths.append(str(test_root))
     paths.append(str(args.test_file.parent))
     env["EMACSLOADPATH"] = ":".join(paths)
