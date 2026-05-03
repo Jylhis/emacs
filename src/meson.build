@@ -5,8 +5,7 @@
 # src/ object file (and the eventual temacs link) depends on.
 # Compilation of src/*.c, the temacs/emacs/pdumper bootstrap dance,
 # native compilation, and dumping all land in subsequent commits.
-# See .claude/plans/migrate-from-current-build-replicated-gadget.md.
-
+#
 # ----------------------------------------------------------------------
 # base_obj source list (Linux/GTK3 + Cairo + inotify baseline).
 # Mirrors src/Makefile.in:389-408 with the conditional groups

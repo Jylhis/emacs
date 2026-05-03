@@ -17,7 +17,6 @@ to one of a few patterns:
               eucjp-ms.el, JISX0201, JISX0208.
 
 See admin/charsets/Makefile.in:127-313 for the original rules and
-.claude/plans/migrate-from-current-build-replicated-gadget.md.
 """
 
 from __future__ import annotations
@@ -29,7 +28,6 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-
 
 # Single-byte charset names (8859-N, KA-*, EBCDIC*, plus simple ones).
 # Each maps to (glibc_charmap_basename, regex).
@@ -81,7 +79,6 @@ SINGLE_BYTE_RULES = {
     "MACINTOSH.map": ("MACINTOSH.gz", r'/^<.*[ \t]\/x/'),
 }
 
-
 # Mapfiles copied from admin/charsets/mapfiles/ verbatim.
 COPY_RULES = {
     "CP720.map":     "mapfiles/CP720.map",
@@ -95,7 +92,6 @@ COPY_RULES = {
     "MULE-lviscii.map":    "mapfiles/MULE-lviscii.map",
     "MULE-uviscii.map":    "mapfiles/MULE-uviscii.map",
 }
-
 
 def run_mapconv(charsets_dir: Path, input_file: Path, regex: str,
                 style: str, awk_script: Path | None,
@@ -114,7 +110,6 @@ def run_mapconv(charsets_dir: Path, input_file: Path, regex: str,
     env["AWK"] = "awk"
     with output.open("w") as fp:
         subprocess.run(cmd, env=env, stdout=fp, check=True)
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -351,7 +346,6 @@ def main() -> int:
     args.stamp.parent.mkdir(parents=True, exist_ok=True)
     args.stamp.write_text("ok\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

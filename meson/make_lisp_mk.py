@@ -7,8 +7,7 @@ a make variable assignment.  In the Meson build we don't need a
 makefile fragment -- we just emit a JSON list that meson.build can
 turn into a custom_target dependency.
 
-This is a transitional helper used during the Meson migration; see
-.claude/plans/migrate-from-current-build-replicated-gadget.md.
+This is a transitional helper used during the Meson migration.
 """
 
 from __future__ import annotations
@@ -19,11 +18,9 @@ import re
 import sys
 from pathlib import Path
 
-
 # Match (load "name").  We replicate the sed pattern from
 # src/Makefile.in:489: 's/^[ \t]*(load "\([^"]*\)".*/\1/p'.
 _LOAD = re.compile(r'^\s*\(load\s+"([^"]+)"', re.MULTILINE)
-
 
 def extract(loadup_path: Path) -> list[str]:
     text = loadup_path.read_text()
@@ -41,7 +38,6 @@ def extract(loadup_path: Path) -> list[str]:
             out.append(name + ".elc")
     return out
 
-
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("input", type=Path, help="path to lisp/loadup.el")
@@ -49,7 +45,6 @@ def main() -> int:
     args = p.parse_args()
     args.output.write_text(json.dumps(extract(args.input), indent=2) + "\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -7,8 +7,7 @@ process m4 files, so we replicate that contribution by parsing the m4
 file and writing the contents of every AH_VERBATIM block to a header
 file that config.h includes.
 
-This is a transitional shim used during the Meson migration; see
-.claude/plans/migrate-from-current-build-replicated-gadget.md.
+This is a transitional shim used during the Meson migration.
 
 The body of an AH_VERBATIM call is m4-quoted and may be split into
 several adjacent quoted segments connected by dnl comments, e.g.::
@@ -30,9 +29,7 @@ import re
 import sys
 from pathlib import Path
 
-
 _OPEN = re.compile(r"\bAH_VERBATIM\s*\(\s*")
-
 
 def _skip_quoted(text: str, start: int) -> int:
     """Return the index just after the matching ``]`` for the ``[`` at start."""
@@ -49,7 +46,6 @@ def _skip_quoted(text: str, start: int) -> int:
                 return i + 1
         i += 1
     raise ValueError(f"unterminated [...] starting at offset {start}")
-
 
 def _read_call(text: str, start: int) -> tuple[str, str, int]:
     """Parse a single AH_VERBATIM(...) starting at ``start``.
@@ -99,7 +95,6 @@ def _read_call(text: str, start: int) -> tuple[str, str, int]:
         j += 1
     raise ValueError("unterminated AH_VERBATIM call")
 
-
 def extract(m4_path: Path) -> str:
     text = m4_path.read_text()
     out: list[str] = []
@@ -114,7 +109,6 @@ def extract(m4_path: Path) -> str:
             continue
         out.append(f"/* AH_VERBATIM([{tag}]) */\n{body.rstrip()}")
     return "\n\n".join(out) + "\n"
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -143,7 +137,6 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(header)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

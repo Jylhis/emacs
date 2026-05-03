@@ -9,8 +9,7 @@ Mirrors the autotools rule in lisp/Makefile.in:446-449:
 
 Driven once over the full lisp tree, taking the .el list from a
 manifest (matches our byte-compile path).  Skips files annotated
-``no-native-compile: t`` (Makefile.in:466).  See
-.claude/plans/migrate-from-current-build-replicated-gadget.md.
+``no-native-compile: t`` (Makefile.in:466).
 """
 
 from __future__ import annotations
@@ -22,15 +21,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 NO_NATIVE_RE = re.compile(rb"^;.*[^a-zA-Z]no-native-compile:\s*t", re.MULTILINE)
 NO_BYTE_RE = re.compile(rb"^;.*[^a-zA-Z]no-byte-compile:\s*t", re.MULTILINE)
-
 
 def skipworthy(el: Path) -> bool:
     head = el.read_bytes()[:4096]
     return bool(NO_NATIVE_RE.search(head) or NO_BYTE_RE.search(head))
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -86,7 +82,6 @@ def main() -> int:
     args.stamp.parent.mkdir(parents=True, exist_ok=True)
     args.stamp.write_text(f"ok ({failed} chunk failures)\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

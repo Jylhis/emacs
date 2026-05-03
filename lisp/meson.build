@@ -13,8 +13,7 @@
 # Both invoke meson/byte_compile_batch.py which wraps a single
 # bootstrap-emacs --batch -f batch-byte-compile invocation.
 # loaddefs autoload extraction lands as a phase-4 follow-up.
-# See .claude/plans/migrate-from-current-build-replicated-gadget.md.
-
+#
 byte_compile_batch = files('../meson/byte_compile_batch.py')
 list_lisp_files = files('../meson/list_lisp_files.py')
 run_loaddefs = files('../meson/run_loaddefs.py')

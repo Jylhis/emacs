@@ -11,12 +11,9 @@ project(
   ],
 )
 
-# This Meson build is a work-in-progress migration from the autotools
-# build (configure.ac, Makefile.in).  See
-# .claude/plans/migrate-from-current-build-replicated-gadget.md for the
-# phase plan.  Until that plan reaches Phase 10 cutover, the autotools
-# build remains the canonical way to build Emacs; the Meson tree below
-# is incomplete and is being landed phase by phase.
+# Meson + Ninja build for GNU Emacs.  Replaces the autotools build
+# (configure.ac, Makefile.in) deleted at the phase-10 cutover; see
+# `.claude/notes/build-system.md` for the post-cutover parity audit.
 
 cc = meson.get_compiler('c')
 py = import('python').find_installation('python3')
@@ -24,9 +21,8 @@ py = import('python').find_installation('python3')
 # ----------------------------------------------------------------------
 # Generate lib/gnulib-common.h from m4/gnulib-common.m4.  This header
 # contains the _GL_ATTRIBUTE_* / _Noreturn / _GL_GNUC_PREREQ macro
-# block that gnulib-common.m4 contributes to config.h via AH_VERBATIM
-# in the autotools build.  Phase 2 lifts the rest of m4/*.m4 into
-# native Meson checks.
+# block that gnulib-common.m4 contributed to config.h via AH_VERBATIM
+# in the autotools build.
 # ----------------------------------------------------------------------
 extract_ah = files('meson/extract_ah_verbatim.py')
 

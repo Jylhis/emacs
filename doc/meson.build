@@ -1,7 +1,7 @@
 # doc/meson.build -- Texinfo manuals.
 #
 # STATUS: phase 6 finish.  Builds the four core manuals' .info files
-# via makeinfo.  See .claude/plans/migrate-from-current-build-replicated-gadget.md.
+# via makeinfo.
 #
 # `meson compile -C build info` emits all info files into build/info/.
 # pdf/html targets are autotools-only for now -- low priority during

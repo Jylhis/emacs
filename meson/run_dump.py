@@ -6,8 +6,6 @@ meson can drive via custom_target.  It chdirs to the source tree's
 src/ directory so ../lisp resolves correctly, sets EMACSDATA so the
 charset maps in etc/ are found, and copies the lisp/international/
 generated files into place if they were produced in the build tree.
-
-See .claude/plans/migrate-from-current-build-replicated-gadget.md.
 """
 
 from __future__ import annotations
@@ -18,7 +16,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -131,7 +128,6 @@ def main() -> int:
     print(f"bootstrap-emacs did not produce {fname} in any of {candidates}",
           file=sys.stderr)
     return 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

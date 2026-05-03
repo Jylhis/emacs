@@ -7,8 +7,6 @@ and ``... -f unidata-gen-charprop FILE``.  Bootstrap-emacs (undumped
 temacs) is sufficient because unidata-gen.el is documented to be
 runnable by temacs, and loadup.el detects the unidata-gen mode and
 sets up load-path without dumping.
-
-See .claude/plans/migrate-from-current-build-replicated-gadget.md.
 """
 
 from __future__ import annotations
@@ -20,14 +18,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 # uni-*.el files listed in unidata-gen.el's unidata-file-alist.  Parsed
 # from the source so we don't drift if upstream adds entries.
 def discover_uni_files(unidata_gen_el: Path) -> list[str]:
     text = unidata_gen_el.read_text(encoding="utf-8")
     pat = re.compile(r'^\s*\("(uni-[^"]+\.el)"', re.MULTILINE)
     return pat.findall(text)
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -131,7 +127,6 @@ def main() -> int:
     args.stamp.parent.mkdir(parents=True, exist_ok=True)
     args.stamp.write_text("ok\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
