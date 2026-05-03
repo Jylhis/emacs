@@ -112,9 +112,26 @@ def main() -> int:
         "--eln-dest", str(out_dir / "native-lisp"),
     ]
     print("running:", " ".join(cmd), "(cwd:", src_dir, ")", flush=True)
-    rc = subprocess.run(cmd, cwd=src_dir, env=env).returncode
-    if rc != 0:
-        return rc
+    result = subprocess.run(cmd, cwd=src_dir, env=env,
+                            capture_output=True, text=True)
+    if result.stdout:
+        sys.stdout.write(result.stdout)
+        sys.stdout.flush()
+    if result.returncode != 0:
+        rc = result.returncode
+        print(f"bootstrap-emacs exited with code {rc}", file=sys.stderr)
+        if rc < 0:
+            import signal as _sig
+            try:
+                name = _sig.Signals(-rc).name
+            except (ValueError, AttributeError):
+                name = f"signal {-rc}"
+            print(f"  (killed by {name})", file=sys.stderr)
+        if result.stderr:
+            sys.stderr.write(result.stderr)
+            sys.stderr.flush()
+        return abs(rc) if rc > 0 else 128 + (-rc)
+
 
     # bootstrap-emacs writes the pdmp next to its own binary, not to
     # CWD.  Move it to the requested output path.
