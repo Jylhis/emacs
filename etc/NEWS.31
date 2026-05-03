@@ -25,33 +25,12 @@ applies, and please also update docstrings as needed.
 * Installation Changes in Emacs 31.1
 
 +++
-** Support for legacy platforms removed.
-Emacs now targets only the following platforms:
-
-  - GNU/Linux on x86_64 and aarch64.
-  - macOS on x86_64 (Intel) and arm64 (Apple Silicon), via the Cocoa
-    NS port.
-  - Android (NDK builds).
-
-Support for the following operating systems has been removed: MS-DOS,
-all variants of MS Windows (NT, 9x, MinGW, Cygwin), FreeBSD, NetBSD,
-OpenBSD, DragonFly BSD, GNU/kFreeBSD, GNU/Hurd, HP-UX, AIX,
-Solaris/SunOS, IRIX, OSF/Tru64, Unixware, QNX, NaCl, and Haiku.  The
-GNUstep build of the NS port is also gone.
-
-Support for 32-bit CPU architectures on the host system has been
-removed (i386/i486/i586/i686, m68k, vax, alpha, sparc/sparc64, mips,
-powerpc-32, ia64, hppa, sh, s390, etc.).
-
-The Lucid (Xlw), Athena (Xaw/Xaw3d), Motif (Xm), and no-toolkit X11
-builds have been removed.  GTK 3 is now the only supported X11
-toolkit.  The Pure-GTK (Wayland) and TTY backends are unchanged.
-
-Legacy terminal types are no longer supported: AT386, bobcat,
-iris-ansi, lk201, news, sun, tvi970, vt100, vt200, wyse50, fbterm.
-
-WebAssembly/web is not currently supported but is being investigated
-as a future target.
+** New face 'margin' for the window margin background.
+A new basic face 'margin' is used by default for text displayed in the
+left and right margin areas, i.e., the areas reserved by packages such as
+git-gutter, lsp-mode, and hl-diff for per-line annotations.  Its
+background defaults to the frame default, so existing behavior is
+unchanged for users who do not customize it.
 
 +++
 ** Unexec dumper removed.
