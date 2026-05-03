@@ -431,6 +431,8 @@ if xwidgets_opt.allowed() and gtk3_dep.found()
     conf_data.set('HAVE_XWIDGETS', 1)
     conf_data.set('USE_GTK_FOR_XWIDGETS', 1)
   endif
+elif xwidgets_opt.enabled()
+  error('xwidgets=enabled but GTK3 toolkit is not in use')
 else
   webkit_dep = dependency('', required : false)
 endif
@@ -519,8 +521,11 @@ if dbus_dep.found()
 endif
 
 # GPM only makes sense on GNU/Linux; skip the probe elsewhere.
-if is_linux and get_option('gpm').allowed()
-  gpm_dep = cc.find_library('gpm', required : get_option('gpm'))
+gpm_opt = get_option('gpm')
+if is_linux and gpm_opt.allowed()
+  gpm_dep = cc.find_library('gpm', required : gpm_opt)
+elif gpm_opt.enabled()
+  error('gpm=enabled but the host is not GNU/Linux')
 else
   gpm_dep = dependency('', required : false)
 endif
@@ -530,10 +535,13 @@ endif
 
 # GSettings shares the gio-2.0 dependency.  Set HAVE_GSETTINGS only
 # when the matching schema-compiler is also present, so the install
-# step's glib-compile-schemas pass can run.
-gio_dep = dependency('gio-2.0', required : get_option('gsettings'))
+# step's glib-compile-schemas pass can run.  When --gsettings=enabled
+# the schema-compiler must also exist; defer to find_program's
+# `required` to enforce.
+gsettings_opt = get_option('gsettings')
+gio_dep = dependency('gio-2.0', required : gsettings_opt)
 gsettings_compile_prog = find_program('glib-compile-schemas',
-                                       required : false)
+                                       required : gsettings_opt)
 if gio_dep.found() and gsettings_compile_prog.found()
   conf_data.set('HAVE_GSETTINGS', 1)
 endif
@@ -606,19 +614,27 @@ endif
 
 # ----------------------------------------------------------------------
 # Cairo XCB (configure.ac:--with-cairo-xcb), XInput 2 extension,
-# Xaw3d.  All X11-gated.
+# Xaw3d.  All X11-gated; explicit `enabled` errors out without GTK3.
 # ----------------------------------------------------------------------
+xinput2_opt = get_option('xinput2')
+xdbe_opt = get_option('xdbe')
 if gtk3_dep.found()
-  if get_option('xinput2').allowed()
+  if xinput2_opt.allowed()
     if cc.has_header('X11/extensions/XInput2.h')
       conf_data.set('HAVE_XINPUT2', 1)
+    elif xinput2_opt.enabled()
+      error('xinput2=enabled but X11/extensions/XInput2.h not found')
     endif
   endif
-  if get_option('xdbe').allowed()
+  if xdbe_opt.allowed()
     if cc.has_header('X11/extensions/Xdbe.h')
       conf_data.set('HAVE_XDBE', 1)
+    elif xdbe_opt.enabled()
+      error('xdbe=enabled but X11/extensions/Xdbe.h not found')
     endif
   endif
+elif xinput2_opt.enabled() or xdbe_opt.enabled()
+  error('xinput2/xdbe=enabled but GTK3/X11 not in use')
 endif
 
 # ----------------------------------------------------------------------
