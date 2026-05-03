@@ -245,7 +245,22 @@ jobs:
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)
         run: |
           set -o pipefail
-          meson compile -C build --verbose 2>&1 | tee build/compile.log
+          # Build the foundation explicitly rather than relying on the
+          # default-target set.  Older meson (Ubuntu 24.04 ships 1.3.x)
+          # does not always honour build_by_default : false on
+          # custom_target, so the umbrella `meson compile -C build`
+          # used to pull in the still-flaky bootstrap-emacs.pdmp dump
+          # via implicit transitive deps.  Naming each target keeps
+          # the build minimal and deterministic across meson
+          # versions.  Explicit dependents are pulled in by ninja.
+          meson compile -C build --verbose \
+            temacs \
+            bootstrap-emacs \
+            emacs \
+            etc-DOC \
+            etags ctags emacsclient ebrowse hexl movemail \
+            charsets-stamp charscript.el emoji-zwj.el \
+            2>&1 | tee build/compile.log
 
       - name: Dump build diagnostics on failure
         if: failure()
