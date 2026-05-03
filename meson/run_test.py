@@ -43,16 +43,21 @@ def main() -> int:
     # lisp/cedet/semantic/debug.  Unlike byte_compile_batch.py,
     # do NOT skip obsolete/ -- tests in test/lisp/obsolete/ need
     # lisp/obsolete/ on the path.
+    #
+    # Walk only directory entries (os.walk + dirs[]) rather than
+    # rglob("*") + is_dir(), which would visit every .el file in
+    # the tree on each test invocation.
     paths = [str(lisp_root), str(lisp_root / "emacs-lisp")]
     seen = {"emacs-lisp"}
-    for d in sorted(lisp_root.rglob("*")):
-        if not d.is_dir():
-            continue
-        rel = d.relative_to(lisp_root).as_posix()
-        if rel in seen:
-            continue
-        seen.add(rel)
-        paths.append(str(d))
+    for root, dirs, _files in os.walk(lisp_root):
+        dirs.sort()
+        for d in dirs:
+            full = Path(root) / d
+            rel = full.relative_to(lisp_root).as_posix()
+            if rel in seen:
+                continue
+            seen.add(rel)
+            paths.append(str(full))
     # Test directory itself + test file's parent for sibling helpers.
     paths.append(str(test_root))
     paths.append(str(args.test_file.parent))

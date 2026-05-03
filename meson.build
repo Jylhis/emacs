@@ -606,32 +606,42 @@ install_data(
 # AppStream metadata (Makefile.in:791-797).
 install_data('etc/emacs.metainfo.xml', install_dir : metainfodir)
 
-# Icons.  Makefile.in:802-820 enumerates */*/{apps,mimetypes} and
-# installs every file matching `emacs[.-]*` (shell glob: emacs +
-# one '.' or '-' + suffix) -- so `emacs.png` and `emacs-document.svg`
-# match, but `emacs22.png`/`emacs23.png` do not.
-foreach size : ['16x16', '24x24', '32x32', '48x48', '128x128']
-  install_data(
-    'etc/images/icons/hicolor/' + size + '/apps/emacs.png',
-    install_dir : icondir / 'hicolor' / size / 'apps',
-  )
+# Icons.  Makefile.in:802-820 enumerates `*/*/apps */*/mimetypes`
+# under `etc/images/icons/hicolor/` and installs every file matching
+# the shell glob `emacs[.-]*` (literal `emacs` + one '.' or '-' +
+# suffix).  `emacs.png` and `emacs-document.svg` match;
+# `emacs22.png`/`emacs23.png` do not.
+#
+# Enumerate at configure time via meson/list_icons.py so we don't
+# hard-code a list of sizes / kinds and silently drop new icons that
+# land in etc/images/icons/hicolor/ later.
+icon_lines = run_command(
+  py, files('meson/list_icons.py'),
+  '--root', meson.global_source_root() / 'etc/images/icons/hicolor',
+  check : true,
+).stdout().strip().split('\n')
+foreach line : icon_lines
+  if line != ''
+    parts = line.split('\t')
+    install_data(parts[0], install_dir : icondir / 'hicolor' / parts[1])
+  endif
 endforeach
-install_data(
-  'etc/images/icons/hicolor/scalable/apps/emacs.svg',
-  'etc/images/icons/hicolor/scalable/apps/emacs.ico',
-  install_dir : icondir / 'hicolor' / 'scalable' / 'apps',
-)
-install_data(
-  'etc/images/icons/hicolor/scalable/mimetypes/emacs-document.svg',
-  'etc/images/icons/hicolor/scalable/mimetypes/emacs-document23.svg',
-  install_dir : icondir / 'hicolor' / 'scalable' / 'mimetypes',
-)
 
-# Manpages (Makefile.in:743-754).  emacs.1 / ctags.1 / hexl.1 etc. do
-# not ship as standalone files in doc/man; the autotools install loop
-# `for page in *.1` only finds the four below, with ChangeLog.1
-# explicitly skipped.
+# Manpages (Makefile.in:743-754).  doc/man/ ships static .1 files for
+# etags, emacsclient, ebrowse, and a `.1.in` template for emacs.1
+# (substitutes @version@ + @PACKAGE_BUGREPORT@).  ChangeLog.1 is
+# skipped by the autotools loop.  ctags.1 / hexl.1 do not exist as
+# autotools artefacts, so they aren't installed.
+emacs_man_data = configuration_data()
+emacs_man_data.set('version', emacs_version)
+emacs_man_data.set('PACKAGE_BUGREPORT', 'bug-gnu-emacs@gnu.org')
+emacs_man = configure_file(
+  input : 'doc/man/emacs.1.in',
+  output : 'emacs.1',
+  configuration : emacs_man_data,
+)
 install_man(
+  emacs_man,
   'doc/man/etags.1',
   'doc/man/emacsclient.1',
   'doc/man/ebrowse.1',

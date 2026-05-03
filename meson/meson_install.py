@@ -203,22 +203,38 @@ def main() -> int:
         copytree(eln_src, datadir / "native-lisp")
 
     # --- update-game-score sgid bit ----------------------------------
-    # When --gameuser=USER[:GROUP] is configured, the autotools build
-    # chowns/sgids the binary so it can write to the shared score
-    # directory (Makefile.in:856-864).  Without --gameuser, leave
-    # default permissions.
+    # When --gameuser=USER_OR_GROUP is configured, the autotools build
+    # uses `INSTALL_PROGRAM_GAME = $(INSTALL) -g $(gamegroup) -m 2755`
+    # (lib-src/Makefile.in) -- group-only chgrp + sgid.  No chown.
+    #
+    # The meson option matches the autotools `--with-gameuser` form:
+    #
+    #   "user"        -> treated as a group name (legacy form)
+    #   "user:group"  -> chgrp to `group`, optional chown to `user`
+    #
+    # Failures (DESTDIR staging where the user/group doesn't exist on
+    # the build host) are warnings, not errors.
     if args.gameuser:
         ugs = libexecdir / "update-game-score"
         if ugs.exists():
+            if ":" in args.gameuser:
+                ugs_user, ugs_group = args.gameuser.split(":", 1)
+            else:
+                # Bare value: treat as group, like autotools' gamegroup.
+                ugs_user, ugs_group = "", args.gameuser
             try:
-                subprocess.run(["chgrp", args.gameuser.split(":")[-1],
-                                str(ugs)], check=True)
+                if ugs_user:
+                    subprocess.run(
+                        ["chown", ugs_user, str(ugs)], check=True,
+                    )
+                if ugs_group:
+                    subprocess.run(
+                        ["chgrp", ugs_group, str(ugs)], check=True,
+                    )
                 ugs.chmod(0o2755)
             except (subprocess.CalledProcessError, OSError) as e:
-                # Common during DESTDIR staging where the gameuser
-                # doesn't exist yet; warn but don't fail.
                 print(
-                    f"warning: could not sgid {ugs} to "
+                    f"warning: could not chgrp/chown/sgid {ugs} to "
                     f"{args.gameuser}: {e}",
                     file=sys.stderr,
                 )
