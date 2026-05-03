@@ -266,6 +266,20 @@ if libgccjit_dep.found()
   src_deps += libgccjit_dep
 endif
 
+# B2 -- silent option probes wired in meson.build add new deps here so
+# their consumers (src/image.c, src/sound.c, src/dbusbind.c, ...)
+# link.  Each `if dep.found()` keeps the link line clean when the
+# option resolves to disabled.
+foreach _dep : [
+  jpeg_dep, tiff_dep, png_dep, gif_dep, rsvg_dep, webp_dep, xpm_dep,
+  imagemagick_dep, lcms2_dep, dbus_dep, gpm_dep, gio_dep, selinux_dep,
+  zlib_dep, libotf_dep, m17n_flt_dep, alsa_dep, webkit_dep,
+]
+  if _dep.found()
+    src_deps += _dep
+  endif
+endforeach
+
 src_args = ['-DEMACS_CORE=1']
 
 src_compile_probe = static_library(
