@@ -123,8 +123,8 @@ option('libsystemd',  type : 'feature', value : 'auto',
   description : 'systemd notification support.')
 option('xml2',        type : 'feature', value : 'auto',
   description : 'libxml2 parsing support.')
-option('tree-sitter', type : 'feature', value : 'enabled',
-  description : 'tree-sitter parser library (enabled by default).')
+option('tree-sitter', type : 'feature', value : 'auto',
+  description : 'tree-sitter parser library (autodetected; matches OPTION_DEFAULT_IFAVAILABLE).')
 option('gpm',         type : 'feature', value : 'auto',
   description : 'GPM mouse support on GNU/Linux console.')
 option('dbus',        type : 'feature', value : 'auto',
@@ -204,6 +204,15 @@ option('gtk-deprecation-warnings', type : 'boolean', value : false,
 )
 option('build-details', type : 'boolean', value : true,
   description : 'Embed build details (date, host) into the binary.'
+)
+option('wide-int', type : 'boolean', value : false,
+  description : 'Use 62-bit Lisp integers on 32-bit hosts (configure.ac --with-wide-int).'
+)
+option('xwidgets', type : 'feature', value : 'disabled',
+  description : 'Embed WebKitGTK widgets (configure.ac --with-xwidgets, OPTION_DEFAULT_OFF).'
+)
+option('compress-install', type : 'boolean', value : true,
+  description : 'gzip installed .el / info / etc/publicsuffix.txt (configure.ac --with-compress-install, default ON).'
 )
 
 # ----------------------------------------------------------------------

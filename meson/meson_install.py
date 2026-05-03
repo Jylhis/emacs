@@ -21,11 +21,25 @@ emacs.service) are installed by the meson DSL in meson.build itself.
 from __future__ import annotations
 
 import argparse
+import gzip
 import os
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+
+def gzip_file(src: Path) -> None:
+    """Replace `src` with `src.gz` (gzip -9n -- no name/timestamp metadata)."""
+    dst = src.with_suffix(src.suffix + ".gz")
+    with src.open("rb") as fin, gzip.GzipFile(
+        filename=str(dst),
+        mode="wb",
+        compresslevel=9,
+        mtime=0,  # -n: no timestamp
+    ) as fout:
+        shutil.copyfileobj(fin, fout)
+    src.unlink()
 
 
 def copytree(src: Path, dst: Path, *, exclude: set[str] | None = None) -> None:
@@ -71,6 +85,13 @@ def main() -> int:
                    help="user[:group] for sgid update-game-score")
     p.add_argument("--update-subdirs", required=True, type=Path,
                    help="path to build-aux/update-subdirs")
+    p.add_argument("--compress-install", action="store_true",
+                   help="gzip installed *.el / info / manpages "
+                        "(matches autotools --with-compress-install)")
+    p.add_argument("--mandir", default="",
+                   help="installed manpage dir; required for --compress-install")
+    p.add_argument("--infodir", default="",
+                   help="installed info dir; required for --compress-install")
     args = p.parse_args()
 
     install_prefix = Path(
@@ -247,6 +268,51 @@ def main() -> int:
                     f"{args.gameuser} to {ugs}: {e}",
                     file=sys.stderr,
                 )
+
+    # --- compress-install ---------------------------------------------
+    # Autotools' --with-compress-install (default ON) gzip's installed
+    # *.el files whose *.elc exists, info files, manpages, and
+    # etc/publicsuffix.txt.  Reference: Makefile.in:678-732.
+    if args.compress_install:
+        # *.el next to a *.elc.
+        for elc in lisp_dst.rglob("*.elc"):
+            el = elc.with_suffix(".el")
+            if el.exists():
+                try:
+                    gzip_file(el)
+                except OSError as e:
+                    print(f"warning: gzip {el}: {e}", file=sys.stderr)
+        # etc/publicsuffix.txt.
+        psl = etc_dst / "publicsuffix.txt"
+        if psl.exists():
+            try:
+                gzip_file(psl)
+            except OSError as e:
+                print(f"warning: gzip {psl}: {e}", file=sys.stderr)
+        # Info pages.
+        if args.infodir:
+            info_dst = resolve(args.infodir)
+            if info_dst.is_dir():
+                for info in info_dst.iterdir():
+                    if info.is_file() and info.suffix != ".gz":
+                        # Skip info-dir merge index.
+                        if info.name == "dir":
+                            continue
+                        try:
+                            gzip_file(info)
+                        except OSError as e:
+                            print(f"warning: gzip {info}: {e}",
+                                  file=sys.stderr)
+        # Manpages.
+        if args.mandir:
+            man_dst = resolve(args.mandir) / "man1"
+            if man_dst.is_dir():
+                for page in man_dst.glob("*.1"):
+                    try:
+                        gzip_file(page)
+                    except OSError as e:
+                        print(f"warning: gzip {page}: {e}",
+                              file=sys.stderr)
 
     print(f"installed emacs {args.version} into {destdir_prefix}")
     return 0

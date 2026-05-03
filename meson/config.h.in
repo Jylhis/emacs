@@ -105,6 +105,9 @@
 #mesondefine HAVE_LIBSYSTEMD
 #mesondefine HAVE_GMP
 #mesondefine HAVE_NATIVE_COMP
+#mesondefine HAVE_XWIDGETS
+#mesondefine USE_GTK_FOR_XWIDGETS
+#mesondefine WIDE_EMACS_INT
 
 /* C99 flexible array member: empty if supported, "1" otherwise (cf.
    m4/flexmember.m4).  */

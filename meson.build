@@ -413,6 +413,28 @@ if libgccjit_dep.found()
   conf_data.set('HAVE_NATIVE_COMP', 1)
 endif
 
+# WIDE_EMACS_INT widens EMACS_INT to 62 bits on 32-bit hosts;
+# configure.ac:--with-wide-int.
+if get_option('wide-int')
+  conf_data.set('WIDE_EMACS_INT', 1)
+endif
+
+# Xwidgets pull in WebKitGTK and embed live web views in buffers
+# (configure.ac:--with-xwidgets).  Auto/disabled probes for
+# webkit2gtk-4.1; the source-tree consumers (src/xwidget.c,
+# lisp/xwidget.el) gate on HAVE_XWIDGETS.  GTK3 is the only
+# toolkit on this branch that supports it.
+xwidgets_opt = get_option('xwidgets')
+if xwidgets_opt.allowed() and gtk3_dep.found()
+  webkit_dep = dependency('webkit2gtk-4.1', required : xwidgets_opt)
+  if webkit_dep.found()
+    conf_data.set('HAVE_XWIDGETS', 1)
+    conf_data.set('USE_GTK_FOR_XWIDGETS', 1)
+  endif
+else
+  webkit_dep = dependency('', required : false)
+endif
+
 # ----------------------------------------------------------------------
 # EMACS_CONFIG_OPTIONS / EMACS_CONFIG_FEATURES (configure.ac:6365 / 6782).
 #
@@ -432,6 +454,7 @@ foreach _knob : [
   'modules', 'threads', 'sound', 'file-notification',
   'gcc-warnings', 'lto', 'check-lisp-object-type',
   'small-ja-dic', 'mailutils', 'pop',
+  'wide-int', 'xwidgets', 'compress-install',
 ]
   _v = get_option(_knob)
   _opts += '-D' + _knob + '=' + '@0@'.format(_v)
@@ -653,16 +676,23 @@ endif
 # emacs/emacs.pdmp from build tree, gameuser sgid bit).  These need
 # the build outputs to exist on disk, so they run from the post-build
 # install script.
-meson.add_install_script(
-  py, files('meson/meson_install.py'),
+_install_args = [
   '--prefix',           prefix,
   '--bindir',           bindir,
   '--datadir',          emacs_data,
   '--libexecdir',       emacs_arch,
+  '--mandir',           mandir,
+  '--infodir',          infodir,
   '--build-root',       meson.global_build_root(),
   '--source-root',      meson.global_source_root(),
   '--version',          emacs_version,
   '--gameuser',         get_option('gameuser'),
   '--update-subdirs',
   meson.global_source_root() / 'build-aux' / 'update-subdirs',
+]
+if get_option('compress-install')
+  _install_args += '--compress-install'
+endif
+meson.add_install_script(
+  py, files('meson/meson_install.py'), _install_args,
 )
