@@ -11,6 +11,35 @@
 #   meson test -C build --suite src       # C-level tests only
 
 # ----------------------------------------------------------------------
+# mod-test.so -- the dynamic module that emacs-module-tests.el loads
+# at runtime.  Mirrors test/Makefile.in:283-309: a -shared, -fPIC
+# build of test/src/emacs-module-resources/mod-test.c against the
+# generated emacs-module.h and config.h.  Without this the
+# emacs-module-tests fail to load the test module silently.
+# ----------------------------------------------------------------------
+mod_test_inc = [
+  top_inc,                              # picks up generated config.h
+  include_directories('src/emacs-module-resources',
+                      '../src',
+                      '../lib'),
+]
+# Listing emacs_module_h as a source pulls its build-dir output
+# (build/src/emacs-module.h) onto the include path that gcc sees,
+# alongside the source-tree headers above.
+mod_test = shared_module(
+  'mod-test',
+  sources : [
+    files('src/emacs-module-resources/mod-test.c'),
+    emacs_module_h,
+  ],
+  include_directories : mod_test_inc,
+  dependencies : [gmp_dep, libgnu_dep],
+  c_args : ['-fPIC'],
+  install : false,
+  name_prefix : '',                     # produces mod-test.so, not libmod-test.so
+)
+
+# ----------------------------------------------------------------------
 # Discovery: enumerate test/**/*-tests.el at configure time.
 # Follows the pattern in lisp/meson.build:107-112.
 # ----------------------------------------------------------------------
@@ -68,6 +97,14 @@ foreach rel : _all_test_files
     _suite += 'smoke'
   endif
 
+  # emacs-module-tests.el loads test/src/emacs-module-resources/mod-test.so
+  # at runtime; ensure it's built and on the right side of the dep
+  # chain.  Other tests don't need it.
+  _extra_deps = []
+  if rel == 'src/emacs-module-tests.el'
+    _extra_deps = [mod_test]
+  endif
+
   name = rel.replace('/', '_').replace('.el', '')
   test(
     name,
@@ -79,7 +116,7 @@ foreach rel : _all_test_files
       '--source-root', meson.global_source_root(),
       '--test-file',   meson.global_source_root() / 'test' / rel,
     ],
-    depends : [emacs, emacs_pdmp],
+    depends : [emacs, emacs_pdmp] + _extra_deps,
     timeout : 120,
     suite : _suite,
   )
