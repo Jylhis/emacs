@@ -269,6 +269,47 @@ def main() -> int:
                     file=sys.stderr,
                 )
 
+    # --- install-info dir index --------------------------------------
+    # For every installed *.info file, register it in
+    # "$infodir/dir" via `install-info --info-dir=...`.
+    # Mirrors Makefile.in:733-754 install-info loop.
+    if args.infodir:
+        info_dst = resolve(args.infodir)
+        if info_dst.is_dir():
+            install_info = shutil.which("install-info")
+            if install_info is None:
+                print("warning: install-info not found; skipping info "
+                      "dir registration", file=sys.stderr)
+            else:
+                for f in sorted(info_dst.iterdir()):
+                    if f.is_file() and f.suffix == ".info":
+                        try:
+                            subprocess.run(
+                                [install_info,
+                                 "--info-dir=" + str(info_dst),
+                                 str(f)],
+                                check=False,  # warnings are common
+                            )
+                        except OSError as e:
+                            print(f"warning: install-info {f}: {e}",
+                                  file=sys.stderr)
+
+    # --- glib-compile-schemas ----------------------------------------
+    # When the build installed a gschema.xml, recompile the cache so
+    # `gsettings get` finds it on the user's host.  Mirrors
+    # Makefile.in:947-985.
+    schemadir = destdir_prefix / "share" / "glib-2.0" / "schemas"
+    if (schemadir / "org.gnu.emacs.defaults.gschema.xml").exists():
+        glib_compile = shutil.which("glib-compile-schemas")
+        if glib_compile is not None:
+            try:
+                subprocess.run(
+                    [glib_compile, str(schemadir)], check=False,
+                )
+            except OSError as e:
+                print(f"warning: glib-compile-schemas {schemadir}: {e}",
+                      file=sys.stderr)
+
     # --- compress-install ---------------------------------------------
     # Autotools' --with-compress-install (default ON) gzip's installed
     # *.el files whose *.elc exists, info files, manpages, and

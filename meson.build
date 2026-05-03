@@ -858,6 +858,17 @@ if systemduserunitdir != ''
   install_data('etc/emacs.service', install_dir : systemduserunitdir)
 endif
 
+# GSettings schema (Makefile.in:947-985).  Installed when both
+# gio-2.0 and glib-compile-schemas are present.  meson_install.py
+# runs `glib-compile-schemas` post-install so the dconf cache picks
+# up the new schema.
+if conf_data.has('HAVE_GSETTINGS')
+  install_data(
+    'etc/org.gnu.emacs.defaults.gschema.xml',
+    install_dir : gsettingsschemadir,
+  )
+endif
+
 # Per-build artefacts (etc/DOC, native-lisp/, subdirs.el creation,
 # emacs/emacs.pdmp from build tree, gameuser sgid bit).  These need
 # the build outputs to exist on disk, so they run from the post-build
