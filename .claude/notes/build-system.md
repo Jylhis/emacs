@@ -3,14 +3,13 @@
 Sources: INSTALL, INSTALL.REPO, nextstep/INSTALL, etc/DEBUG,
 admin/README, admin/make-emacs, admin/quick-install-emacs.
 
-## Branch state: dual build
+## Branch state: Meson + Ninja only
 
-This branch (`claude/migrate-to-meson-ninja-ZSbvG`) is migrating from
-Autotools to Meson + Ninja per
-`.claude/plans/migrate-from-current-build-replicated-gadget.md`.
-Both build systems coexist until phase-10 cutover.
+The autotools entry points were removed at phase-10 cutover (commit
+`313f867`).  See `/root/.claude/plans/review-current-meson-based-merry-fairy.md`
+for the post-cutover parity audit and the prioritised work plan.
 
-## Meson build (preferred on this branch)
+## Meson build
 
     meson setup build -Dnative-compilation=yes
     meson compile -C build

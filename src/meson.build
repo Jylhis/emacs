@@ -113,6 +113,7 @@ etc_doc = custom_target(
     '-d', meson.current_source_dir(),
   ] + base_obj_basenames,
   capture : true,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -149,6 +150,8 @@ emacs_module_h = custom_target(
     '--src-dir',       meson.current_source_dir(),
     '--major-version', emacs_version.split('.')[0],
   ],
+  install : true,
+  install_dir : get_option('includedir'),
 )
 
 # ----------------------------------------------------------------------
@@ -321,7 +324,7 @@ bootstrap_emacs = custom_target(
   output  : 'bootstrap-emacs',
   command : ['cp', '-f', temacs.full_path(), '@OUTPUT@'],
   depends : [temacs],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # bootstrap-emacs.pdmp -- the workhorse dumped image.  Generated
@@ -384,7 +387,7 @@ emacs = custom_target(
   output  : 'emacs',
   command : ['cp', '-f', temacs.full_path(), '@OUTPUT@'],
   depends : [temacs],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # emacs.pdmp -- defined in lisp/meson.build because it depends on

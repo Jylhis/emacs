@@ -58,13 +58,10 @@ conf_data.set('PACKAGE_BUGREPORT', 'bug-gnu-emacs@gnu.org')
 conf_data.set('PACKAGE_URL', 'https://www.gnu.org/software/emacs/')
 conf_data.set('PACKAGE_TARNAME', 'emacs')
 
-# configure.ac:6365 / 6782 -- recorded build flags that emacs prints
-# from system-configuration-options / system-configuration-features.
-conf_data.set('EMACS_CONFIG_OPTIONS',
-              'meson setup --buildtype=debug')
-conf_data.set('EMACS_CONFIG_FEATURES',
-              'GTK3 CAIRO HARFBUZZ FREETYPE GNUTLS TREE_SITTER ' +
-              'SQLITE3 LIBXML2 LIBSYSTEMD GMP')
+# EMACS_CONFIG_OPTIONS / EMACS_CONFIG_FEATURES are filled in below,
+# after all dependency probes have run, so that
+# system-configuration-options and system-configuration-features
+# describe the actual build (configure.ac:6365 / 6782).
 
 # Canonical build triple, used by system-configuration variable.
 conf_data.set('EMACS_CONFIGURATION',
@@ -420,6 +417,76 @@ if libgccjit_dep.found()
   conf_data.set('HAVE_NATIVE_COMP', 1)
 endif
 
+# ----------------------------------------------------------------------
+# EMACS_CONFIG_OPTIONS / EMACS_CONFIG_FEATURES (configure.ac:6365 / 6782).
+#
+# Compose strings that mirror what the autotools build embedded, so
+# `system-configuration-options` and `system-configuration-features`
+# in the dumped Emacs describe the actual build rather than a static
+# placeholder.  config.h.in wraps both with `"..."` already, so use
+# plain set() not set_quoted().
+# ----------------------------------------------------------------------
+_opts = ['meson', 'setup', '--buildtype=' + get_option('buildtype'),
+         '--prefix=' + get_option('prefix')]
+foreach _knob : [
+  'all-features', 'native-compilation', 'toolkit', 'pgtk', 'ns',
+  'tree-sitter', 'gnutls', 'sqlite3', 'xml2', 'libsystemd',
+  'cairo', 'harfbuzz', 'xft', 'jpeg', 'tiff', 'gif', 'png', 'rsvg',
+  'webp', 'imagemagick', 'lcms2', 'dbus', 'gsettings', 'gpm',
+  'modules', 'threads', 'sound', 'file-notification',
+  'gcc-warnings', 'lto', 'check-lisp-object-type',
+  'small-ja-dic', 'mailutils', 'pop',
+]
+  _v = get_option(_knob)
+  _opts += '-D' + _knob + '=' + '@0@'.format(_v)
+endforeach
+# `checking` is an array option; format it explicitly.
+_opts += '-Dchecking=' + ','.join(get_option('checking'))
+conf_data.set('EMACS_CONFIG_OPTIONS', ' '.join(_opts))
+
+_features = []
+if gtk3_dep.found()
+  _features += 'GTK3'
+endif
+if conf_data.has('HAVE_X11')
+  _features += 'X11'
+endif
+if cairo_dep.found()
+  _features += 'CAIRO'
+endif
+if harfbuzz_dep.found()
+  _features += 'HARFBUZZ'
+endif
+if freetype_dep.found()
+  _features += 'FREETYPE'
+endif
+if fontconfig_dep.found()
+  _features += 'FONTCONFIG'
+endif
+if xft_dep.found()
+  _features += 'XFT'
+endif
+if gnutls_dep.found()
+  _features += 'GNUTLS'
+endif
+if treesit_dep.found()
+  _features += 'TREE_SITTER'
+endif
+if sqlite_dep.found()
+  _features += 'SQLITE3'
+endif
+if xml_dep.found()
+  _features += 'LIBXML2'
+endif
+if systemd_dep.found()
+  _features += 'LIBSYSTEMD'
+endif
+if libgccjit_dep.found()
+  _features += 'NATIVE_COMP'
+endif
+_features += 'GMP'
+conf_data.set('EMACS_CONFIG_FEATURES', ' '.join(_features))
+
 # EMACS_INT type and its alignof (configure.ac:2814).  src/lisp.h
 # requires both at preprocessor time.
 emacs_int_probe = '''
@@ -474,50 +541,122 @@ top_inc = include_directories('.', 'meson')
 emacs_version = meson.project_version()
 
 # ----------------------------------------------------------------------
-# Subdir wiring.  Each phase fills in another directory.
+# Standard install path variables.  These need to be defined before the
+# subdirs so per-subdir install_dir arguments resolve correctly.
 # ----------------------------------------------------------------------
+prefix             = get_option('prefix')
+datadir            = get_option('datadir')           # share/
+bindir             = get_option('bindir')            # bin/
+libexecdir         = get_option('libexecdir')        # libexec/
+infodir            = get_option('infodir')           # share/info/
+mandir             = get_option('mandir')            # share/man/
+includedir         = get_option('includedir')        # include/
+sysconfdir         = get_option('sysconfdir')        # etc/
+localstatedir      = get_option('localstatedir')     # var/
+datadirs           = datadir
+desktopdir         = datadir / 'applications'
+metainfodir        = datadir / 'metainfo'
+icondir            = datadir / 'icons'
+gsettingsschemadir = datadir / 'glib-2.0' / 'schemas'
+systemduserunitdir = get_option('systemduserunitdir')
 
-subdir('lib')      # Phase 2: full gnulib port (in progress)
-subdir('lib-src')  # Phase 1: helper executables (working)
-subdir('admin')    # Phase 6: charsets + unidata generators
-subdir('src')      # Phase 3: temacs + bootstrap-emacs
-subdir('lisp')     # Phase 4-5: byte-compile + native-comp
-subdir('test')     # Phase 7: ERT smoke tests
-subdir('doc')      # Phase 6: texinfo info manuals
-# subdir('leim')     # Phase 6 (TODO)
-# subdir('nextstep') # Phase 8: macOS .app (TODO)
-# subdir('java')     # Phase 8: Android cross-build (TODO)
-
-# ----------------------------------------------------------------------
-# Phase 9 -- install rules.  Replicates the bare minimum of
-# Makefile.in's install targets (lines 552-937).  The full set
-# includes desktop / icon / gsettings schema / info / man pages;
-# those land as we move them out of comments below.
-# ----------------------------------------------------------------------
-prefix = get_option('prefix')
-datadir = get_option('datadir')          # share/
-bindir = get_option('bindir')            # bin/
-libexecdir = get_option('libexecdir')    # libexec/
-infodir = get_option('infodir')          # share/info/
-mandir = get_option('mandir')            # share/man/
-
-emacs_data = datadir / 'emacs' / meson.project_version()
-emacs_arch = (libexecdir / 'emacs' / meson.project_version()
+emacs_data = datadir / 'emacs' / emacs_version
+emacs_arch = (libexecdir / 'emacs' / emacs_version
               / (host_machine.cpu_family() + '-' + host_machine.system()))
+nativecompdir = emacs_data / 'native-lisp'
+emacs_lispdir = emacs_data / 'lisp'
+emacs_etcdir  = emacs_data / 'etc'
+emacs_docdir  = emacs_arch / 'etc'           # PATH_DOC -> libexec/.../etc
 
-# Install rules driven by meson_install.py.  Custom install script
-# is used (instead of install_data on custom_target outputs) because
-# install_data evaluates paths at configure time, but our emacs and
-# emacs.pdmp don't exist until the build runs.  meson.add_install_script
-# runs after the build, by which point the dumped emacs and pdmp
-# image are present.
+# ----------------------------------------------------------------------
+# Subdir wiring.
+# ----------------------------------------------------------------------
+
+subdir('lib')      # gnulib portability subset
+subdir('lib-src')  # helper executables (etags, emacsclient, ...)
+subdir('admin')    # charsets + unidata generators
+subdir('src')      # temacs + bootstrap-emacs + emacs binary + DOC
+subdir('lisp')     # byte-compile + native-comp + emacs.pdmp
+subdir('test')     # ERT test discovery
+subdir('doc')      # texinfo info manuals
+# subdir('leim')     # TODO: MISC-DIC and friends
+# subdir('nextstep') # TODO: macOS .app bundle
+# subdir('java')     # TODO: Android cross-build
+
+# ----------------------------------------------------------------------
+# Install rules.  Items that exist as static source-tree files use
+# meson's native install_data / install_man.  Items that depend on
+# build-tree artefacts (etc/DOC, native-lisp/, subdirs.el) are handled
+# by meson/meson_install.py via add_install_script (runs after the
+# build, when those artefacts exist).  Reference: Makefile.in:552-937.
+# ----------------------------------------------------------------------
+
+# Desktop entries (Makefile.in:756-789).  Installed verbatim.  The
+# autotools build sed-rewrites Exec= and Icon= lines to honour
+# program-transform-name and an Emacs-specific bindir prefix; we
+# defer that until --program-suffix lands in meson.options.
+install_data(
+  'etc/emacs.desktop',
+  'etc/emacsclient.desktop',
+  'etc/emacs-mail.desktop',
+  'etc/emacsclient-mail.desktop',
+  install_dir : desktopdir,
+)
+
+# AppStream metadata (Makefile.in:791-797).
+install_data('etc/emacs.metainfo.xml', install_dir : metainfodir)
+
+# Icons.  Makefile.in:802-820 enumerates */*/{apps,mimetypes} and
+# installs every file matching `emacs[.-]*` (shell glob: emacs +
+# one '.' or '-' + suffix) -- so `emacs.png` and `emacs-document.svg`
+# match, but `emacs22.png`/`emacs23.png` do not.
+foreach size : ['16x16', '24x24', '32x32', '48x48', '128x128']
+  install_data(
+    'etc/images/icons/hicolor/' + size + '/apps/emacs.png',
+    install_dir : icondir / 'hicolor' / size / 'apps',
+  )
+endforeach
+install_data(
+  'etc/images/icons/hicolor/scalable/apps/emacs.svg',
+  'etc/images/icons/hicolor/scalable/apps/emacs.ico',
+  install_dir : icondir / 'hicolor' / 'scalable' / 'apps',
+)
+install_data(
+  'etc/images/icons/hicolor/scalable/mimetypes/emacs-document.svg',
+  'etc/images/icons/hicolor/scalable/mimetypes/emacs-document23.svg',
+  install_dir : icondir / 'hicolor' / 'scalable' / 'mimetypes',
+)
+
+# Manpages (Makefile.in:743-754).  emacs.1 / ctags.1 / hexl.1 etc. do
+# not ship as standalone files in doc/man; the autotools install loop
+# `for page in *.1` only finds the four below, with ChangeLog.1
+# explicitly skipped.
+install_man(
+  'doc/man/etags.1',
+  'doc/man/emacsclient.1',
+  'doc/man/ebrowse.1',
+)
+
+# systemd user unit (Makefile.in:798-806).  Only installed if the
+# user passed --systemduserunitdir=DIR.
+if systemduserunitdir != ''
+  install_data('etc/emacs.service', install_dir : systemduserunitdir)
+endif
+
+# Per-build artefacts (etc/DOC, native-lisp/, subdirs.el creation,
+# emacs/emacs.pdmp from build tree, gameuser sgid bit).  These need
+# the build outputs to exist on disk, so they run from the post-build
+# install script.
 meson.add_install_script(
   py, files('meson/meson_install.py'),
-  '--prefix',     prefix,
-  '--bindir',     bindir,
-  '--datadir',    emacs_data,
-  '--libexecdir', emacs_arch,
-  '--build-root', meson.global_build_root(),
-  '--source-root', meson.global_source_root(),
-  '--version',    meson.project_version(),
+  '--prefix',           prefix,
+  '--bindir',           bindir,
+  '--datadir',          emacs_data,
+  '--libexecdir',       emacs_arch,
+  '--build-root',       meson.global_build_root(),
+  '--source-root',      meson.global_source_root(),
+  '--version',          emacs_version,
+  '--gameuser',         get_option('gameuser'),
+  '--update-subdirs',
+  meson.global_source_root() / 'build-aux' / 'update-subdirs',
 )

@@ -25,7 +25,7 @@ charsets_stamp = custom_target(
     '--lispint-dir',  meson.global_source_root() / 'lisp/international',
     '--stamp',        '@OUTPUT@',
   ],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -41,7 +41,7 @@ charscript_el = custom_target(
     unidir / 'Blocks.txt', unidir / 'emoji-data.txt',
   ],
   capture : true,
-  build_by_default : false,
+  build_by_default : true,
 )
 
 emoji_zwj_el = custom_target(
@@ -52,7 +52,7 @@ emoji_zwj_el = custom_target(
     unidir / 'emoji-zwj-sequences.txt', unidir / 'emoji-sequences.txt',
   ],
   capture : true,
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
