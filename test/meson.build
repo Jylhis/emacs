@@ -18,7 +18,7 @@ list_tests = files('../meson/list_test_files.py')
 _all_test_files = run_command(
   py, list_tests,
   '--test-dir', meson.global_source_root() / 'test',
-  '--output',   '/dev/stdout',
+  '--output',   '-',
   check : true,
 ).stdout().strip().split('\n')
 

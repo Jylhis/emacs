@@ -42,7 +42,7 @@ foreach manual : [
                src],
     install : true,
     install_dir : get_option('infodir'),
-    build_by_default : false,
+    build_by_default : true,
   )
 endforeach
 

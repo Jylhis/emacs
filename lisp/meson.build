@@ -107,7 +107,7 @@ compile_first_elcs = custom_target(
 _all_lisp_files = run_command(
   py, list_lisp_files,
   '--lisp-dir', meson.global_source_root() / 'lisp',
-  '--output',   '/dev/stdout',
+  '--output',   '-',
   check : true,
 ).stdout().strip().split('\n')
 _all_lisp_paths = []
@@ -133,6 +133,11 @@ compile_main_manifest = custom_target(
   # because eager macro expansion of `(autoload 'rx ... nil t)` in
   # source-loaded loaddefs.el triggers a load that pdump rejects.
   depends : [loaddefs_stamp],
+  # Don't pull this into the default build set: it transitively
+  # depends on loaddefs_stamp -> bootstrap-emacs.pdmp, which is
+  # only built when explicitly requested (the dump pipeline is
+  # known-flaky during the post-cutover migration).
+  build_by_default : false,
 )
 
 compile_main_elcs = custom_target(
