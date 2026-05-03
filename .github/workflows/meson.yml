@@ -252,13 +252,20 @@ jobs:
           # used to pull in the still-flaky bootstrap-emacs.pdmp dump
           # via implicit transitive deps.  Naming each target keeps
           # the build minimal and deterministic across meson
-          # versions.  Explicit dependents are pulled in by ninja.
+          # versions.  Note: with explicit targets ninja only builds
+          # the listed ones + their transitive deps (it ignores
+          # build_by_default for un-listed targets), so the lib-src
+          # build helpers (make-docfile, make-fingerprint) and the
+          # gamedir helper (update-game-score) must be named even
+          # though they're build_by_default : true.
           meson compile -C build --verbose \
             temacs \
             bootstrap-emacs \
             emacs \
             etc-DOC \
+            make-docfile make-fingerprint \
             etags ctags emacsclient ebrowse hexl movemail \
+            update-game-score \
             charsets-stamp charscript.el emoji-zwj.el \
             2>&1 | tee build/compile.log
 
