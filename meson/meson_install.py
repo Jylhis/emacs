@@ -202,40 +202,49 @@ def main() -> int:
     if eln_src.is_dir():
         copytree(eln_src, datadir / "native-lisp")
 
-    # --- update-game-score sgid bit ----------------------------------
-    # When --gameuser=USER_OR_GROUP is configured, the autotools build
-    # uses `INSTALL_PROGRAM_GAME = $(INSTALL) -g $(gamegroup) -m 2755`
-    # (lib-src/Makefile.in) -- group-only chgrp + sgid.  No chown.
+    # --- update-game-score chown/chgrp + suid/sgid bit ---------------
+    # configure.ac:656-680 parses --with-gameuser=USER_OR_GROUP as:
     #
-    # The meson option matches the autotools `--with-gameuser` form:
+    #   bare `alice`  -> gameuser=alice,  gamegroup=        (USER mode)
+    #   `:games`      -> gameuser=,       gamegroup=games   (GROUP mode)
+    #   `yes`         -> gameuser=,       gamegroup=games   (GROUP mode)
+    #   unset / empty -> not installed
     #
-    #   "user"        -> treated as a group name (legacy form)
-    #   "user:group"  -> chgrp to `group`, optional chown to `user`
+    # The autotools install rule then branches
+    # (lib-src/Makefile.in:343-359):
     #
-    # Failures (DESTDIR staging where the user/group doesn't exist on
-    # the build host) are warnings, not errors.
+    #   USER mode:  chown ${gameuser};  chmod u+s,go-r  (mode 4711)
+    #   GROUP mode: chgrp ${gamegroup}; chmod g+s,o-r  (mode 2751)
+    #
+    # DESTDIR-staged failures (user/group doesn't exist on the build
+    # host) stay warnings rather than aborting the install.
     if args.gameuser:
         ugs = libexecdir / "update-game-score"
         if ugs.exists():
-            if ":" in args.gameuser:
-                ugs_user, ugs_group = args.gameuser.split(":", 1)
+            if args.gameuser.startswith(":"):
+                cmd, mode = (
+                    ["chgrp", args.gameuser[1:], str(ugs)],
+                    0o2751,
+                )
+            elif args.gameuser == "yes":
+                # Default GROUP mode.
+                cmd, mode = (
+                    ["chgrp", "games", str(ugs)],
+                    0o2751,
+                )
             else:
-                # Bare value: treat as group, like autotools' gamegroup.
-                ugs_user, ugs_group = "", args.gameuser
+                # USER mode: bare value.
+                cmd, mode = (
+                    ["chown", args.gameuser, str(ugs)],
+                    0o4711,
+                )
             try:
-                if ugs_user:
-                    subprocess.run(
-                        ["chown", ugs_user, str(ugs)], check=True,
-                    )
-                if ugs_group:
-                    subprocess.run(
-                        ["chgrp", ugs_group, str(ugs)], check=True,
-                    )
-                ugs.chmod(0o2755)
+                subprocess.run(cmd, check=True)
+                ugs.chmod(mode)
             except (subprocess.CalledProcessError, OSError) as e:
                 print(
-                    f"warning: could not chgrp/chown/sgid {ugs} to "
-                    f"{args.gameuser}: {e}",
+                    f"warning: could not apply gameuser="
+                    f"{args.gameuser} to {ugs}: {e}",
                     file=sys.stderr,
                 )
 

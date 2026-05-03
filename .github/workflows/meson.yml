@@ -192,14 +192,20 @@ jobs:
           ninja --version
 
       # ---- Build cache ------------------------------------------------
+      # Bump the version suffix (currently `-v2`) whenever a change to a
+      # meson.build affects the default-target set or build_by_default
+      # decisions; otherwise restore-keys can fall back to a stale build
+      # dir whose build.ninja still lists removed/renamed default
+      # targets.  An exact-key miss without restore-keys means fresh
+      # `meson setup`, which is correct but slower; the partial-match
+      # fallback below kept .o caching at the cost of stale .ninja
+      # files.
       - name: Cache Meson build dir
         id: cache-build
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: build
-          key: meson-build-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
-          restore-keys: |
-            meson-build-${{ runner.os }}-
+          key: meson-build-v2-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
 
       - name: Cache source-tree byte-compile artefacts
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
@@ -221,11 +227,19 @@ jobs:
       # ---- Build ------------------------------------------------------
       - name: meson setup
         run: |
-          if [ ! -f build/meson-info/meson-info.json ]; then
-            meson setup build
+          # If the cache restored a complete build dir, `meson setup
+          # --wipe build` keeps the .o cache but rewrites
+          # meson-private/ + build.ninja from scratch -- the right
+          # behaviour when a meson.build change has altered the default
+          # target set.  `meson setup --reconfigure` (the previous
+          # approach) is known to retain stale build_by_default
+          # decisions, which let a flaky bootstrap-emacs.pdmp leak into
+          # the umbrella compile step.
+          if [ -f build/meson-info/meson-info.json ]; then
+            echo "Reusing cached build/ directory (wiping config)"
+            meson setup --wipe build
           else
-            echo "Reusing cached build/ directory"
-            meson setup --reconfigure build
+            meson setup build
           fi
 
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)

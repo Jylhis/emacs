@@ -11,7 +11,8 @@ from pathlib import Path
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--test-dir", required=True, type=Path)
-    p.add_argument("--output", required=True, type=Path)
+    p.add_argument("--output", required=True,
+                   help='destination path, or "-" for stdout')
     args = p.parse_args()
 
     test = args.test_dir.resolve()
@@ -20,8 +21,13 @@ def main() -> int:
         rel = el.relative_to(test)
         out.append(str(rel))
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text("\n".join(out) + "\n")
+    payload = "\n".join(out) + "\n"
+    if args.output == "-":
+        sys.stdout.write(payload)
+    else:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(payload)
     return 0
 
 

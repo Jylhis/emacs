@@ -107,7 +107,7 @@ compile_first_elcs = custom_target(
 _all_lisp_files = run_command(
   py, list_lisp_files,
   '--lisp-dir', meson.global_source_root() / 'lisp',
-  '--output',   '/dev/stdout',
+  '--output',   '-',
   check : true,
 ).stdout().strip().split('\n')
 _all_lisp_paths = []

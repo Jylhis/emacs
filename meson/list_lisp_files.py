@@ -37,7 +37,8 @@ def is_no_byte_compile(p: Path) -> bool:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--lisp-dir", required=True, type=Path)
-    p.add_argument("--output", required=True, type=Path)
+    p.add_argument("--output", required=True,
+                   help='destination path, or "-" for stdout')
     args = p.parse_args()
 
     lisp = args.lisp_dir.resolve()
@@ -50,8 +51,13 @@ def main() -> int:
             continue
         out.append(str(rel))
 
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text("\n".join(out) + "\n")
+    payload = "\n".join(out) + "\n"
+    if args.output == "-":
+        sys.stdout.write(payload)
+    else:
+        out_path = Path(args.output)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(payload)
     return 0
 
 

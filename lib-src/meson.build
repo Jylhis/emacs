@@ -15,14 +15,22 @@ lib_src_inc = [
 
 lib_src_args = []
 
-# update-game-score sgid handling.  When `gameuser` is non-empty,
-# autotools embeds the shared game directory at compile time and
-# installs the binary sgid to that user/group (Makefile.in:656-680).
-# Without a shared gamedir, score files are written to user $HOME and
-# no privileges are needed.
+# update-game-score: shared gamedir handling.  Autotools logic
+# (configure.ac:656-680, lib-src/Makefile.in:163-167):
+#
+#   --with-gameuser=alice     -> user mode  (chown alice + chmod u+s)
+#   --with-gameuser=:games    -> group mode (chgrp games + chmod g+s)
+#   (unset / empty)           -> no shared gamedir; the binary is NOT
+#                                installed (UTILITIES gates on
+#                                $(use_gamedir)).
+#
+# When the option is empty, autotools builds update-game-score as a
+# build-tree helper but skips installation; without a shared gamedir
+# Emacs writes per-user score files itself.
 gameuser = get_option('gameuser')
+ugs_install = gameuser != ''
 gamedir = ''
-if gameuser != ''
+if ugs_install
   gamedir = get_option('localstatedir') / 'games' / 'emacs'
 endif
 ugs_cflags = lib_src_args + [
@@ -62,12 +70,12 @@ update_game_score = executable('update-game-score',
   include_directories : lib_src_inc,
   c_args : ugs_cflags,
   dependencies : libgnu_dep,
-  install : true,
+  install : ugs_install,
   install_dir : emacs_arch,
-  # When a shared gamedir is configured, the autotools build installs
-  # this sgid to ${gameuser}.  meson can't set sgid bits portably from
-  # install_data, so meson_install.py applies the mode + ownership
-  # post-install.
+  # The setuid / setgid bit + chown / chgrp are applied post-install
+  # by meson/meson_install.py based on the gameuser option's form
+  # (bare USER vs. ":GROUP"); install_dir is ignored when
+  # install: false.
 )
 
 ebrowse = executable('ebrowse',
