@@ -212,7 +212,7 @@ This takes effect when first loading the `sgml-mode' library.")
     table)
   "Syntax table used to parse SGML tags.")
 
-(defcustom sgml-name-8bit-mode nil
+(define-minor-mode sgml-name-8bit-mode
   "When non-nil, insert non-ASCII characters as named entities."
   :type 'boolean)
 
@@ -774,14 +774,6 @@ Uses `sgml-char-names'."
   (if sgml-name-8bit-mode
       (sgml-name-char last-command-event)
     (self-insert-command 1)))
-
-(defun sgml-name-8bit-mode ()
-  "Toggle whether to insert named entities instead of non-ASCII characters.
-This only works for Latin-1 input."
-  (interactive)
-  (setq sgml-name-8bit-mode (not sgml-name-8bit-mode))
-  (message "sgml name entity mode is now %s"
-	   (if sgml-name-8bit-mode "ON" "OFF")))
 
 ;; When an element of a skeleton is a string "str", it is passed
 ;; through `skeleton-transformation-function' and inserted.
