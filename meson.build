@@ -496,9 +496,23 @@ if rsvg_dep.found()
   conf_data.set('HAVE_RSVG', 1)
 endif
 
-webp_dep = dependency('libwebpdemux', required : get_option('webp'))
-if webp_dep.found()
+# WebP definitions are split across libwebp (decode.h) and libwebpdemux
+# (demux.h, which depends on libwebp).  src/image.c references symbols
+# from both, so list the matched pair as a single grouped
+# dependency.  Mirrors autotools' WEBP_MODULE probe at 5d78a4c
+# configure.ac.
+webp_opt = get_option('webp')
+webp_demux_dep = dependency('libwebpdemux', version : '>= 0.6.0',
+                             required : webp_opt)
+webp_lib_dep = dependency('libwebp', version : '>= 0.6.0',
+                           required : webp_opt)
+if webp_demux_dep.found() and webp_lib_dep.found()
+  webp_dep = declare_dependency(
+    dependencies : [webp_demux_dep, webp_lib_dep],
+  )
   conf_data.set('HAVE_WEBP', 1)
+else
+  webp_dep = dependency('', required : false)
 endif
 
 # XPM is X11-only.  Bracketed by gtk3_dep.found() so a no-X build
