@@ -12,32 +12,13 @@
 
 # ----------------------------------------------------------------------
 # mod-test.so -- the dynamic module that emacs-module-tests.el loads
-# at runtime.  Mirrors test/Makefile.in:283-309: a -shared, -fPIC
-# build of test/src/emacs-module-resources/mod-test.c against the
-# generated emacs-module.h and config.h.  Without this the
-# emacs-module-tests fail to load the test module silently.
+# at runtime.  The target is declared in
+# test/src/emacs-module-resources/meson.build so meson emits it at
+# build/test/src/emacs-module-resources/mod-test.so, the location
+# the .el's `(expand-file-name "../test/src/emacs-module-resources/
+# mod-test" invocation-directory)` resolves to.
 # ----------------------------------------------------------------------
-mod_test_inc = [
-  top_inc,                              # picks up generated config.h
-  include_directories('src/emacs-module-resources',
-                      '../src',
-                      '../lib'),
-]
-# Listing emacs_module_h as a source pulls its build-dir output
-# (build/src/emacs-module.h) onto the include path that gcc sees,
-# alongside the source-tree headers above.
-mod_test = shared_module(
-  'mod-test',
-  sources : [
-    files('src/emacs-module-resources/mod-test.c'),
-    emacs_module_h,
-  ],
-  include_directories : mod_test_inc,
-  dependencies : [gmp_dep, libgnu_dep],
-  c_args : ['-fPIC'],
-  install : false,
-  name_prefix : '',                     # produces mod-test.so, not libmod-test.so
-)
+subdir('src/emacs-module-resources')
 
 # ----------------------------------------------------------------------
 # Discovery: enumerate test/**/*-tests.el at configure time.

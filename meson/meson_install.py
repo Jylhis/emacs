@@ -92,6 +92,9 @@ def main() -> int:
                    help="installed manpage dir; required for --compress-install")
     p.add_argument("--infodir", default="",
                    help="installed info dir; required for --compress-install")
+    p.add_argument("--gsettingsschemadir", default="",
+                   help="installed GSettings schema dir for "
+                        "glib-compile-schemas")
     args = p.parse_args()
 
     install_prefix = Path(
@@ -297,18 +300,23 @@ def main() -> int:
     # --- glib-compile-schemas ----------------------------------------
     # When the build installed a gschema.xml, recompile the cache so
     # `gsettings get` finds it on the user's host.  Mirrors
-    # Makefile.in:947-985.
-    schemadir = destdir_prefix / "share" / "glib-2.0" / "schemas"
-    if (schemadir / "org.gnu.emacs.defaults.gschema.xml").exists():
-        glib_compile = shutil.which("glib-compile-schemas")
-        if glib_compile is not None:
-            try:
-                subprocess.run(
-                    [glib_compile, str(schemadir)], check=False,
-                )
-            except OSError as e:
-                print(f"warning: glib-compile-schemas {schemadir}: {e}",
-                      file=sys.stderr)
+    # Makefile.in:947-985.  Use the same dir meson installed the
+    # schema into rather than hardcoding share/glib-2.0/schemas, so
+    # custom -Ddatadir= configurations don't desync.
+    if args.gsettingsschemadir:
+        schemadir = resolve(args.gsettingsschemadir)
+        if (schemadir / "org.gnu.emacs.defaults.gschema.xml").exists():
+            glib_compile = shutil.which("glib-compile-schemas")
+            if glib_compile is not None:
+                try:
+                    subprocess.run(
+                        [glib_compile, str(schemadir)], check=False,
+                    )
+                except OSError as e:
+                    print(
+                        f"warning: glib-compile-schemas {schemadir}: {e}",
+                        file=sys.stderr,
+                    )
 
     # --- compress-install ---------------------------------------------
     # Autotools' --with-compress-install (default ON) gzip's installed

@@ -466,13 +466,21 @@ if png_dep.found()
 endif
 
 # giflib historically published `libungif` as its pkg-config name;
-# modern distros ship `libgif` or expose only -lgif.  Try both.
-gif_dep = dependency('libungif', required : false)
-if not gif_dep.found()
-  gif_dep = dependency('libgif', required : false)
-endif
-if not gif_dep.found() and get_option('gif').allowed()
-  gif_dep = cc.find_library('gif', required : get_option('gif'))
+# modern distros ship `libgif` or expose only -lgif.  Try in order
+# but only when the user hasn't passed `-Dgif=disabled`; otherwise
+# `dependency('libungif', required : false)` would silently flip
+# HAVE_GIF on for a packager who explicitly turned the option off.
+gif_opt = get_option('gif')
+if gif_opt.allowed()
+  gif_dep = dependency('libungif', required : false)
+  if not gif_dep.found()
+    gif_dep = dependency('libgif', required : false)
+  endif
+  if not gif_dep.found()
+    gif_dep = cc.find_library('gif', required : gif_opt)
+  endif
+else
+  gif_dep = dependency('', required : false)
 endif
 if gif_dep.found()
   conf_data.set('HAVE_GIF', 1)
@@ -890,16 +898,17 @@ endif
 # the build outputs to exist on disk, so they run from the post-build
 # install script.
 _install_args = [
-  '--prefix',           prefix,
-  '--bindir',           bindir,
-  '--datadir',          emacs_data,
-  '--libexecdir',       emacs_arch,
-  '--mandir',           mandir,
-  '--infodir',          infodir,
-  '--build-root',       meson.global_build_root(),
-  '--source-root',      meson.global_source_root(),
-  '--version',          emacs_version,
-  '--gameuser',         get_option('gameuser'),
+  '--prefix',                 prefix,
+  '--bindir',                 bindir,
+  '--datadir',                emacs_data,
+  '--libexecdir',             emacs_arch,
+  '--mandir',                 mandir,
+  '--infodir',                infodir,
+  '--gsettingsschemadir',     gsettingsschemadir,
+  '--build-root',             meson.global_build_root(),
+  '--source-root',            meson.global_source_root(),
+  '--version',                emacs_version,
+  '--gameuser',               get_option('gameuser'),
   '--update-subdirs',
   meson.global_source_root() / 'build-aux' / 'update-subdirs',
 ]
