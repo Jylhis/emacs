@@ -363,6 +363,10 @@ if gtk3_dep.found()
   conf_data.set('HAVE_GLIB', 1)
   # X11 feature probes (configure.ac AC_CHECK_FUNCS block).
   # All true on Linux/X11R7+ and X11 via Nix on macOS.
+  # HAVE_X_I18N is unconditional for X11R6+ in autotools (configure.ac
+  # XLIB AC_DEFINE block); xterm.c's GTK + XInput2 path expects it.
+  conf_data.set('HAVE_X_I18N', 1)
+  conf_data.set('HAVE_X11R6_XIM', 1)
   conf_data.set('HAVE_XRMSETDATABASE', 1)
   conf_data.set('HAVE_XKB', 1)
   conf_data.set('HAVE_XRENDER', 1)
