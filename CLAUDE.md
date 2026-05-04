@@ -22,11 +22,11 @@ etc/          Data files, NEWS, tutorials, images, DEBUG guide
 
 ## Build
 
-This branch's only supported build system is Meson + Ninja.  See
-`.claude/plans/migrate-from-current-build-replicated-gadget.md` for
-the migration history; the autotools entry points (configure.ac,
-autogen.sh, every Makefile.in, GNUmakefile, make-dist) were
-removed at phase 10.
+This branch's only supported build system is Meson + Ninja.  The
+autotools entry points (configure.ac, autogen.sh, every Makefile.in,
+GNUmakefile, make-dist) were removed at the phase-10 cutover commit
+`313f867`; see `.claude/notes/build-system.md` for the post-cutover
+parity audit and the work that follows.
 
 ```bash
 meson setup build -Dnative-compilation=yes

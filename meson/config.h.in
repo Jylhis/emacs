@@ -105,6 +105,36 @@
 #mesondefine HAVE_LIBSYSTEMD
 #mesondefine HAVE_GMP
 #mesondefine HAVE_NATIVE_COMP
+#mesondefine HAVE_XWIDGETS
+#mesondefine USE_GTK_FOR_XWIDGETS
+#mesondefine WIDE_EMACS_INT
+#mesondefine HAVE_X_I18N
+#mesondefine HAVE_X11R6_XIM
+
+/* B2 -- silent-option dependency probes (configure.ac:537-619). */
+#mesondefine HAVE_JPEG
+#mesondefine HAVE_TIFF
+#mesondefine HAVE_PNG
+#mesondefine HAVE_GIF
+#mesondefine HAVE_RSVG
+#mesondefine HAVE_WEBP
+#mesondefine HAVE_XPM
+#mesondefine HAVE_IMAGEMAGICK
+#mesondefine HAVE_LCMS2
+#mesondefine HAVE_DBUS
+#mesondefine HAVE_GPM
+#mesondefine HAVE_GSETTINGS
+#mesondefine HAVE_LIBSELINUX
+#mesondefine HAVE_ZLIB
+#mesondefine HAVE_LIBOTF
+#mesondefine HAVE_M17N_FLT
+#mesondefine HAVE_SOUND
+#mesondefine HAVE_ALSA
+#mesondefine USE_ALSA
+#mesondefine HAVE_MODULES
+#mesondefine HAVE_THREADS
+#mesondefine HAVE_XINPUT2
+#mesondefine HAVE_XDBE
 
 /* C99 flexible array member: empty if supported, "1" otherwise (cf.
    m4/flexmember.m4).  */
@@ -185,9 +215,8 @@
 #mesondefine HAVE_KQUEUE
 #mesondefine HAVE_GFILENOTIFY
 
-/* Dynamic module support is universally available where dlopen
-   exists (configure.ac:4421).  */
-#define HAVE_MODULES 1
+/* HAVE_MODULES is gated above on the configure-time --with-modules
+   option + dlopen availability.  */
 #mesondefine MODULES_SUFFIX
 /* MODULES_SECONDARY_SUFFIX: on Darwin this is ".so" (so .so modules
    work alongside .dylib).  On other systems it is undefined -- NOT

@@ -5,8 +5,6 @@ Wraps `bootstrap-emacs --batch -f batch-byte-compile FILE...` (the
 mode lisp/Makefile.in:329 uses) and moves the produced .elc files
 into a separate output tree so the source tree stays clean for
 out-of-tree meson builds.
-
-See .claude/plans/migrate-from-current-build-replicated-gadget.md.
 """
 
 from __future__ import annotations
@@ -17,7 +15,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
 
 # Build EMACSLOADPATH from lisp/ recursively.  emacs-lisp must come
 # first so the core 'debug feature resolves to lisp/emacs-lisp/debug,
@@ -34,7 +31,6 @@ def _load_path(lisp_root: Path) -> list[str]:
             continue
         paths.append(str(d))
     return paths
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -187,7 +183,6 @@ def main() -> int:
     if args.stamp is not None:
         args.stamp.write_text("ok\n")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

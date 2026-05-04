@@ -3,8 +3,6 @@
 
 Wraps `bootstrap-emacs --batch --eval '(byte-compile-file ...)'` with
 the env vars and load-path needed for an out-of-tree meson build.
-
-See .claude/plans/migrate-from-current-build-replicated-gadget.md.
 """
 
 from __future__ import annotations
@@ -15,7 +13,6 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-
 
 # Subdirectories of lisp/ that the byte-compiler may need to find
 # during compilation.  The autotools build relies on subdirs.el to
@@ -50,7 +47,6 @@ LOAD_PATH_SUBDIRS = [
     "term",
     "url",
 ]
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -88,7 +84,6 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(written, args.output)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

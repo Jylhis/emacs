@@ -5,8 +5,7 @@
 # src/ object file (and the eventual temacs link) depends on.
 # Compilation of src/*.c, the temacs/emacs/pdumper bootstrap dance,
 # native compilation, and dumping all land in subsequent commits.
-# See .claude/plans/migrate-from-current-build-replicated-gadget.md.
-
+#
 # ----------------------------------------------------------------------
 # base_obj source list (Linux/GTK3 + Cairo + inotify baseline).
 # Mirrors src/Makefile.in:389-408 with the conditional groups
@@ -59,6 +58,8 @@ if conf_data.has('HAVE_INOTIFY')
   notify_obj = ['inotify.c']
 elif conf_data.has('HAVE_KQUEUE')
   notify_obj = ['kqueue.c']
+elif conf_data.has('HAVE_GFILENOTIFY')
+  notify_obj = ['gfilenotify.c']
 else
   notify_obj = []
 endif
@@ -66,18 +67,31 @@ endif
 # X-glib select (configure.ac:3530).
 xgselect_obj = ['xgselect.c']
 
+# Conditional source files driven by feature probes (mirror the
+# _OBJ variables in the deleted src/Makefile.in at 5d78a4c:
+# DBUS_OBJ, XWIDGETS_OBJ, ...).  src/emacs.c references syms_of_dbusbind
+# / init_dbusbind / syms_of_xwidget when HAVE_DBUS / HAVE_XWIDGETS
+# is set, so the matching .c file must be compiled.
+feature_obj = []
+if conf_data.has('HAVE_DBUS')
+  feature_obj += 'dbusbind.c'
+endif
+if conf_data.has('HAVE_XWIDGETS')
+  feature_obj += 'xwidget.c'
+endif
+
 # Assemble base_obj depending on whether we have a GUI toolkit.
 if gtk3_dep.found()
   base_obj_basenames = (
     base_obj_core + xobj + gtk_obj + window_system_obj
     + font_obj + notify_obj + xgselect_obj
-    + cm_obj + dynlib_obj
+    + cm_obj + dynlib_obj + feature_obj
   )
 else
   # Terminal-only or NS build (NS sources not yet wired).
   base_obj_basenames = (
     base_obj_core + notify_obj
-    + cm_obj + dynlib_obj
+    + cm_obj + dynlib_obj + feature_obj
   )
 endif
 base_obj_sources = files(base_obj_basenames)
@@ -266,6 +280,20 @@ endif
 if libgccjit_dep.found()
   src_deps += libgccjit_dep
 endif
+
+# B2 -- silent option probes wired in meson.build add new deps here so
+# their consumers (src/image.c, src/sound.c, src/dbusbind.c, ...)
+# link.  Each `if dep.found()` keeps the link line clean when the
+# option resolves to disabled.
+foreach _dep : [
+  jpeg_dep, tiff_dep, png_dep, gif_dep, rsvg_dep, webp_dep, xpm_dep,
+  imagemagick_dep, lcms2_dep, dbus_dep, gpm_dep, gio_dep, selinux_dep,
+  zlib_dep, libotf_dep, m17n_flt_dep, alsa_dep, webkit_dep,
+]
+  if _dep.found()
+    src_deps += _dep
+  endif
+endforeach
 
 src_args = ['-DEMACS_CORE=1']
 

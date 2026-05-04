@@ -3,13 +3,12 @@
 #
 # This file is part of GNU Emacs.
 #
-# Build the Meson tree (see
-# .claude/plans/migrate-from-current-build-replicated-gadget.md).
-# CI uses Ubuntu's apt-get for the toolchain because the Nix
-# gcc-wrapper / binutils-wrapper hooks don't activate reliably under
-# `devenv shell -- bash -c '...'` on GitHub-hosted runners (the
-# wrapped gcc invokes raw binutils ld which can't find Scrt1.o).
-# Local dev still gets the pinned Nix toolchain via devenv.nix.
+# Build the Meson tree.  CI uses Ubuntu's apt-get for the toolchain
+# because the Nix gcc-wrapper / binutils-wrapper hooks don't activate
+# reliably under `devenv shell -- bash -c '...'` on GitHub-hosted
+# runners (the wrapped gcc invokes raw binutils ld which can't find
+# Scrt1.o).  Local dev still gets the pinned Nix toolchain via
+# devenv.nix.
 
 name: meson
 
@@ -17,6 +16,12 @@ on:
   push:
     branches:
       - dev
+      - master
+      - 'emacs-*'
+      - 'feature/*'
+      - 'fix/*'
+    tags:
+      - '*'
   pull_request:
   workflow_dispatch:
 
@@ -183,10 +188,30 @@ jobs:
   # Stage 2+3 -- Build, then test
   # ================================================================
   build-and-test:
-    name: build + test (Linux/GTK3)
+    name: build + test (${{ matrix.label }})
     needs: [lint]
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    strategy:
+      # Don't fast-fail the gtk3 variant when no-X variant breaks (or
+      # vice versa); the parity audit tracks each independently.
+      fail-fast: false
+      matrix:
+        include:
+          - label: Linux/GTK3
+            setup-args: ''
+          # Mirrors --without-all: terminal-only build, no window
+          # system, no optional pkg-config deps.  Gates against
+          # source files that assume HAVE_GTK3 et al.
+          - label: Linux/no-X
+            setup-args: >-
+              -Dtoolkit=none
+              -Dgnutls=disabled
+              -Dharfbuzz=disabled
+              -Dcairo=disabled
+              -Dxft=disabled
+              -Dxpm=disabled
+              -Drsvg=disabled
 
     steps:
       - name: Checkout
@@ -227,7 +252,9 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
         with:
           path: build
-          key: meson-build-v2-${{ runner.os }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
+          # Include matrix.label so the two variants don't collide
+          # on the same cache entry.
+          key: meson-build-v2-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
 
       - name: Cache source-tree byte-compile artefacts
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
@@ -248,6 +275,8 @@ jobs:
 
       # ---- Build ------------------------------------------------------
       - name: meson setup
+        env:
+          SETUP_ARGS: ${{ matrix.setup-args }}
         run: |
           # If the cache restored a complete build dir, `meson setup
           # --wipe build` keeps the .o cache but rewrites
@@ -257,11 +286,12 @@ jobs:
           # approach) is known to retain stale build_by_default
           # decisions, which let a flaky bootstrap-emacs.pdmp leak into
           # the umbrella compile step.
+          # shellcheck disable=SC2086
           if [ -f build/meson-info/meson-info.json ]; then
             echo "Reusing cached build/ directory (wiping config)"
-            meson setup --wipe build
+            meson setup --wipe build $SETUP_ARGS
           else
-            meson setup build
+            meson setup build $SETUP_ARGS
           fi
 
       - name: meson compile (lib-src + temacs + bootstrap-emacs + emacs)

@@ -11,8 +11,7 @@ overrides (typically the substitutions specific to the header, plus
 the standard PRAGMA_SYSTEM_HEADER / INCLUDE_NEXT / NEXT_FOO_H trio);
 every other @VAR@ found in the input is replaced with 0.
 
-This is a transitional shim during the Meson migration; see
-.claude/plans/migrate-from-current-build-replicated-gadget.md.
+This is a transitional shim during the Meson migration.
 """
 
 from __future__ import annotations
@@ -23,9 +22,7 @@ import re
 import sys
 from pathlib import Path
 
-
 _VAR = re.compile(r"@([A-Za-z_][A-Za-z0-9_]*)@")
-
 
 def substitute(text: str, overrides: dict[str, str]) -> str:
     def repl(m: re.Match[str]) -> str:
@@ -36,7 +33,6 @@ def substitute(text: str, overrides: dict[str, str]) -> str:
 
     return _VAR.sub(repl, text)
 
-
 # Marker comments that gnulib's sed scripts use to splice in helper
 # header bodies (see lib/gnulib.mk.in:3872-3874).
 _INSERTS = [
@@ -44,7 +40,6 @@ _INSERTS = [
     ("definition of _GL_ARG_NONNULL", "arg-nonnull.h"),
     ("definition of _GL_WARN_ON_USE", "warn-on-use.h"),
 ]
-
 
 def insert_snippets(text: str, lib_dir: Path) -> str:
     """Mimic sed's `/MARKER/r FILE` behaviour for gnulib snippet headers."""
@@ -61,7 +56,6 @@ def insert_snippets(text: str, lib_dir: Path) -> str:
                         snippet += "\n"
                     out.append(snippet)
     return "".join(out)
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -106,7 +100,6 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(out)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

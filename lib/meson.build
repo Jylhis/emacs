@@ -1,13 +1,12 @@
 # lib/meson.build -- gnulib portability library.
 #
-# STATUS: Phase 2 in progress.  Currently exposes only a thin libgnu
-# providing the symbols make-docfile / make-fingerprint reach for at
-# link time.  The rest of gnulib (~96 m4 detection blocks, 28 *.in.h
-# header substitutions) lands in subsequent commits.  See
-# .claude/plans/migrate-from-current-build-replicated-gadget.md.
+# Exposes a thin libgnu covering the symbols make-docfile /
+# make-fingerprint and the rest of src reach for at link time.  The
+# remaining gnulib detection (m4/* feature probes, *.in.h header
+# substitutions) lands incrementally as more emacs sources rely on
+# each piece.
 
-# Sources currently needed by the simplest lib-src host tools.  This
-# list grows as phase 2 progresses.
+# Sources currently needed for the lib-src host tools and emacs.
 libgnu_sources = files(
   'acl-errno-valid.c',
   'acl-internal.c',
@@ -294,8 +293,7 @@ time_overrides = {
 # macOS.  The remaining gnulib *.in.h files (stdio.in.h,
 # signal.in.h, sys_stat.in.h, time.in.h, unistd.in.h, fcntl.in.h,
 # dirent.in.h) need per-function feature detection (gl_FUNC_FOO
-# calls in m4/) that isn't ported yet.  See
-# .claude/plans/migrate-from-current-build-replicated-gadget.md.
+# calls in m4/) that isn't ported yet.
 gnulib_in_h_specs = [
   ['stdckdint',    stdckdint_overrides],
   ['assert',       assert_overrides],

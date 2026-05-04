@@ -11,6 +11,16 @@
 #   meson test -C build --suite src       # C-level tests only
 
 # ----------------------------------------------------------------------
+# mod-test.so -- the dynamic module that emacs-module-tests.el loads
+# at runtime.  The target is declared in
+# test/src/emacs-module-resources/meson.build so meson emits it at
+# build/test/src/emacs-module-resources/mod-test.so, the location
+# the .el's `(expand-file-name "../test/src/emacs-module-resources/
+# mod-test" invocation-directory)` resolves to.
+# ----------------------------------------------------------------------
+subdir('src/emacs-module-resources')
+
+# ----------------------------------------------------------------------
 # Discovery: enumerate test/**/*-tests.el at configure time.
 # Follows the pattern in lisp/meson.build:107-112.
 # ----------------------------------------------------------------------
@@ -68,6 +78,14 @@ foreach rel : _all_test_files
     _suite += 'smoke'
   endif
 
+  # emacs-module-tests.el loads test/src/emacs-module-resources/mod-test.so
+  # at runtime; ensure it's built and on the right side of the dep
+  # chain.  Other tests don't need it.
+  _extra_deps = []
+  if rel == 'src/emacs-module-tests.el'
+    _extra_deps = [mod_test]
+  endif
+
   name = rel.replace('/', '_').replace('.el', '')
   test(
     name,
@@ -79,7 +97,7 @@ foreach rel : _all_test_files
       '--source-root', meson.global_source_root(),
       '--test-file',   meson.global_source_root() / 'test' / rel,
     ],
-    depends : [emacs, emacs_pdmp],
+    depends : [emacs, emacs_pdmp] + _extra_deps,
     timeout : 120,
     suite : _suite,
   )

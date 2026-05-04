@@ -3,8 +3,7 @@
 
 Mirrors the per-file pattern in test/Makefile.in:81 -- selector
 defaults to (not (or (tag :expensive-test) (tag :unstable))) so
-slow / known-flaky tests are excluded.  See
-.claude/plans/migrate-from-current-build-replicated-gadget.md.
+slow / known-flaky tests are excluded.
 """
 
 from __future__ import annotations
@@ -15,9 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 DEFAULT_SELECTOR = "(not (or (tag :expensive-test) (tag :unstable)))"
-
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
@@ -76,7 +73,6 @@ def main() -> int:
         f"(ert-run-tests-batch-and-exit (quote {selector}))",
     ]
     return subprocess.run(cmd, env=env).returncode
-
 
 if __name__ == "__main__":
     sys.exit(main())

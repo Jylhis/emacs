@@ -11,12 +11,9 @@ project(
   ],
 )
 
-# This Meson build is a work-in-progress migration from the autotools
-# build (configure.ac, Makefile.in).  See
-# .claude/plans/migrate-from-current-build-replicated-gadget.md for the
-# phase plan.  Until that plan reaches Phase 10 cutover, the autotools
-# build remains the canonical way to build Emacs; the Meson tree below
-# is incomplete and is being landed phase by phase.
+# Meson + Ninja build for GNU Emacs.  Replaces the autotools build
+# (configure.ac, Makefile.in) deleted at the phase-10 cutover; see
+# `.claude/notes/build-system.md` for the post-cutover parity audit.
 
 cc = meson.get_compiler('c')
 py = import('python').find_installation('python3')
@@ -24,9 +21,8 @@ py = import('python').find_installation('python3')
 # ----------------------------------------------------------------------
 # Generate lib/gnulib-common.h from m4/gnulib-common.m4.  This header
 # contains the _GL_ATTRIBUTE_* / _Noreturn / _GL_GNUC_PREREQ macro
-# block that gnulib-common.m4 contributes to config.h via AH_VERBATIM
-# in the autotools build.  Phase 2 lifts the rest of m4/*.m4 into
-# native Meson checks.
+# block that gnulib-common.m4 contributed to config.h via AH_VERBATIM
+# in the autotools build.
 # ----------------------------------------------------------------------
 extract_ah = files('meson/extract_ah_verbatim.py')
 
@@ -367,6 +363,10 @@ if gtk3_dep.found()
   conf_data.set('HAVE_GLIB', 1)
   # X11 feature probes (configure.ac AC_CHECK_FUNCS block).
   # All true on Linux/X11R7+ and X11 via Nix on macOS.
+  # HAVE_X_I18N is unconditional for X11R6+ in autotools (configure.ac
+  # XLIB AC_DEFINE block); xterm.c's GTK + XInput2 path expects it.
+  conf_data.set('HAVE_X_I18N', 1)
+  conf_data.set('HAVE_X11R6_XIM', 1)
   conf_data.set('HAVE_XRMSETDATABASE', 1)
   conf_data.set('HAVE_XKB', 1)
   conf_data.set('HAVE_XRENDER', 1)
@@ -417,6 +417,252 @@ if libgccjit_dep.found()
   conf_data.set('HAVE_NATIVE_COMP', 1)
 endif
 
+# WIDE_EMACS_INT widens EMACS_INT to 62 bits on 32-bit hosts;
+# configure.ac:--with-wide-int.
+if get_option('wide-int')
+  conf_data.set('WIDE_EMACS_INT', 1)
+endif
+
+# Xwidgets pull in WebKitGTK and embed live web views in buffers
+# (configure.ac:--with-xwidgets).  Auto/disabled probes for
+# webkit2gtk-4.1; the source-tree consumers (src/xwidget.c,
+# lisp/xwidget.el) gate on HAVE_XWIDGETS.  GTK3 is the only
+# toolkit on this branch that supports it.
+xwidgets_opt = get_option('xwidgets')
+if xwidgets_opt.allowed() and gtk3_dep.found()
+  webkit_dep = dependency('webkit2gtk-4.1', required : xwidgets_opt)
+  if webkit_dep.found()
+    conf_data.set('HAVE_XWIDGETS', 1)
+    conf_data.set('USE_GTK_FOR_XWIDGETS', 1)
+  endif
+elif xwidgets_opt.enabled()
+  error('xwidgets=enabled but GTK3 toolkit is not in use')
+else
+  webkit_dep = dependency('', required : false)
+endif
+
+# ----------------------------------------------------------------------
+# Image libraries.  Mapped from EMACS_CHECK_MODULES blocks in
+# configure.ac (lines 537-562).  Each is autodetected unless the
+# user passes -D<feature>={enabled,disabled}.  Autotools' libungif
+# fallback for gif is satisfied by the same pkg-config name on
+# Debian/Ubuntu; bare find_library is the fallback.
+# ----------------------------------------------------------------------
+jpeg_dep = dependency('libjpeg', required : get_option('jpeg'))
+if not jpeg_dep.found() and get_option('jpeg').allowed()
+  jpeg_dep = cc.find_library('jpeg', required : get_option('jpeg'))
+endif
+if jpeg_dep.found()
+  conf_data.set('HAVE_JPEG', 1)
+endif
+
+tiff_dep = dependency('libtiff-4', required : get_option('tiff'))
+if not tiff_dep.found() and get_option('tiff').allowed()
+  tiff_dep = cc.find_library('tiff', required : get_option('tiff'))
+endif
+if tiff_dep.found()
+  conf_data.set('HAVE_TIFF', 1)
+endif
+
+png_dep = dependency('libpng', required : get_option('png'))
+if png_dep.found()
+  conf_data.set('HAVE_PNG', 1)
+endif
+
+# giflib historically published `libungif` as its pkg-config name;
+# modern distros ship `libgif` or expose only -lgif.  Try in order
+# but only when the user hasn't passed `-Dgif=disabled`; otherwise
+# `dependency('libungif', required : false)` would silently flip
+# HAVE_GIF on for a packager who explicitly turned the option off.
+gif_opt = get_option('gif')
+if gif_opt.allowed()
+  gif_dep = dependency('libungif', required : false)
+  if not gif_dep.found()
+    gif_dep = dependency('libgif', required : false)
+  endif
+  if not gif_dep.found()
+    gif_dep = cc.find_library('gif', required : gif_opt)
+  endif
+else
+  gif_dep = dependency('', required : false)
+endif
+if gif_dep.found()
+  conf_data.set('HAVE_GIF', 1)
+endif
+
+rsvg_dep = dependency('librsvg-2.0', version : '>= 2.40.4',
+                       required : get_option('rsvg'))
+if rsvg_dep.found()
+  conf_data.set('HAVE_RSVG', 1)
+endif
+
+# WebP definitions are split across libwebp (decode.h) and libwebpdemux
+# (demux.h, which depends on libwebp).  src/image.c references symbols
+# from both, so list the matched pair as a single grouped
+# dependency.  Mirrors autotools' WEBP_MODULE probe at 5d78a4c
+# configure.ac.
+webp_opt = get_option('webp')
+webp_demux_dep = dependency('libwebpdemux', version : '>= 0.6.0',
+                             required : webp_opt)
+webp_lib_dep = dependency('libwebp', version : '>= 0.6.0',
+                           required : webp_opt)
+if webp_demux_dep.found() and webp_lib_dep.found()
+  webp_dep = declare_dependency(
+    dependencies : [webp_demux_dep, webp_lib_dep],
+  )
+  conf_data.set('HAVE_WEBP', 1)
+else
+  webp_dep = dependency('', required : false)
+endif
+
+# XPM is X11-only.  Bracketed by gtk3_dep.found() so a no-X build
+# doesn't emit a stray HAVE_XPM that breaks src/image.c.
+xpm_opt = get_option('xpm')
+if gtk3_dep.found() and xpm_opt.allowed()
+  xpm_dep = dependency('xpm', required : xpm_opt)
+  if xpm_dep.found()
+    conf_data.set('HAVE_XPM', 1)
+  endif
+else
+  xpm_dep = dependency('', required : false)
+endif
+
+imagemagick_opt = get_option('imagemagick')
+imagemagick_dep = dependency('MagickWand', required : imagemagick_opt)
+if imagemagick_dep.found()
+  conf_data.set('HAVE_IMAGEMAGICK', 1)
+endif
+
+# ----------------------------------------------------------------------
+# Misc system libraries (configure.ac:544-619).
+# ----------------------------------------------------------------------
+lcms2_dep = dependency('lcms2', required : get_option('lcms2'))
+if lcms2_dep.found()
+  conf_data.set('HAVE_LCMS2', 1)
+endif
+
+dbus_dep = dependency('dbus-1', required : get_option('dbus'))
+if dbus_dep.found()
+  conf_data.set('HAVE_DBUS', 1)
+endif
+
+# GPM only makes sense on GNU/Linux; skip the probe elsewhere.
+gpm_opt = get_option('gpm')
+if is_linux and gpm_opt.allowed()
+  gpm_dep = cc.find_library('gpm', required : gpm_opt)
+elif gpm_opt.enabled()
+  error('gpm=enabled but the host is not GNU/Linux')
+else
+  gpm_dep = dependency('', required : false)
+endif
+if gpm_dep.found()
+  conf_data.set('HAVE_GPM', 1)
+endif
+
+# GSettings shares the gio-2.0 dependency.  Set HAVE_GSETTINGS only
+# when the matching schema-compiler is also present, so the install
+# step's glib-compile-schemas pass can run.  When --gsettings=enabled
+# the schema-compiler must also exist; defer to find_program's
+# `required` to enforce.
+gsettings_opt = get_option('gsettings')
+gio_dep = dependency('gio-2.0', required : gsettings_opt)
+gsettings_compile_prog = find_program('glib-compile-schemas',
+                                       required : gsettings_opt)
+if gio_dep.found() and gsettings_compile_prog.found()
+  conf_data.set('HAVE_GSETTINGS', 1)
+endif
+
+selinux_dep = dependency('libselinux', required : get_option('selinux'))
+if selinux_dep.found()
+  conf_data.set('HAVE_LIBSELINUX', 1)
+endif
+
+zlib_dep = dependency('zlib', required : get_option('zlib'))
+if zlib_dep.found()
+  conf_data.set('HAVE_ZLIB', 1)
+endif
+
+libotf_dep = dependency('libotf', required : get_option('libotf'))
+if libotf_dep.found()
+  conf_data.set('HAVE_LIBOTF', 1)
+endif
+
+m17n_flt_dep = dependency('m17n-flt', required : get_option('m17n-flt'))
+if m17n_flt_dep.found()
+  conf_data.set('HAVE_M17N_FLT', 1)
+endif
+
+# ----------------------------------------------------------------------
+# Sound (configure.ac:424-463).  Linux uses ALSA; *BSD uses
+# bsd-ossaudio; OSS is pretty much dead but kept as a manual
+# selector.  meson.options' `sound` combo accepts auto/yes/no/alsa/
+# oss/bsd-ossaudio.
+# ----------------------------------------------------------------------
+sound_choice = get_option('sound')
+alsa_dep = dependency('', required : false)
+if sound_choice == 'auto' or sound_choice == 'yes' or sound_choice == 'alsa'
+  alsa_dep = dependency('alsa', required : sound_choice == 'alsa')
+endif
+if alsa_dep.found()
+  conf_data.set('HAVE_SOUND', 1)
+  conf_data.set('HAVE_ALSA', 1)
+  conf_data.set('USE_ALSA', 1)
+elif sound_choice == 'bsd-ossaudio'
+  conf_data.set('HAVE_SOUND', 1)
+  # bsd-ossaudio's interface is via -lossaudio; defer linking detail
+  # to the source-tree consumer (sound.c).
+endif
+
+# ----------------------------------------------------------------------
+# Dynamic modules (configure.ac:--with-modules).  HAVE_MODULES gates
+# the compilation of src/dynlib.c's full path; the suffix for the
+# DEFINE_MODULE / EMACS_MAJOR_VERSION wiring is already in conf_data
+# above (MODULES_SUFFIX).
+# ----------------------------------------------------------------------
+modules_opt = get_option('modules')
+if modules_opt.allowed()
+  if cc.has_function('dlopen') or cc.has_function('dlopen',
+                                                   args : '-ldl')
+    conf_data.set('HAVE_MODULES', 1)
+  elif modules_opt.enabled()
+    error('--with-modules=enabled but neither dlopen nor -ldl found')
+  endif
+endif
+
+# ----------------------------------------------------------------------
+# Elisp threading (configure.ac:--with-threads).  pthread is already
+# linked unconditionally; HAVE_THREADS is the source-tree gate.
+# ----------------------------------------------------------------------
+threads_opt = get_option('threads')
+if threads_opt.allowed()
+  conf_data.set('HAVE_THREADS', 1)
+endif
+
+# ----------------------------------------------------------------------
+# Cairo XCB (configure.ac:--with-cairo-xcb), XInput 2 extension,
+# Xaw3d.  All X11-gated; explicit `enabled` errors out without GTK3.
+# ----------------------------------------------------------------------
+xinput2_opt = get_option('xinput2')
+xdbe_opt = get_option('xdbe')
+if gtk3_dep.found()
+  if xinput2_opt.allowed()
+    if cc.has_header('X11/extensions/XInput2.h')
+      conf_data.set('HAVE_XINPUT2', 1)
+    elif xinput2_opt.enabled()
+      error('xinput2=enabled but X11/extensions/XInput2.h not found')
+    endif
+  endif
+  if xdbe_opt.allowed()
+    if cc.has_header('X11/extensions/Xdbe.h')
+      conf_data.set('HAVE_XDBE', 1)
+    elif xdbe_opt.enabled()
+      error('xdbe=enabled but X11/extensions/Xdbe.h not found')
+    endif
+  endif
+elif xinput2_opt.enabled() or xdbe_opt.enabled()
+  error('xinput2/xdbe=enabled but GTK3/X11 not in use')
+endif
+
 # ----------------------------------------------------------------------
 # EMACS_CONFIG_OPTIONS / EMACS_CONFIG_FEATURES (configure.ac:6365 / 6782).
 #
@@ -436,6 +682,7 @@ foreach _knob : [
   'modules', 'threads', 'sound', 'file-notification',
   'gcc-warnings', 'lto', 'check-lisp-object-type',
   'small-ja-dic', 'mailutils', 'pop',
+  'wide-int', 'xwidgets', 'compress-install',
 ]
   _v = get_option(_knob)
   _opts += '-D' + _knob + '=' + '@0@'.format(_v)
@@ -653,20 +900,39 @@ if systemduserunitdir != ''
   install_data('etc/emacs.service', install_dir : systemduserunitdir)
 endif
 
+# GSettings schema (Makefile.in:947-985).  Installed when both
+# gio-2.0 and glib-compile-schemas are present.  meson_install.py
+# runs `glib-compile-schemas` post-install so the dconf cache picks
+# up the new schema.
+if conf_data.has('HAVE_GSETTINGS')
+  install_data(
+    'etc/org.gnu.emacs.defaults.gschema.xml',
+    install_dir : gsettingsschemadir,
+  )
+endif
+
 # Per-build artefacts (etc/DOC, native-lisp/, subdirs.el creation,
 # emacs/emacs.pdmp from build tree, gameuser sgid bit).  These need
 # the build outputs to exist on disk, so they run from the post-build
 # install script.
-meson.add_install_script(
-  py, files('meson/meson_install.py'),
-  '--prefix',           prefix,
-  '--bindir',           bindir,
-  '--datadir',          emacs_data,
-  '--libexecdir',       emacs_arch,
-  '--build-root',       meson.global_build_root(),
-  '--source-root',      meson.global_source_root(),
-  '--version',          emacs_version,
-  '--gameuser',         get_option('gameuser'),
+_install_args = [
+  '--prefix',                 prefix,
+  '--bindir',                 bindir,
+  '--datadir',                emacs_data,
+  '--libexecdir',             emacs_arch,
+  '--mandir',                 mandir,
+  '--infodir',                infodir,
+  '--gsettingsschemadir',     gsettingsschemadir,
+  '--build-root',             meson.global_build_root(),
+  '--source-root',            meson.global_source_root(),
+  '--version',                emacs_version,
+  '--gameuser',               get_option('gameuser'),
   '--update-subdirs',
   meson.global_source_root() / 'build-aux' / 'update-subdirs',
+]
+if get_option('compress-install')
+  _install_args += '--compress-install'
+endif
+meson.add_install_script(
+  py, files('meson/meson_install.py'), _install_args,
 )
