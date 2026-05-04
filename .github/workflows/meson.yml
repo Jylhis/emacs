@@ -155,6 +155,28 @@ jobs:
           done
           exit $status
 
+      # Guard against gnulib modules that must be conditional.
+      # regex.c contains a full POSIX regex engine that on glibc
+      # conflicts with the system regex, causing SIGSEGV at bootstrap.
+      # It must only be compiled when the system lacks re_compile_pattern
+      # (see lib/meson.build conditional and m4/regex.m4).
+      - name: Check for unconditional gnulib regex in Meson build
+        run: |
+          status=0
+          # Ensure regex.c appears only inside a conditional block,
+          # never in the top-level libgnu_sources = files(...) list.
+          if sed -n '/^libgnu_sources = files/,/^)/p' lib/meson.build \
+             | grep -qE "'regex\.c'"; then
+            echo "::error file=lib/meson.build::regex.c must not be in the unconditional libgnu_sources list (use conditional probe)"
+            status=1
+          fi
+          if sed -n '/^libgnu_sources = files/,/^)/p' lib/meson.build \
+             | grep -qE "'malloc/dynarray"; then
+            echo "::error file=lib/meson.build::malloc/dynarray_*.c must not be in the unconditional libgnu_sources list"
+            status=1
+          fi
+          exit $status
+
       # Workflow YAML lint.
       - name: Lint GitHub Actions workflows
         run: |

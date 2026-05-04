@@ -26,7 +26,6 @@ libgnu_sources = files(
   'filemode.c',
   'filevercmp.c',
   'fingerprint.c',
-  'fpending.c',
   'free.c',
   'getopt.c',
   'getopt1.c',
@@ -60,13 +59,6 @@ libgnu_sources = files(
   'stat-time.c',
   'streq.c',
   'strnul.c',
-  'getrandom.c',
-  'malloc/dynarray_at_failure.c',
-  'malloc/dynarray_emplace_enlarge.c',
-  'malloc/dynarray_finalize.c',
-  'malloc/dynarray_resize.c',
-  'malloc/dynarray_resize_clear.c',
-  'regex.c',
   'tempname.c',
   'timespec.c',
   'u64.c',
@@ -79,13 +71,39 @@ libgnu_sources = files(
 )
 
 # Gnulib replacement sources for functions the system may lack.
-# Added conditionally to avoid duplicate-symbol clashes on systems
-# that provide them natively.
-if not conf_data.has('HAVE_PIPE2')
+# These mirror the conditional logic in lib/gnulib.mk.in.
+if not cc.has_function('pipe2')
   libgnu_sources += files('pipe2.c')
 endif
-if not conf_data.has('HAVE_SIGDESCR_NP')
+if not cc.has_function('sigdescr_np',
+    prefix : '#define _GNU_SOURCE 1\n#include <string.h>')
   libgnu_sources += files('sigdescr_np.c')
+endif
+if not cc.has_function('getrandom',
+    prefix : '#include <sys/random.h>')
+  libgnu_sources += files('getrandom.c')
+endif
+if not cc.has_function('__fpending',
+    prefix : '#include <stdio_ext.h>')
+  libgnu_sources += files('fpending.c')
+endif
+# regex.c and malloc/dynarray_*.c: gnulib's included POSIX regex
+# engine.  lib-src/etags.c uses the GNU regex API (re_compile_pattern,
+# re_search, re_match).  On glibc these are provided by the system;
+# on other systems (macOS, musl) we need gnulib's implementation.
+# The autotools build probes via m4/regex.m4; here we check for the
+# GNU extension re_compile_pattern which etags requires.
+use_included_regex = not cc.has_function('re_compile_pattern',
+  prefix : '#include <regex.h>')
+if use_included_regex
+  libgnu_sources += files(
+    'malloc/dynarray_at_failure.c',
+    'malloc/dynarray_emplace_enlarge.c',
+    'malloc/dynarray_finalize.c',
+    'malloc/dynarray_resize.c',
+    'malloc/dynarray_resize_clear.c',
+    'regex.c',
+  )
 endif
 
 # ----------------------------------------------------------------------
