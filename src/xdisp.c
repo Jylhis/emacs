@@ -24403,6 +24403,10 @@ extend_face_to_end_of_line (struct it *it)
 #endif
 	    ))
 	{
+	  struct font *font = (default_face->font
+	                       ? default_face->font
+	                       : FRAME_FONT (f));
+
 	  /* The third condition is a safety bound preventing writes
 	     past the end of the left-margin glyph array.  In the
 	     non-window-system branch the equivalent bound is expressed
@@ -24436,8 +24440,12 @@ extend_face_to_end_of_line (struct it *it)
 		  /* Set position to 0 for the filler glyph. */
 		  clear_position (it);
 
+		  int stretch_ascent =
+		    ((it->ascent + it->descent) * FONT_BASE (font))
+		    / FONT_HEIGHT (font);
 		  append_stretch_glyph (it, Qnil, remaining_pixels,
-					it->ascent + it->descent, it->max_ascent);
+					it->ascent + it->descent,
+					stretch_ascent);
 
 		  it->position = saved_pos;
 		  it->face_id = saved_face_id;
@@ -24471,18 +24479,18 @@ extend_face_to_end_of_line (struct it *it)
 		  /* Set position to 0 for the filler glyph. */
 		  clear_position (it);
 
+		  int stretch_ascent =
+		    ((it->ascent + it->descent) * FONT_BASE (font))
+		    / FONT_HEIGHT (font);
 		  append_stretch_glyph (it, Qnil, remaining_pixels,
-					it->ascent + it->descent, it->max_ascent);
+					it->ascent + it->descent,
+					stretch_ascent);
 
 		  it->position = saved_pos;
 		  it->face_id = saved_face_id;
 		  it->area = saved_area;
 		}
 	    }
-
-	  struct font *font = (default_face->font
-	                       ? default_face->font
-	                       : FRAME_FONT (f));
 
 	  const int char_width = (font->average_width
 	                          ? font->average_width
