@@ -28376,6 +28376,7 @@ x_make_frame_visible (struct frame *f)
 #endif
 	  unblock_input ();
 
+	  SET_FRAME_GARBAGED (f);
 	  SET_FRAME_VISIBLE (f, true);
 	  SET_FRAME_ICONIFIED (f, false);
 	}
