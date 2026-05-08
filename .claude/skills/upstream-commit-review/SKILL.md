@@ -28,10 +28,20 @@ review.
    BRANCH=$(git rev-parse --abbrev-ref HEAD)
    ```
 
-3. Ensure the upstream remote exists:
+3. Ensure the upstream remote exists *and* points at savannah.  If the
+   remote already exists with a different URL (personal fork, stale
+   mirror), abort — do not silently fetch and cherry-pick from the
+   wrong source.
    ```bash
-   git remote get-url emacs-upstream \
-     || git remote add emacs-upstream https://git.savannah.gnu.org/git/emacs.git
+   EXPECTED=https://git.savannah.gnu.org/git/emacs.git
+   if URL=$(git remote get-url emacs-upstream 2>/dev/null); then
+       [ "$URL" = "$EXPECTED" ] || {
+           echo "emacs-upstream points at $URL, expected $EXPECTED" >&2
+           exit 1
+       }
+   else
+       git remote add emacs-upstream "$EXPECTED"
+   fi
    git fetch emacs-upstream master
    ```
 
