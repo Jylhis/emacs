@@ -45,7 +45,6 @@
 ;; customizations.
 (defvar newcomers-presets-mode-enabled-local-modes
   `((prog-mode-hook ,#'display-line-numbers-mode
-                    ,#'flymake-mode
                     ,#'flyspell-prog-mode)
 
     (text-mode-hook ,#'display-line-numbers-mode
