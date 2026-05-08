@@ -137,7 +137,6 @@ This minor mode will enable and disable the theme on startup."
  '(shell-command-prompt-show-cwd t)
 
 ;;;; File-related options
- '(etags-regen-mode t)
  '(vc-auto-revert-mode t)
  '(vc-deduce-backend-nonvc-modes t)
  '(vc-dir-save-some-buffers-on-revert t)
