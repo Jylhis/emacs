@@ -82,12 +82,11 @@ if so then run the appropriate source block from the Library."
       (org-babel-execute-src-block nil info nil (org-element-type datum))
       t)))
 
-(defun org-babel-lob--src-info (ref &optional eval)
+(defun org-babel-lob--src-info (ref)
   "Return internal representation for Babel data referenced as REF.
 REF is a string.  This function looks into the current document
 for a Babel call or source block.  If none is found, it looks
 after REF in the Library of Babel.
-When EVAL is non-nil, evaluate src block parameters.
 "
   (let ((name ref)
 	(file nil))
@@ -110,7 +109,7 @@ When EVAL is non-nil, evaluate src block parameters.
 		(when (equal name (org-element-property :name element))
 		  (throw :found
 			 (pcase (org-element-type element)
-			   (`src-block (org-babel-get-src-block-info (not eval) element))
+			   (`src-block (org-babel-get-src-block-info 'no-eval element))
 			   (`babel-call (org-babel-lob-get-info element))
 			   ;; Non-executable data found.  Since names
 			   ;; are supposed to be unique throughout
@@ -148,7 +147,7 @@ see."
 					  context))
              ;; Signal downstream to lisp parameter values about current location.
              (org-babel-current-src-block-location begin))
-        (pcase (org-babel-lob--src-info reference (if no-eval nil 'eval))
+        (pcase (org-babel-lob--src-info reference)
 	  (`(,language ,body ,header ,_ ,_ ,_ ,coderef)
 	   (list language
 	         body
