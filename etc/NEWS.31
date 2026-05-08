@@ -4626,6 +4626,13 @@ the main purpose is to make the intention more obvious when the advice
 modifies only the interactive form and not the actual behavior
 of the function.
 
+---
+** New variable 'completion-frontend-properties'.
+This variable generalizes the 'completion-lazy-hilit' variable added in
+Emacs 30.  It allows Lisp programs that present completion candidates
+("completion frontends") to provide additional information which can be
+used to adjust or optimize completion candidates computation.
+
 
 * Changes in Emacs 31.1 on Non-Free Operating Systems
 
