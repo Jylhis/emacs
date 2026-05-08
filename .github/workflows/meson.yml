@@ -336,7 +336,7 @@ jobs:
         uses: actions/github-script@v9
         with:
           script: |
-            const fs = require('fs');
+            const fs = await import('node:fs');
             const sections = [];
             for (const [name, path] of [
               ['compile.log (last 8 KB)', 'build/compile.log'],
