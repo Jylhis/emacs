@@ -27,6 +27,17 @@
 
 (require 'rx)
 
+(defun scrape-elpa--safe-rx-p (exp)
+  "Return non-nil if EXP is safe to pass to `rx-to-string'."
+  (cond
+   ((atom exp) t)
+   ((eq (car exp) 'eval) nil)
+   (t (let ((safe t))
+        (while (and safe exp)
+          (setq safe (scrape-elpa--safe-rx-p (car exp))
+                exp (cdr exp)))
+        safe))))
+
 (defun scrape-elpa--safe-eval (exp &optional vars)
   "Manually evaluate EXP without potentially dangerous side-effects.
 The optional argument VARS may be an alist mapping symbols to values,
@@ -35,7 +46,10 @@ be comprehensive, but just to handle the kinds of expressions that
 `scrape-elpa' expects to encounter."
   (pcase-exhaustive exp
     ;; special handling for macros
-    (`(rx . ,body) (rx-to-string `(: . ,body) t))
+    (`(rx . ,body)
+     (if (scrape-elpa--safe-rx-p body)
+         (rx-to-string `(: . ,body) t)
+       (error "Unsafe rx form")))
     ;; quoting and quasi-quoting
     (`',x x)
     (`(purecopy ,x) x)
