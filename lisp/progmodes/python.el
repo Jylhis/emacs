@@ -3715,7 +3715,6 @@ def __PYTHON_EL_eval_file(filename, tempname, delete):
 The coding cookie regexp is specified in PEP 263.")
 
 (defconst python-shell-local-prefix "/local:"
-  "A prefix used to indicate that a file is local.
 It is used when sending file names to remote Python processes.")
 
 (defun python-shell-comint-watch-for-first-prompt-output-filter (output)
