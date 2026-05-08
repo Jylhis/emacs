@@ -37,21 +37,22 @@ review.
 
 ## Determine the commit range
 
-Find the most recent merge from savannah on the current branch.  Fall
-back to `merge-base` if no such merge exists yet.
+Use `git merge-base` to find the most recent common ancestor between
+this branch and upstream — that is the sync point regardless of how
+previous merges were spelled.
 
 ```bash
-ANCHOR=$(git log --merges -E \
-           --grep='savannah' --grep='emacs-mirror' --grep='upstream' \
-           -1 --format=%H)
-[ -z "$ANCHOR" ] && ANCHOR=$(git merge-base HEAD emacs-upstream/master)
-RANGE="${ANCHOR}..emacs-upstream/master"
+ANCHOR=$(git merge-base HEAD emacs-upstream/master)
 ```
 
-List the commits to triage (oldest first, no merges):
+List the commits to triage.  `--cherry-pick --right-only` skips upstream
+commits whose patch-id is already in our history (typical for
+long-lived forks where some changes have been backported under a
+different SHA).  `--no-merges` excludes upstream's own merge commits.
 
 ```bash
-git log --reverse --no-merges --format='%H' "$RANGE"
+git log --reverse --no-merges --cherry-pick --right-only \
+        --format='%H' HEAD...emacs-upstream/master
 ```
 
 If the list is empty, write a one-line "nothing to do" report and stop.
@@ -64,14 +65,17 @@ For each commit `SHA`, gather metadata once:
 SUBJECT=$(git show -s --format=%s "$SHA")
 FILES=$(git show --name-only --format= "$SHA" | sed '/^$/d')
 LINES=$(git show --shortstat --format= "$SHA" \
-        | awk '{for(i=1;i<=NF;i++) if($i ~ /[0-9]+/) s+=$i} END{print s+0}')
+        | awk '/files? changed/ {
+                 for (i=1; i<=NF; i++)
+                   if ($i ~ /^[0-9]+$/ && $(i+1) ~ /(insertion|deletion)/) s += $i
+               } END { print s+0 }')
 ```
 
 Apply the rules **in order**, first match wins:
 
 | # | Bucket | Match | Action |
 |---|---|---|---|
-| 1 | SKIP / autotools | any file in `{configure.ac, autogen.sh, make-dist, GNUmakefile}` or matches `Makefile.in$` or `^m4/` | report only |
+| 1 | SKIP / autotools | any file matches `^(configure\.ac\|autogen\.sh\|make-dist\|GNUmakefile)$`, `Makefile\.in$`, or `^m4/` | report only |
 | 2 | SKIP / merge-noise | subject matches `^(Merge \|; \* )` or `gitmerge` (upstream's own merges/noise) | report only |
 | 3 | SKIP / admin churn | every file is under `admin/` or matches `^ChangeLog` | report only |
 | 4 | AUTO / doc-only | every file matches `^doc/`, `^etc/NEWS`, `\.texi$`, or `\.texinfo$` | cherry-pick |
