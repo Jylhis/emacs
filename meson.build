@@ -903,7 +903,15 @@ subdir('test')     # ERT test discovery
 subdir('doc')      # texinfo info manuals
 # subdir('leim')     # TODO: MISC-DIC and friends
 # subdir('nextstep') # TODO: macOS .app bundle
-# subdir('java')     # TODO: Android cross-build
+# Parked subdirs -- see .claude/notes/build-system.md "Parked / unsupported".
+# Their autotools recipes live at anchor commit 08a22b8965ec; reviving
+# any of them is a substantial cross-compile or platform-port effort
+# rather than an incremental Meson translation.
+# subdir('java')           # parked: Android cross-build
+# subdir('exec')           # parked: Android cross-build helper
+# subdir('cross')          # parked: Android cross-build host
+# subdir('cross/ndk-build') # parked: Android NDK glue
+# subdir('admin/grammars') # parked: bovine/wisent regen; outputs committed
 
 # ----------------------------------------------------------------------
 # Install rules.  Items that exist as static source-tree files use
