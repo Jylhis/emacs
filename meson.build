@@ -1,6 +1,6 @@
 project(
   'emacs',
-  'c',
+  ['c', 'objc'],
   version : '31.0.50',
   license : 'GPL-3.0-or-later',
   meson_version : '>= 1.3.0',
@@ -311,6 +311,39 @@ if gtk3_dep.found()
     gtk3_dep = dependency('', required : false)
   endif
 endif
+
+# ----------------------------------------------------------------------
+# macOS Cocoa (NextStep) detection.  Auto on darwin, opt-out via
+# -Dns=disabled or -Dtoolkit=none.  Mirrors configure.ac's NS_OBJC_OBJ
+# block at anchor 08a22b8965ec.  On NS, src/nsterm.m + nsfns.m +
+# nsmenu.m + nsselect.m + nsimage.m + macfont.m replace the X11 +
+# GTK toolkit sources; framework linkage uses Meson's appleframeworks
+# dependency for Cocoa, AppKit, and (for xwidgets) WebKit.
+# ----------------------------------------------------------------------
+ns_opt = get_option('ns')
+ns_dep = dependency('', required : false)
+if (is_darwin and ns_opt.allowed()
+    and not gtk3_dep.found()
+    and _toolkit != 'none')
+  # nsterm.m + macfont.m + nsfns.m pull in symbols from these
+  # frameworks: Cocoa/AppKit (NS classes), QuartzCore (CALayer),
+  # IOSurface (offscreen GPU buffers), Carbon (TIS keyboard
+  # layout APIs), CoreText (font rendering), UniformTypeIdentifiers
+  # (UTType, macOS 11+).
+  ns_dep = dependency('appleframeworks',
+                       modules : ['Cocoa', 'AppKit',
+                                  'QuartzCore', 'IOSurface',
+                                  'Carbon', 'CoreText',
+                                  'UniformTypeIdentifiers'],
+                       required : ns_opt)
+  if ns_dep.found()
+    conf_data.set('HAVE_NS', 1)
+    conf_data.set('NS_IMPL_COCOA', 1)
+    conf_data.set('HAVE_WINDOW_SYSTEM', 1)
+    conf_data.set('HAVE_TEXT_CONVERSION', 1)
+    conf_data.set_quoted('TERM_HEADER', 'nsterm.h')
+  endif
+endif
 cairo_opt = get_option('cairo').disable_auto_if(_no_all)
 cairo_dep     = dependency('cairo',     required : cairo_opt)
 cairo_ft_dep  = dependency('cairo-ft',  required : cairo_opt)
@@ -395,18 +428,30 @@ if gtk3_dep.found()
   conf_data.set('HAVE_XSCREENNUMBEROFSCREEN', 1)
   conf_data.set('HAVE_XSCREENRESOURCESTRING', 1)
 endif
-if cairo_dep.found()
+if cairo_dep.found() and not conf_data.has('HAVE_NS')
+  # Cairo is X11-only in the autotools gate (configure.ac:HAVE_X11
+  # check at anchor 08a22b8965ec).  macOS Cocoa uses CoreGraphics
+  # directly, and dispextern.h's USE_CAIRO branch conflicts with
+  # nsgui.h's typedefs.
   conf_data.set('USE_CAIRO', 1)
   conf_data.set('HAVE_CAIRO', 1)
 endif
 if harfbuzz_dep.found()
   conf_data.set('HAVE_HARFBUZZ', 1)
 endif
-if freetype_dep.found()
+if freetype_dep.found() and not conf_data.has('HAVE_NS')
+  # Autotools at anchor 08a22b8965ec only sets HAVE_FREETYPE inside
+  # the HAVE_X11 / pgtk blocks; under NS, font.c's HAVE_FREETYPE
+  # branch references freetype symbols that aren't linked because
+  # ftfont.c isn't compiled.  macfont.m is the NS font backend.
   conf_data.set('HAVE_FREETYPE', 1)
+endif
+if freetype_dep.found() or conf_data.has('HAVE_NS')
+  # USE_FONT_BACKEND is set whenever a window system is in use; both
+  # the X freetype path and macfont.m use the new backend protocol.
   conf_data.set('USE_FONT_BACKEND', 1)
 endif
-if fontconfig_dep.found()
+if fontconfig_dep.found() and not conf_data.has('HAVE_NS')
   conf_data.set('HAVE_FONTCONFIG', 1)
 endif
 if xft_dep.found()

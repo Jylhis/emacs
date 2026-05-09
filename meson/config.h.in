@@ -137,6 +137,8 @@
 #mesondefine HAVE_XDBE
 #mesondefine HAVE_XIM
 #mesondefine USE_XIM
+#mesondefine HAVE_NS
+#mesondefine NS_IMPL_COCOA
 #mesondefine GC_REMEMBER_LAST_MARKED
 
 /* Mail / POP / Kerberos auth (configure.ac AC_ARG_WITH at anchor

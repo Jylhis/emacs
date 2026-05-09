@@ -80,6 +80,12 @@ if conf_data.has('HAVE_XWIDGETS')
   feature_obj += 'xwidget.c'
 endif
 
+# NS Objective-C sources for macOS Cocoa.  Mirror NS_OBJC_OBJ at
+# anchor 08a22b8965ec configure.ac; ns_fontfile = macfont.m on Cocoa
+# (nsfont.m is for GNUstep, which this fork doesn't target).
+ns_obj_objc = ['nsterm.m', 'nsfns.m', 'nsmenu.m', 'nsselect.m',
+                'nsimage.m', 'macfont.m']
+
 # Assemble base_obj depending on whether we have a GUI toolkit.
 if gtk3_dep.found()
   base_obj_basenames = (
@@ -87,8 +93,15 @@ if gtk3_dep.found()
     + font_obj + notify_obj + xgselect_obj
     + cm_obj + dynlib_obj + feature_obj
   )
+elif conf_data.has('HAVE_NS')
+  # macOS Cocoa: replace X11/GTK sources with NS Objective-C sources.
+  # font_obj is omitted because macfont.m supersedes ftfont/ftcrfont.
+  base_obj_basenames = (
+    base_obj_core + ns_obj_objc + window_system_obj
+    + notify_obj + cm_obj + dynlib_obj + feature_obj
+  )
 else
-  # Terminal-only or NS build (NS sources not yet wired).
+  # Terminal-only build.
   base_obj_basenames = (
     base_obj_core + notify_obj
     + cm_obj + dynlib_obj + feature_obj
@@ -274,8 +287,24 @@ src_deps = [
 if gtk3_dep.found()
   src_deps += [gtk3_dep, cairo_dep, cairo_ft_dep,
                harfbuzz_dep, freetype_dep, fontconfig_dep, xft_dep]
+elif conf_data.has('HAVE_NS')
+  # Cocoa + AppKit are required.  Add WebKit when xwidgets is on.
+  src_deps += ns_dep
+  if conf_data.has('HAVE_XWIDGETS')
+    src_deps += dependency('appleframeworks',
+                            modules : ['WebKit'])
+  endif
+  # macfont.m + hbfont.c need harfbuzz / freetype on the include
+  # path (autotools wires them via $(HARFBUZZ_CFLAGS) when
+  # HAVE_HARFBUZZ).
+  if harfbuzz_dep.found()
+    src_deps += harfbuzz_dep
+  endif
+  if freetype_dep.found()
+    src_deps += freetype_dep
+  endif
 else
-  # Without GTK, still link harfbuzz/freetype if found (used by hbfont.c etc.).
+  # Terminal-only.  Still link harfbuzz/freetype if found (used by hbfont.c etc.).
   if harfbuzz_dep.found()
     src_deps += harfbuzz_dep
   endif
