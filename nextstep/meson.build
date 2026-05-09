@@ -63,10 +63,22 @@ ns_bundle_args = [
 ]
 ns_bundle_deps = [emacs]
 
-# Self-contained Emacs.app -- copying lisp/, etc/, info/, emacs.pdmp
-# into Contents/Resources/ -- is wired by ns-self-contained in a
-# follow-up commit (D5 in the migration plan).  Today the bundle
-# launches the system-wide installed Emacs tree at runtime.
+# Self-contained Emacs.app: copy lisp/, etc/, info/, and the
+# dumped emacs.pdmp into Contents/Resources/ so the bundle runs
+# without a global Emacs install.  Mirrors configure.ac's
+# EN_NS_SELF_CONTAINED block at anchor 08a22b8965ec which set
+# datadir / lispdir / etcdir / etcdocdir / infodir to subpaths
+# of ns_appresdir (Contents/Resources).
+if get_option('ns-self-contained').allowed()
+  ns_bundle_args += [
+    '--self-contained',
+    '--lisp-dir', meson.global_source_root() / 'lisp',
+    '--etc-dir',  meson.global_source_root() / 'etc',
+    '--info-dir', meson.global_build_root() / 'doc',
+    '--pdmp',     emacs_pdmp.full_path(),
+  ]
+  ns_bundle_deps += emacs_pdmp
+endif
 
 ns_bundle_stamp = custom_target(
   'emacs-app-bundle',
