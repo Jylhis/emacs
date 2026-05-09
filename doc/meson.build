@@ -66,6 +66,36 @@ endforeach
 # INFO_INSTALL:ccmode=cc-mode substitution).  The list mirrors
 # INFO_COMMON in the deleted doc/misc/Makefile.in at 5d78a4c.
 misc_dir = meson.global_source_root() / 'doc/misc'
+
+# ----------------------------------------------------------------------
+# org and modus-themes -- their .texi sources are generated from .org
+# via emacs -l ox-texinfo.  Mirrors the org_template macro in the
+# deleted doc/misc/Makefile.in at anchor 08a22b8965ec.  Requires the
+# built emacs + emacs.pdmp (bootstrap-emacs lacks ox-texinfo deps),
+# so the custom_targets here depend on the binary at src/emacs and
+# the dumped image at lisp/emacs.pdmp.
+# ----------------------------------------------------------------------
+run_org_to_texi = files('../meson/run_org_to_texi.py')
+org_texi_targets = {}
+foreach name : ['org', 'modus-themes']
+  org_texi_targets += {
+    name: custom_target(
+      name + '.texi',
+      output  : name + '.texi',
+      command : [
+        py, run_org_to_texi,
+        '--emacs',       emacs.full_path(),
+        '--dump-file',   emacs_pdmp.full_path(),
+        '--source-root', meson.global_source_root(),
+        '--input',       misc_dir / (name + '.org'),
+        '--output',      '@OUTPUT@',
+      ],
+      depends : [emacs, emacs_pdmp],
+      build_by_default : true,
+    ),
+  }
+endforeach
+
 foreach pair : [
   ['auth',          'auth'],
   ['autotype',      'autotype'],
@@ -100,14 +130,11 @@ foreach pair : [
   ['mairix-el',     'mairix-el'],
   ['message',       'message'],
   ['mh-e',          'mh-e'],
-  # modus-themes is generated from doc/misc/modus-themes.org via emacs
-  # batch (TEXI_FROM_ORG in the deleted Makefile.in).  Skip until the
-  # org->texi step is ported.
+  ['modus-themes',  'modus-themes'],  # generated from .org
   ['newsticker',    'newsticker'],
   ['nxml-mode',     'nxml-mode'],
   ['octave-mode',   'octave-mode'],
-  # org is generated from doc/misc/org.org via emacs batch
-  # (TEXI_FROM_ORG); skipped alongside modus-themes.
+  ['org',           'org'],            # generated from .org
   ['pcl-cvs',       'pcl-cvs'],
   ['pgg',           'pgg'],
   ['rcirc',         'rcirc'],
@@ -135,7 +162,17 @@ foreach pair : [
 ]
   out = pair[0]
   src_name = pair[1]
-  manual_specs += [[out, misc_dir, misc_dir / (src_name + '.texi'), '']]
+  if org_texi_targets.has_key(src_name)
+    # Generated .texi: source is the org_to_texi custom_target output.
+    _texi_target = org_texi_targets[src_name]
+    _texi_path = _texi_target.full_path()
+    _info_deps = [_texi_target]
+  else
+    _texi_target = []
+    _texi_path = misc_dir / (src_name + '.texi')
+    _info_deps = []
+  endif
+  manual_specs += [[out, misc_dir, _texi_path, '']]
   manuals += custom_target(
     out + '.info',
     output  : out + '.info',
@@ -147,8 +184,9 @@ foreach pair : [
                '-I', emacsver_dir,
                '--no-split',
                '-o', '@OUTPUT@',
-               misc_dir / (src_name + '.texi')],
+               _texi_path],
     depend_files : [emacsver_texi],
+    depends : _info_deps,
     install : true,
     install_dir : get_option('infodir'),
     build_by_default : true,
