@@ -142,7 +142,7 @@ in
     set -euo pipefail
     echo "Running devenv tests"
     git --version | grep --color=auto "${pkgs.git.version}"
-    gcc --version | head -1
+    cc --version | head -1
     pkg-config --version
   '';
 
