@@ -135,7 +135,7 @@ option('gsettings',   type : 'feature', value : 'auto',
   description : 'GSettings support.')
 option('selinux',     type : 'feature', value : 'auto',
   description : 'SELinux file context support.')
-option('gnutls',      type : 'feature', value : 'auto',
+option('gnutls',      type : 'feature', value : 'enabled',
   description : 'GnuTLS for SSL/TLS.')
 option('zlib',        type : 'feature', value : 'auto',
   description : 'zlib decompression support.')

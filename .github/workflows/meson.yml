@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # full history for git diff
 
@@ -215,7 +215,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ---- System dependencies ----------------------------------------
       - name: Install build dependencies
@@ -249,7 +249,7 @@ jobs:
       # files.
       - name: Cache Meson build dir
         id: cache-build
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: build
           # Include matrix.label so the two variants don't collide
@@ -257,7 +257,7 @@ jobs:
           key: meson-build-v2-${{ runner.os }}-${{ matrix.label }}-${{ hashFiles('.github/workflows/meson.yml', 'meson.build', 'meson.options', 'meson/**', 'lib/meson.build', 'lib-src/meson.build', 'src/meson.build', 'admin/meson.build', 'lisp/meson.build', 'test/meson.build', 'doc/meson.build') }}
 
       - name: Cache source-tree byte-compile artefacts
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830  # v4.3.0
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
         with:
           path: |
             lisp/**/*.elc
@@ -333,10 +333,10 @@ jobs:
       # visible without admin-rights log access.  Only fires on PRs.
       - name: Post build failure as PR comment
         if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
-            const fs = require('fs');
+            const fs = await import('node:fs');
             const sections = [];
             for (const [name, path] of [
               ['compile.log (last 8 KB)', 'build/compile.log'],
@@ -444,7 +444,7 @@ jobs:
       # ---- Artefacts --------------------------------------------------
       - name: Upload Meson logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: meson-logs
           path: |
@@ -453,7 +453,7 @@ jobs:
 
       - name: Upload pdumper images
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pdumper-images
           path: |
