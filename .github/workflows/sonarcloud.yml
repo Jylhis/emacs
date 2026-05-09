@@ -26,8 +26,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: classify changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sonar: ${{ steps.classify.outputs.sonar }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: bash .github/scripts/ci-classify.sh
+
   analyze:
     name: SonarCloud analysis
+    needs: [classify]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     # GitHub does not expose repository secrets (SONAR_TOKEN) to
@@ -36,8 +60,11 @@ jobs:
     # build verification is already covered by meson.yml, and Sonar
     # re-runs on push to dev after the PR is merged.
     if: >-
-      github.event_name != 'pull_request'
-      || github.event.pull_request.head.repo.full_name == github.repository
+      needs.classify.outputs.sonar == 'true'
+      && (
+        github.event_name != 'pull_request'
+        || github.event.pull_request.head.repo.full_name == github.repository
+      )
 
     steps:
       - name: Checkout

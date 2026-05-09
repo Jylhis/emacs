@@ -32,11 +32,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  classify:
+    name: classify changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      actionlint: ${{ steps.classify.outputs.actionlint }}
+      meson_python: ${{ steps.classify.outputs.meson_python }}
+      meson_guard: ${{ steps.classify.outputs.meson_guard }}
+      linux_meson: ${{ steps.classify.outputs.linux_meson }}
+      macos_meson: ${{ steps.classify.outputs.macos_meson }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: bash .github/scripts/ci-classify.sh
+
   # ================================================================
   # Stage 1 -- Lint (cheap checks, no compilation)
   # ================================================================
   lint:
     name: lint
+    needs: [classify]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 
@@ -146,6 +174,7 @@ jobs:
 
       # Python syntax check for build scripts.
       - name: Check Python syntax (meson/*.py)
+        if: needs.classify.outputs.meson_python == 'true'
         run: |
           status=0
           for f in meson/*.py; do
@@ -161,6 +190,7 @@ jobs:
       # It must only be compiled when the system lacks re_compile_pattern
       # (see lib/meson.build conditional and m4/regex.m4).
       - name: Check for unconditional gnulib regex in Meson build
+        if: needs.classify.outputs.meson_guard == 'true'
         run: |
           status=0
           # Ensure regex.c appears only inside a conditional block,
@@ -179,6 +209,7 @@ jobs:
 
       # Workflow YAML lint.
       - name: Lint GitHub Actions workflows
+        if: needs.classify.outputs.actionlint == 'true'
         run: |
           # Download actionlint
           bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
@@ -189,7 +220,8 @@ jobs:
   # ================================================================
   build-and-test:
     name: build + test (${{ matrix.label }})
-    needs: [lint]
+    needs: [classify, lint]
+    if: needs.classify.outputs.linux_meson == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
