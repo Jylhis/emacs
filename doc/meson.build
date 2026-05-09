@@ -150,4 +150,39 @@ foreach pair : [
   )
 endforeach
 
+
+# ----------------------------------------------------------------------
+# doc/translations/ -- localized info pages.  The autotools tree at
+# anchor 08a22b8965ec built ses-fr.info from doc/translations/fr/misc/
+# and installed it under $infodir/fr.  Add new languages by
+# extending this list.
+# ----------------------------------------------------------------------
+translations = [
+  ['fr', 'misc', 'ses-fr'],
+]
+foreach t : translations
+  lang = t[0]
+  subdir_path = t[1]
+  basename = t[2]
+  src_dir = (meson.global_source_root()
+             / 'doc/translations' / lang / subdir_path)
+  manuals += custom_target(
+    basename + '.info',
+    output  : basename + '.info',
+    command : [makeinfo,
+               '--force',
+               '--enable-encoding',
+               '-I', src_dir,
+               '-I', shared_inc,
+               '-I', emacsver_dir,
+               '--no-split',
+               '-o', '@OUTPUT@',
+               src_dir / (basename + '.texi')],
+    depend_files : [emacsver_texi],
+    install : true,
+    install_dir : get_option('infodir') / lang,
+    build_by_default : true,
+  )
+endforeach
+
 alias_target('info', manuals)
