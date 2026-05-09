@@ -53,7 +53,7 @@ loaddefs_stamp = custom_target(
   ] + loaddefs_subdirs,
   depends : [bootstrap_emacs, bootstrap_pdmp,
              charscript_el, emoji_zwj_el, charsets_stamp],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -94,7 +94,7 @@ compile_first_elcs = custom_target(
     bootstrap_emacs, bootstrap_pdmp,
     charscript_el, emoji_zwj_el, charsets_stamp,
   ],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -132,11 +132,7 @@ compile_main_manifest = custom_target(
   # because eager macro expansion of `(autoload 'rx ... nil t)` in
   # source-loaded loaddefs.el triggers a load that pdump rejects.
   depends : [loaddefs_stamp],
-  # Don't pull this into the default build set: it transitively
-  # depends on loaddefs_stamp -> bootstrap-emacs.pdmp, which is
-  # only built when explicitly requested (the dump pipeline is
-  # known-flaky during the post-cutover migration).
-  build_by_default : false,
+  build_by_default : true,
 )
 
 compile_main_elcs = custom_target(
@@ -159,7 +155,7 @@ compile_main_elcs = custom_target(
     charscript_el, emoji_zwj_el, charsets_stamp,
     compile_first_elcs, compile_main_manifest, loaddefs_stamp,
   ],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -211,5 +207,5 @@ emacs_pdmp = custom_target(
     emacs, charscript_el, emoji_zwj_el, charsets_stamp,
     etc_doc, compile_main_elcs, loaddefs_stamp,
   ],
-  build_by_default : false,
+  build_by_default : true,
 )

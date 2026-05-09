@@ -396,7 +396,7 @@ unidata_stamp = custom_target(
   ],
   depends : [bootstrap_emacs, bootstrap_pdmp, charsets_stamp,
              charscript_el, emoji_zwj_el],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -407,8 +407,8 @@ unidata_stamp = custom_target(
 #
 # Differs from the bootstrap dump in that loadup.el reads .elc files
 # rather than .el sources, so the full lisp/ byte-compile must
-# precede this.  We express that dependency, but build_by_default
-# stays false until phase 4 runs to completion.
+# precede this.  emacs.pdmp itself is defined in lisp/meson.build
+# (it depends on compile_main_elcs and loaddefs_stamp).
 # ----------------------------------------------------------------------
 emacs = custom_target(
   'emacs',
