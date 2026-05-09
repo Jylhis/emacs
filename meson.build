@@ -688,6 +688,20 @@ elif xinput2_opt.enabled() or xdbe_opt.enabled()
 endif
 
 # ----------------------------------------------------------------------
+# X11 input method (configure.ac:4395-4410 at anchor 08a22b8965ec).
+# autotools defines HAVE_XIM whenever X11 is in use AND --without-xim
+# was not passed; USE_XIM is the runtime default for the
+# `x-use-xim' Lisp variable.
+# ----------------------------------------------------------------------
+xim_opt = get_option('xim').disable_auto_if(_no_all)
+if gtk3_dep.found() and xim_opt.allowed()
+  conf_data.set('HAVE_XIM', 1)
+  conf_data.set('USE_XIM', 1)
+elif xim_opt.enabled() and not gtk3_dep.found()
+  error('xim=enabled but X11 is not in use')
+endif
+
+# ----------------------------------------------------------------------
 # Toolkit scroll bars (configure.ac:566, 4360-4385 at anchor
 # 08a22b8965ec).  configure.ac defines USE_TOOLKIT_SCROLL_BARS when
 # any window-system toolkit is in use and --with-toolkit-scroll-bars

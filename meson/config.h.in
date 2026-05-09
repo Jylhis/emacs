@@ -135,6 +135,8 @@
 #mesondefine HAVE_THREADS
 #mesondefine HAVE_XINPUT2
 #mesondefine HAVE_XDBE
+#mesondefine HAVE_XIM
+#mesondefine USE_XIM
 #mesondefine USE_TOOLKIT_SCROLL_BARS
 
 /* C99 flexible array member: empty if supported, "1" otherwise (cf.
