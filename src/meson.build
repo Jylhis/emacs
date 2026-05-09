@@ -184,8 +184,17 @@ localstatedir = prefix / get_option('localstatedir')
 epaths_data.set_quoted('PATH_LOADSEARCH',
     datadir + '/emacs/' + emacs_version + '/lisp')
 epaths_data.set_quoted('PATH_REL_LOADSEARCH', '')
-epaths_data.set_quoted('PATH_SITELOADSEARCH',
-    datadir + '/emacs/site-lisp')
+
+# PATH_SITELOADSEARCH -- the colon-separated default list of site-lisp
+# directories (configure.ac at anchor 08a22b8965ec sets locallisppath
+# to '${datadir}/emacs/${version}/site-lisp:${datadir}/emacs/site-lisp'
+# unless --enable-locallisppath=PATH overrides it).
+_locallisppath = get_option('locallisppath')
+if _locallisppath == ''
+  _locallisppath = (datadir + '/emacs/' + emacs_version + '/site-lisp'
+                    + ':' + datadir + '/emacs/site-lisp')
+endif
+epaths_data.set_quoted('PATH_SITELOADSEARCH', _locallisppath)
 epaths_data.set_quoted('PATH_DUMPLOADSEARCH', '../lisp')
 epaths_data.set_quoted('PATH_EXEC',
     libexecdir + '/emacs/' + emacs_version + '/' +
