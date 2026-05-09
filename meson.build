@@ -992,7 +992,9 @@ subdir('leim')     # quail input-method tables + leim-list.el
 subdir('lisp')     # byte-compile + native-comp + emacs.pdmp
 subdir('test')     # ERT test discovery
 subdir('doc')      # texinfo info manuals
-# subdir('nextstep') # TODO: macOS .app bundle
+if is_darwin and get_option('ns').allowed()
+  subdir('nextstep')  # macOS Cocoa Emacs.app bundle
+endif
 # Parked subdirs -- see .claude/notes/build-system.md "Parked / unsupported".
 # Their autotools recipes live at anchor commit 08a22b8965ec; reviving
 # any of them is a substantial cross-compile or platform-port effort
