@@ -306,6 +306,15 @@ endforeach
 
 src_args = ['-DEMACS_CORE=1']
 
+# Quiet GTK 3 deprecation warnings unless the developer explicitly
+# wants them (configure.ac at anchor 08a22b8965ec
+# --with-gtk-deprecation-warnings, default off).  GTK 3 emits a
+# steady stream of deprecation notices the Emacs source can't act
+# on without dropping GTK 3 support entirely.
+if gtk3_dep.found() and not get_option('gtk-deprecation-warnings')
+  src_args += '-DGDK_DISABLE_DEPRECATION_WARNINGS=1'
+endif
+
 # --enable-profiling at anchor 08a22b8965ec configure.ac: adds -pg to
 # both compile and link, plus -DPROFILING=1 so src/emacs.c's main()
 # stops the profiler in the right place (cf. src/emacs.c:101).
