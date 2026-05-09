@@ -40,6 +40,10 @@ required=(
   "$datadir/lisp/international/emoji-zwj.elc"
   "$datadir/lisp/subdirs.el"
   "$datadir/etc/tutorials/TUTORIAL"
+  "$datadir/lisp/leim/leim-list.elc"
+  "$datadir/lisp/leim/quail/CCDOSPY.elc"
+  "$datadir/lisp/leim/ja-dic/ja-dic.elc"
+  "$datadir/lisp/language/pinyin.elc"
 )
 
 # Required compressed-or-not: pre-compress and uncompressed both pass.

@@ -898,10 +898,10 @@ subdir('lib')      # gnulib portability subset
 subdir('lib-src')  # helper executables (etags, emacsclient, ...)
 subdir('admin')    # charsets + unidata generators
 subdir('src')      # temacs + bootstrap-emacs + emacs binary + DOC
+subdir('leim')     # quail input-method tables + leim-list.el
 subdir('lisp')     # byte-compile + native-comp + emacs.pdmp
 subdir('test')     # ERT test discovery
 subdir('doc')      # texinfo info manuals
-# subdir('leim')     # TODO: MISC-DIC and friends
 # subdir('nextstep') # TODO: macOS .app bundle
 # Parked subdirs -- see .claude/notes/build-system.md "Parked / unsupported".
 # Their autotools recipes live at anchor commit 08a22b8965ec; reviving

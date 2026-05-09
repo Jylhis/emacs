@@ -52,7 +52,8 @@ loaddefs_stamp = custom_target(
     '--subdirs',
   ] + loaddefs_subdirs,
   depends : [bootstrap_emacs, bootstrap_pdmp,
-             charscript_el, emoji_zwj_el, charsets_stamp],
+             charscript_el, emoji_zwj_el, charsets_stamp,
+             leim_list_stamp],
   build_by_default : true,
 )
 
