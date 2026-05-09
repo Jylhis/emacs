@@ -297,6 +297,16 @@ endforeach
 
 src_args = ['-DEMACS_CORE=1']
 
+# --enable-profiling at anchor 08a22b8965ec configure.ac: adds -pg to
+# both compile and link, plus -DPROFILING=1 so src/emacs.c's main()
+# stops the profiler in the right place (cf. src/emacs.c:101).
+profiling_args = []
+profiling_link_args = []
+if get_option('profiling')
+  src_args += ['-DPROFILING=1', '-pg']
+  profiling_link_args = ['-pg']
+endif
+
 src_compile_probe = static_library(
   'emacs_src_probe',
   sources : [
@@ -325,7 +335,7 @@ temacs = executable(
   ],
   c_args : src_args,
   dependencies : src_deps,
-  link_args : is_linux ? ['-ldl', '-lm'] : ['-lm'],
+  link_args : (is_linux ? ['-ldl', '-lm'] : ['-lm']) + profiling_link_args,
   install : false,
 )
 
@@ -362,18 +372,22 @@ bootstrap_emacs = custom_target(
 # subsequent script (run_unidata, run_loaddefs, byte_compile_batch);
 # undumped temacs segfaults on those workloads.
 run_dump = files('../meson/run_dump.py')
+_bootstrap_dump_args = [
+  py, run_dump,
+  '--bootstrap-emacs', bootstrap_emacs.full_path(),
+  '--source-root',     meson.global_source_root(),
+  '--output-pdmp',     '@OUTPUT@',
+  '--mode',            'pbootstrap',
+  '--charscript',      charscript_el.full_path(),
+  '--emoji-zwj',       emoji_zwj_el.full_path(),
+]
+if not build_details_opt
+  _bootstrap_dump_args += '--no-build-details'
+endif
 bootstrap_pdmp = custom_target(
   'bootstrap-emacs.pdmp',
   output  : 'bootstrap-emacs.pdmp',
-  command : [
-    py, run_dump,
-    '--bootstrap-emacs', bootstrap_emacs.full_path(),
-    '--source-root',     meson.global_source_root(),
-    '--output-pdmp',     '@OUTPUT@',
-    '--mode',            'pbootstrap',
-    '--charscript',      charscript_el.full_path(),
-    '--emoji-zwj',       emoji_zwj_el.full_path(),
-  ],
+  command : _bootstrap_dump_args,
   depends : [bootstrap_emacs, charscript_el, emoji_zwj_el,
              charsets_stamp],
   build_by_default : false,

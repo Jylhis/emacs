@@ -702,6 +702,24 @@ elif xim_opt.enabled() and not gtk3_dep.found()
 endif
 
 # ----------------------------------------------------------------------
+# Developer / debugging knobs (configure.ac --enable-gc-mark-trace,
+# --enable-profiling, --enable-build-details at anchor 08a22b8965ec).
+# ----------------------------------------------------------------------
+# When gc-mark-trace is on, AC_DEFINE GC_REMEMBER_LAST_MARKED enables
+# the mark-trace ring buffer in src/alloc.c (used by the GC debug
+# commands).  Default off matches the boolean option's value in
+# meson.options:193 -- developers opt in via -Dgc-mark-trace=true.
+if get_option('gc-mark-trace')
+  conf_data.set('GC_REMEMBER_LAST_MARKED', 1)
+endif
+
+# build-details is consumed at dump time as `--no-build-details', not
+# at compile time; the flag is plumbed through meson/run_dump.py via
+# the bootstrap_pdmp / emacs_pdmp custom_targets.  Stash the boolean
+# here so src/meson.build and lisp/meson.build can read it.
+build_details_opt = get_option('build-details')
+
+# ----------------------------------------------------------------------
 # Toolkit scroll bars (configure.ac:566, 4360-4385 at anchor
 # 08a22b8965ec).  configure.ac defines USE_TOOLKIT_SCROLL_BARS when
 # any window-system toolkit is in use and --with-toolkit-scroll-bars
