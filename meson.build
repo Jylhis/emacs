@@ -720,6 +720,96 @@ endif
 build_details_opt = get_option('build-details')
 
 # ----------------------------------------------------------------------
+# movemail / pop.c options (configure.ac:358-419 at anchor
+# 08a22b8965ec).  Probe libraries here so lib-src can pick up the
+# extra link args; defines land in conf_data.
+# ----------------------------------------------------------------------
+movemail_extra_libs = []
+
+# --with-mailutils -- when true, GNU Mailutils is preferred and
+# movemail is NOT installed (the install gate lives in
+# lib-src/meson.build).  HAVE_MAILUTILS is consumed by src/callproc.c.
+mailutils_opt = get_option('mailutils')
+if mailutils_opt.allowed() and dependency('mailutils', required : false).found()
+  conf_data.set('HAVE_MAILUTILS', 1)
+elif mailutils_opt.enabled()
+  error('mailutils=enabled but no mailutils pkg-config file found')
+endif
+mailutils_install_movemail = not conf_data.has('HAVE_MAILUTILS')
+
+# --with-pop -- enables POP3 in movemail (MAIL_USE_POP).
+pop_opt = get_option('pop')
+if pop_opt.allowed()
+  conf_data.set('MAIL_USE_POP', 1)
+endif
+
+# --with-kerberos / --with-kerberos5 -- POP authentication backends.
+kerberos_opt = get_option('kerberos')
+if kerberos_opt.allowed()
+  _krb = cc.find_library('krb', required : kerberos_opt)
+  if not _krb.found()
+    _krb = cc.find_library('krb4', required : false)
+  endif
+  if _krb.found()
+    conf_data.set('KERBEROS', 1)
+    movemail_extra_libs += _krb
+    foreach _lib : ['des', 'des425']
+      _dep = cc.find_library(_lib, required : false)
+      if _dep.found()
+        movemail_extra_libs += _dep
+        break
+      endif
+    endforeach
+  endif
+endif
+
+kerberos5_opt = get_option('kerberos5')
+if kerberos5_opt.allowed()
+  _krb5 = cc.find_library('krb5', required : kerberos5_opt)
+  if _krb5.found()
+    conf_data.set('KERBEROS', 1)
+    conf_data.set('KERBEROS5', 1)
+    movemail_extra_libs += _krb5
+    foreach _lib : ['k5crypto', 'crypto']
+      _dep = cc.find_library(_lib, required : false)
+      if _dep.found()
+        movemail_extra_libs += _dep
+        break
+      endif
+    endforeach
+    _comerr = cc.find_library('com_err', required : false)
+    if _comerr.found()
+      movemail_extra_libs += _comerr
+    endif
+  endif
+endif
+
+# --with-hesiod -- POP-host lookup (HESIOD + -lhesiod -lresolv).
+hesiod_opt = get_option('hesiod')
+if hesiod_opt.allowed()
+  _hesiod = cc.find_library('hesiod', required : hesiod_opt)
+  if _hesiod.found()
+    conf_data.set('HESIOD', 1)
+    movemail_extra_libs += _hesiod
+    _resolv = cc.find_library('resolv', required : false)
+    if _resolv.found()
+      movemail_extra_libs += _resolv
+    endif
+  endif
+endif
+
+# --with-mail-unlink -- empty vs. unlink the mail spool after read.
+if get_option('mail-unlink')
+  conf_data.set('MAIL_UNLINK_SPOOL', 1)
+endif
+
+# --with-mailhost=HOSTNAME -- default POP host.
+_mailhost = get_option('mailhost')
+if _mailhost != ''
+  conf_data.set_quoted('MAILHOST', _mailhost)
+endif
+
+# ----------------------------------------------------------------------
 # Toolkit scroll bars (configure.ac:566, 4360-4385 at anchor
 # 08a22b8965ec).  configure.ac defines USE_TOOLKIT_SCROLL_BARS when
 # any window-system toolkit is in use and --with-toolkit-scroll-bars

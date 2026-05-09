@@ -94,12 +94,15 @@ emacsclient = executable('emacsclient',
   install : true,
 )
 
+# movemail is NOT installed when --with-mailutils=true (configure.ac
+# UTILITIES filter at anchor 08a22b8965ec lib-src/Makefile.in:163).
+# It still builds either way so test/lib-src/* exercises stay green.
 movemail = executable('movemail',
   sources : files('movemail.c', 'pop.c'),
   include_directories : lib_src_inc,
   c_args : lib_src_args,
-  dependencies : libgnu_dep,
-  install : true,
+  dependencies : [libgnu_dep] + movemail_extra_libs,
+  install : mailutils_install_movemail,
   install_dir : emacs_arch,
 )
 
