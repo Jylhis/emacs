@@ -278,6 +278,14 @@ endif
 # block, lines 2167-4067).  Each one is gated by a meson.options flag
 # so --without-feature works.  Phase 3 baseline: Linux/GTK3 only.
 # ----------------------------------------------------------------------
+# Mirrors autotools' --without-all: when the all-features option is
+# false, every OPTION_DEFAULT_IFAVAILABLE feature flips from auto to
+# disabled (configure.ac:295 at anchor 08a22b8965ec).  Meson's
+# feature.disable_auto_if() is the matching primitive; chained on
+# every get_option('NAME') below for the relevant features.
+all_features = get_option('all-features')
+_no_all = not all_features
+
 # On macOS, toolkit=auto should NOT require GTK (NS is the native
 # window system).  Only require GTK when explicitly requested.
 # Skip the probe entirely for toolkit=none / pgtk so a developer
@@ -303,9 +311,11 @@ if gtk3_dep.found()
     gtk3_dep = dependency('', required : false)
   endif
 endif
-cairo_dep     = dependency('cairo',     required : get_option('cairo'))
-cairo_ft_dep  = dependency('cairo-ft',  required : get_option('cairo'))
-harfbuzz_dep  = dependency('harfbuzz',  required : get_option('harfbuzz'))
+cairo_opt = get_option('cairo').disable_auto_if(_no_all)
+cairo_dep     = dependency('cairo',     required : cairo_opt)
+cairo_ft_dep  = dependency('cairo-ft',  required : cairo_opt)
+harfbuzz_dep  = dependency('harfbuzz',
+                            required : get_option('harfbuzz').disable_auto_if(_no_all))
 # freetype/fontconfig must be present whenever a window-system
 # build is selected (src/meson.build always compiles ftfont.c +
 # ftcrfont.c + hbfont.c when gtk3_dep is found).  Forcing them
@@ -314,12 +324,17 @@ harfbuzz_dep  = dependency('harfbuzz',  required : get_option('harfbuzz'))
 _font_required = gtk3_dep.found()
 freetype_dep  = dependency('freetype2', required : _font_required)
 fontconfig_dep = dependency('fontconfig', required : _font_required)
-xft_dep       = dependency('xft',       required : get_option('xft'))
+xft_dep       = dependency('xft',
+                            required : get_option('xft').disable_auto_if(_no_all))
 gnutls_dep    = dependency('gnutls',    required : get_option('gnutls'))
-treesit_dep   = dependency('tree-sitter', required : get_option('tree-sitter'))
-sqlite_dep    = dependency('sqlite3',   required : get_option('sqlite3'))
-xml_dep       = dependency('libxml-2.0', required : get_option('xml2'))
-systemd_dep   = dependency('libsystemd', required : get_option('libsystemd'))
+treesit_dep   = dependency('tree-sitter',
+                            required : get_option('tree-sitter').disable_auto_if(_no_all))
+sqlite_dep    = dependency('sqlite3',
+                            required : get_option('sqlite3').disable_auto_if(_no_all))
+xml_dep       = dependency('libxml-2.0',
+                            required : get_option('xml2').disable_auto_if(_no_all))
+systemd_dep   = dependency('libsystemd',
+                            required : get_option('libsystemd').disable_auto_if(_no_all))
 gmp_dep       = dependency('gmp',       required : false)
 if not gmp_dep.found()
   gmp_dep = cc.find_library('gmp', required : true)
@@ -448,23 +463,26 @@ endif
 # fallback for gif is satisfied by the same pkg-config name on
 # Debian/Ubuntu; bare find_library is the fallback.
 # ----------------------------------------------------------------------
-jpeg_dep = dependency('libjpeg', required : get_option('jpeg'))
-if not jpeg_dep.found() and get_option('jpeg').allowed()
-  jpeg_dep = cc.find_library('jpeg', required : get_option('jpeg'))
+jpeg_opt = get_option('jpeg').disable_auto_if(_no_all)
+jpeg_dep = dependency('libjpeg', required : jpeg_opt)
+if not jpeg_dep.found() and jpeg_opt.allowed()
+  jpeg_dep = cc.find_library('jpeg', required : jpeg_opt)
 endif
 if jpeg_dep.found()
   conf_data.set('HAVE_JPEG', 1)
 endif
 
-tiff_dep = dependency('libtiff-4', required : get_option('tiff'))
-if not tiff_dep.found() and get_option('tiff').allowed()
-  tiff_dep = cc.find_library('tiff', required : get_option('tiff'))
+tiff_opt = get_option('tiff').disable_auto_if(_no_all)
+tiff_dep = dependency('libtiff-4', required : tiff_opt)
+if not tiff_dep.found() and tiff_opt.allowed()
+  tiff_dep = cc.find_library('tiff', required : tiff_opt)
 endif
 if tiff_dep.found()
   conf_data.set('HAVE_TIFF', 1)
 endif
 
-png_dep = dependency('libpng', required : get_option('png'))
+png_dep = dependency('libpng',
+                      required : get_option('png').disable_auto_if(_no_all))
 if png_dep.found()
   conf_data.set('HAVE_PNG', 1)
 endif
@@ -474,7 +492,7 @@ endif
 # but only when the user hasn't passed `-Dgif=disabled`; otherwise
 # `dependency('libungif', required : false)` would silently flip
 # HAVE_GIF on for a packager who explicitly turned the option off.
-gif_opt = get_option('gif')
+gif_opt = get_option('gif').disable_auto_if(_no_all)
 if gif_opt.allowed()
   gif_dep = dependency('libungif', required : false)
   if not gif_dep.found()
@@ -491,7 +509,7 @@ if gif_dep.found()
 endif
 
 rsvg_dep = dependency('librsvg-2.0', version : '>= 2.40.4',
-                       required : get_option('rsvg'))
+                       required : get_option('rsvg').disable_auto_if(_no_all))
 if rsvg_dep.found()
   conf_data.set('HAVE_RSVG', 1)
 endif
@@ -501,7 +519,7 @@ endif
 # from both, so list the matched pair as a single grouped
 # dependency.  Mirrors autotools' WEBP_MODULE probe at 5d78a4c
 # configure.ac.
-webp_opt = get_option('webp')
+webp_opt = get_option('webp').disable_auto_if(_no_all)
 webp_demux_dep = dependency('libwebpdemux', version : '>= 0.6.0',
                              required : webp_opt)
 webp_lib_dep = dependency('libwebp', version : '>= 0.6.0',
@@ -517,7 +535,7 @@ endif
 
 # XPM is X11-only.  Bracketed by gtk3_dep.found() so a no-X build
 # doesn't emit a stray HAVE_XPM that breaks src/image.c.
-xpm_opt = get_option('xpm')
+xpm_opt = get_option('xpm').disable_auto_if(_no_all)
 if gtk3_dep.found() and xpm_opt.allowed()
   xpm_dep = dependency('xpm', required : xpm_opt)
   if xpm_dep.found()
@@ -536,18 +554,20 @@ endif
 # ----------------------------------------------------------------------
 # Misc system libraries (configure.ac:544-619).
 # ----------------------------------------------------------------------
-lcms2_dep = dependency('lcms2', required : get_option('lcms2'))
+lcms2_dep = dependency('lcms2',
+                        required : get_option('lcms2').disable_auto_if(_no_all))
 if lcms2_dep.found()
   conf_data.set('HAVE_LCMS2', 1)
 endif
 
-dbus_dep = dependency('dbus-1', required : get_option('dbus'))
+dbus_dep = dependency('dbus-1',
+                       required : get_option('dbus').disable_auto_if(_no_all))
 if dbus_dep.found()
   conf_data.set('HAVE_DBUS', 1)
 endif
 
 # GPM only makes sense on GNU/Linux; skip the probe elsewhere.
-gpm_opt = get_option('gpm')
+gpm_opt = get_option('gpm').disable_auto_if(_no_all)
 if is_linux and gpm_opt.allowed()
   gpm_dep = cc.find_library('gpm', required : gpm_opt)
 elif gpm_opt.enabled()
@@ -564,7 +584,7 @@ endif
 # step's glib-compile-schemas pass can run.  When --gsettings=enabled
 # the schema-compiler must also exist; defer to find_program's
 # `required` to enforce.
-gsettings_opt = get_option('gsettings')
+gsettings_opt = get_option('gsettings').disable_auto_if(_no_all)
 gio_dep = dependency('gio-2.0', required : gsettings_opt)
 gsettings_compile_prog = find_program('glib-compile-schemas',
                                        required : gsettings_opt)
@@ -572,22 +592,26 @@ if gio_dep.found() and gsettings_compile_prog.found()
   conf_data.set('HAVE_GSETTINGS', 1)
 endif
 
-selinux_dep = dependency('libselinux', required : get_option('selinux'))
+selinux_dep = dependency('libselinux',
+                          required : get_option('selinux').disable_auto_if(_no_all))
 if selinux_dep.found()
   conf_data.set('HAVE_LIBSELINUX', 1)
 endif
 
-zlib_dep = dependency('zlib', required : get_option('zlib'))
+zlib_dep = dependency('zlib',
+                       required : get_option('zlib').disable_auto_if(_no_all))
 if zlib_dep.found()
   conf_data.set('HAVE_ZLIB', 1)
 endif
 
-libotf_dep = dependency('libotf', required : get_option('libotf'))
+libotf_dep = dependency('libotf',
+                         required : get_option('libotf').disable_auto_if(_no_all))
 if libotf_dep.found()
   conf_data.set('HAVE_LIBOTF', 1)
 endif
 
-m17n_flt_dep = dependency('m17n-flt', required : get_option('m17n-flt'))
+m17n_flt_dep = dependency('m17n-flt',
+                           required : get_option('m17n-flt').disable_auto_if(_no_all))
 if m17n_flt_dep.found()
   conf_data.set('HAVE_M17N_FLT', 1)
 endif
@@ -619,7 +643,7 @@ endif
 # DEFINE_MODULE / EMACS_MAJOR_VERSION wiring is already in conf_data
 # above (MODULES_SUFFIX).
 # ----------------------------------------------------------------------
-modules_opt = get_option('modules')
+modules_opt = get_option('modules').disable_auto_if(_no_all)
 if modules_opt.allowed()
   if cc.has_function('dlopen') or cc.has_function('dlopen',
                                                    args : '-ldl')
@@ -633,7 +657,7 @@ endif
 # Elisp threading (configure.ac:--with-threads).  pthread is already
 # linked unconditionally; HAVE_THREADS is the source-tree gate.
 # ----------------------------------------------------------------------
-threads_opt = get_option('threads')
+threads_opt = get_option('threads').disable_auto_if(_no_all)
 if threads_opt.allowed()
   conf_data.set('HAVE_THREADS', 1)
 endif
@@ -642,8 +666,8 @@ endif
 # Cairo XCB (configure.ac:--with-cairo-xcb), XInput 2 extension,
 # Xaw3d.  All X11-gated; explicit `enabled` errors out without GTK3.
 # ----------------------------------------------------------------------
-xinput2_opt = get_option('xinput2')
-xdbe_opt = get_option('xdbe')
+xinput2_opt = get_option('xinput2').disable_auto_if(_no_all)
+xdbe_opt = get_option('xdbe').disable_auto_if(_no_all)
 if gtk3_dep.found()
   if xinput2_opt.allowed()
     if cc.has_header('X11/extensions/XInput2.h')
@@ -661,6 +685,25 @@ if gtk3_dep.found()
   endif
 elif xinput2_opt.enabled() or xdbe_opt.enabled()
   error('xinput2/xdbe=enabled but GTK3/X11 not in use')
+endif
+
+# ----------------------------------------------------------------------
+# Toolkit scroll bars (configure.ac:566, 4360-4385 at anchor
+# 08a22b8965ec).  configure.ac defines USE_TOOLKIT_SCROLL_BARS when
+# any window-system toolkit is in use and --with-toolkit-scroll-bars
+# is not explicitly off.  The legacy LUCID/Motif/Xaw3d branches are
+# dropped here because those toolkits are no longer supported
+# (meson.options:52-53).
+# ----------------------------------------------------------------------
+toolkit_scroll_bars_opt = get_option('toolkit-scroll-bars').disable_auto_if(_no_all)
+_have_toolkit_for_scrollbars = (gtk3_dep.found()
+                                or conf_data.has('HAVE_NS')
+                                or conf_data.has('HAVE_NTGUI')
+                                or conf_data.has('HAVE_BE_APP'))
+if toolkit_scroll_bars_opt.allowed() and _have_toolkit_for_scrollbars
+  conf_data.set('USE_TOOLKIT_SCROLL_BARS', 1)
+elif toolkit_scroll_bars_opt.enabled() and not _have_toolkit_for_scrollbars
+  error('toolkit-scroll-bars=enabled but no window-system toolkit is in use')
 endif
 
 # ----------------------------------------------------------------------
