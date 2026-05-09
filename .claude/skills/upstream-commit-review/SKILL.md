@@ -86,7 +86,7 @@ Apply the rules **in order**, first match wins:
 | # | Bucket | Match | Action |
 |---|---|---|---|
 | 1 | SKIP / autotools | any file matches `^(configure\.ac\|autogen\.sh\|make-dist\|GNUmakefile)$`, `Makefile\.in$`, or `^m4/` | report only |
-| 2 | SKIP / merge-noise | subject matches `^(Merge \|; \* )` or `gitmerge` (upstream's own merges/noise) | report only |
+| 2 | SKIP / merge-noise | subject matches `^Merge ` or contains `gitmerge` (upstream's own merge commits).  Note: a leading `; ` only means "do not generate a ChangeLog entry" per CONTRIBUTE — those are real changes (typo fixes, docstring fixes, NEWS edits) and must fall through to the file-based rules below. | report only |
 | 3 | SKIP / admin churn | every file is under `admin/` or matches `^ChangeLog` | report only |
 | 4 | AUTO / doc-only | every file matches `^doc/`, `^etc/NEWS`, `\.texi$`, or `\.texinfo$` | cherry-pick |
 | 5 | AUTO / test-only | every file matches `^test/` | cherry-pick |
