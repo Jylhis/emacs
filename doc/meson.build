@@ -29,6 +29,9 @@ emacsver_texi = configure_file(
 emacsver_dir = meson.current_build_dir()  # build/doc/
 
 manuals = []
+# Aggregated spec list for the dvi/html/pdf/ps format loops below.
+# Each entry: [output_name, src_dir, src_path, install_subdir].
+manual_specs = []
 foreach manual : [
   ['emacs',      'doc/emacs',      'emacs.texi'],
   ['elisp',      'doc/lispref',    'elisp.texi'],
@@ -37,6 +40,7 @@ foreach manual : [
   name = manual[0]
   src_dir = meson.global_source_root() / manual[1]
   src = src_dir / manual[2]
+  manual_specs += [[name, src_dir, src, '']]
   manuals += custom_target(
     name + '.info',
     output  : name + '.info',
@@ -131,6 +135,7 @@ foreach pair : [
 ]
   out = pair[0]
   src_name = pair[1]
+  manual_specs += [[out, misc_dir, misc_dir / (src_name + '.texi'), '']]
   manuals += custom_target(
     out + '.info',
     output  : out + '.info',
@@ -166,6 +171,8 @@ foreach t : translations
   basename = t[2]
   src_dir = (meson.global_source_root()
              / 'doc/translations' / lang / subdir_path)
+  manual_specs += [[basename, src_dir,
+                    src_dir / (basename + '.texi'), lang]]
   manuals += custom_target(
     basename + '.info',
     output  : basename + '.info',
@@ -186,3 +193,55 @@ foreach t : translations
 endforeach
 
 alias_target('info', manuals)
+
+# ----------------------------------------------------------------------
+# Optional non-info doc formats (dvi/html/pdf/ps).  Each format
+# requires a different external tool (texi2dvi for dvi/ps, texi2pdf
+# for pdf, makeinfo --html for html).  Skip silently when the tool
+# isn't installed -- packagers who want them install the matching
+# texlive bundle.
+# Reference: anchor 08a22b8965ec doc/{emacs,lispref,...}/Makefile.in
+# all-other-formats targets.
+# ----------------------------------------------------------------------
+texi2dvi = find_program('texi2dvi', required : false)
+texi2pdf = find_program('texi2pdf', required : false)
+
+# Common include flags for all non-info formats; --no-split keeps the
+# output a single file rather than a directory tree.
+_doc_inc = ['-I', shared_inc, '-I', emacsver_dir]
+
+foreach fmt : [
+  # --force / --no-validate let makeinfo emit output even when
+  # cross-references span manuals (e.g. emacs.texi -> elisp.texi),
+  # matching autotools' tolerance for the same warnings.
+  ['html', makeinfo, ['--html', '--no-split',
+                       '--force', '--no-validate'], '.html'],
+  ['dvi',  texi2dvi, ['--quiet', '--clean'],   '.dvi'],
+  ['pdf',  texi2pdf, ['--quiet', '--clean'],   '.pdf'],
+  ['ps',   texi2dvi, ['--quiet', '--clean', '--ps'], '.ps'],
+]
+  fmt_name = fmt[0]
+  fmt_tool = fmt[1]
+  fmt_args = fmt[2]
+  fmt_ext  = fmt[3]
+  if not fmt_tool.found()
+    continue
+  endif
+  fmt_targets = []
+  foreach spec : manual_specs
+    out_name  = spec[0]
+    spec_dir  = spec[1]
+    spec_src  = spec[2]
+    fmt_targets += custom_target(
+      out_name + fmt_ext,
+      output  : out_name + fmt_ext,
+      command : [fmt_tool, fmt_args,
+                 '-I', spec_dir, _doc_inc,
+                 '-o', '@OUTPUT@',
+                 spec_src],
+      depend_files : [emacsver_texi],
+      build_by_default : false,
+    )
+  endforeach
+  alias_target(fmt_name, fmt_targets)
+endforeach
