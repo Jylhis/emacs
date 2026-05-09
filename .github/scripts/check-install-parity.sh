@@ -40,7 +40,9 @@ required=(
   "$datadir/lisp/international/emoji-zwj.elc"
   "$datadir/lisp/subdirs.el"
   "$datadir/etc/tutorials/TUTORIAL"
-  "$datadir/lisp/leim/leim-list.elc"
+  # leim-list.el and subdirs.el are NOT byte-compiled (autotools
+  # lisp/Makefile.in:357 skips them); the .el itself is required.
+  "$datadir/lisp/leim/leim-list.el"
   "$datadir/lisp/leim/quail/CCDOSPY.elc"
   "$datadir/lisp/leim/ja-dic/ja-dic.elc"
   "$datadir/lisp/language/pinyin.elc"
