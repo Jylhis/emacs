@@ -2252,6 +2252,7 @@ tty_default_color_capabilities (struct tty_display_info *tty, bool save)
     }
 }
 
+	tty->TF_rgb_separate = 0;
 /* Setup one of the standard tty color schemes according to MODE.
    MODE's value is generally the number of colors which we want to
    support; zero means set up for the default capabilities, the ones
