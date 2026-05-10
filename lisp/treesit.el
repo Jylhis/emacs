@@ -608,11 +608,12 @@ embedded parser should have ranges set to that."
              for name = (car capture)
              for node = (cdr capture)
              if (not (string-prefix-p "_" (symbol-name name)))
-             collect
-             (if range-fn
-                 (funcall range-fn node offset)
-               (cons (+ (treesit-node-start node) offset-left)
-                     (+ (treesit-node-end node) offset-right))))))
+             append
+             (let ((range (if range-fn
+                              (funcall range-fn node offset)
+                            (cons (+ (treesit-node-start node) offset-left)
+                                  (+ (treesit-node-end node) offset-right)))))
+               (and range (list range))))))
 
 (defun treesit-query-range-by-language
     (node query language-fn &optional beg end offset range-fn)
@@ -647,11 +648,12 @@ have ranges set to that."
                   (node (cdr capture)))
               (when (and (not (equal (symbol-name name) "language"))
                          (not (string-prefix-p "_" (symbol-name name))))
-                (push (if range-fn
-                          (funcall range-fn node offset)
-                        (cons (+ (treesit-node-start node) offset-left)
-                              (+ (treesit-node-end node) offset-right)))
-                      (alist-get lang ranges-by-language))))))))
+                (let ((range (if range-fn
+                                 (funcall range-fn node offset)
+                               (cons (+ (treesit-node-start node) offset-left)
+                                     (+ (treesit-node-end node) offset-right)))))
+                  (when range
+                    (push range (alist-get lang ranges-by-language))))))))))
     (mapcar (lambda (entry)
               (cons (car entry) (nreverse (cdr entry))))
             ranges-by-language)))
