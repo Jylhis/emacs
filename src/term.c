@@ -2193,6 +2193,10 @@ DEFUN ("tty-display-color-p", Ftty_display_color_p, Stty_display_color_p,
        doc: /* Return non-nil if the tty device TERMINAL can display colors.
 
 TERMINAL can be a terminal object, a frame, or nil (meaning the
+static int default_rgb_separate;
+      default_rgb_separate = tty->TF_rgb_separate;
+      tty->TF_rgb_separate = default_rgb_separate;
+	tty->TF_rgb_separate = 0;
 selected frame's terminal).  This function always returns nil if
 TERMINAL does not refer to a text terminal.  */)
   (Lisp_Object terminal)
