@@ -1,6 +1,6 @@
 ---
 name: upstream-commit-review
-description: Fetch new commits from GNU Emacs upstream (savannah) and triage them for backport into this fork. Auto-cherry-picks safe categories (docs, lisp bug fixes with Bug#NNNNN, test-only changes, small src/ fixes) and writes a markdown report of the rest under .claude/notes/. Use when the user asks to sync upstream, review upstream commits, or backport upstream changes.
+description: Fetch new commits from GNU Emacs upstream (savannah) and triage them for backport into this fork. Auto-cherry-picks doc-only changes and writes a markdown report for everything else under .claude/notes/. Use when the user asks to sync upstream, review upstream commits, or backport upstream changes.
 ---
 
 # Upstream commit review
@@ -89,10 +89,7 @@ Apply the rules **in order**, first match wins:
 | 2 | SKIP / merge-noise | subject matches `^Merge ` or contains `gitmerge` (upstream's own merge commits).  Note: a leading `; ` only means "do not generate a ChangeLog entry" per CONTRIBUTE — those are real changes (typo fixes, docstring fixes, NEWS edits) and must fall through to the file-based rules below. | report only |
 | 3 | SKIP / admin churn | every file is under `admin/` or matches `^ChangeLog` | report only |
 | 4 | AUTO / doc-only | every file matches `^doc/`, `^etc/NEWS`, `\.texi$`, or `\.texinfo$` | cherry-pick |
-| 5 | AUTO / test-only | every file matches `^test/` | cherry-pick |
-| 6 | AUTO / lisp bugfix | subject contains `Bug#` AND every file matches `^lisp/` or `^test/` | cherry-pick |
-| 7 | AUTO / small C fix | every file matches `^src/`, `LINES < 50`, AND subject starts with `Fix ` or contains `Bug#` | cherry-pick |
-| 8 | REVIEW | everything else | report only |
+| 5 | REVIEW | everything else (including `test/`, `lisp/`, and `src/` changes) | report only |
 
 ## Cherry-pick (AUTO buckets only)
 
