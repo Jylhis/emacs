@@ -147,18 +147,32 @@
 (cl-defmethod gnus-icalendar-event:start ((event gnus-icalendar-event))
   (format-time-string "%Y-%m-%d %H:%M" (gnus-icalendar-event:start-time event)))
 
+(defun gnus-icalendar-event--id-matches-p (id name email)
+  "Return non-nil if ID matches NAME or EMAIL.
+ID may be a string (exact or regexp) or a predicate function."
+  (cond
+   ((stringp id)
+    (or (equal name id)
+        (equal email id)
+        (string-match-p id name)
+        (string-match-p id email)))
+   ((functionp id)
+    (or (funcall id name)
+        (funcall id email)))))
+
 (defun gnus-icalendar-event--find-attendee (attendees ids)
   "Return the first `icalendar-attendee' in ATTENDEES matching IDS.
-IDS should be a list of strings. The first attendee is returned whose
-name (as `icalendar-cnparam') or email address (without \"mailto:\")
-is a member of IDS."
+IDS should be a list of strings or predicate functions.  The first
+attendee is returned whose name (as `icalendar-cnparam') or email
+address (without \"mailto:\") matches any ID."
   (catch 'found
     (dolist (attendee attendees)
       (ical:with-property attendee ((ical:cnparam :value name))
-         (let ((email (ical:strip-mailto value)))
-           (when (or (member name ids)
-                     (member email ids))
-             (throw 'found attendee)))))))
+        (let ((email (ical:strip-mailto value)))
+          (when (seq-some (lambda (id)
+                            (gnus-icalendar-event--id-matches-p id name email))
+                          ids)
+            (throw 'found attendee)))))))
 
 (defun gnus-icalendar-event--attendees-by-type (attendees)
   "Return lists of required and optional participants in ATTENDEES.

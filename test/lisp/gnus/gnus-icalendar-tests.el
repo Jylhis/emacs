@@ -387,5 +387,42 @@ END:VCALENDAR")
       (should (string-equal (match-string 1 reply) "Only available at 2pm"))
       )))
 
+(ert-deftest gnus-icalendar-accept-with-regexp-identity ()
+  ""
+  (let ((event "\
+BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:REQUEST
+BEGIN:VEVENT
+DTSTART:20200915T140000Z
+DTEND:20200915T143000Z
+DTSTAMP:20200915T120627Z
+ORGANIZER;CN=anon@anoncompany.com:mailto:anon@anoncompany.com
+UID:7b6g3m7iftuo90ei4ul00feqn_R20200915T120000@google.com
+ATTENDEE;CUTYPE=INDIVIDUAL;PARTSTAT=NEEDS-ACTION;RSVP=TRUE
+ ;CN=participant@anoncompany.com;X-NUM-GUESTS=0:mailto:participant@anoncompany.com
+CREATED:20200325T095723Z
+DESCRIPTION:Coffee talk
+LAST-MODIFIED:20200915T120623Z
+LOCATION:
+SEQUENCE:0
+STATUS:CONFIRMED
+SUMMARY:Casual coffee talk
+TRANSP:OPAQUE
+END:VEVENT
+END:VCALENDAR")
+        (icalendar-identities '("participant@anoncompany\\.com")))
+    (let ((reply (with-temp-buffer
+                   (insert event)
+                   (gnus-icalendar-event-reply-from-buffer
+                    (current-buffer)
+                    'accepted
+                    icalendar-identities
+                    nil))))
+      (should (string-match "^ATTENDEE;.*?\\(PARTSTAT=[^;]+\\).*:mailto:participant@anoncompany\\.com$" reply))
+      (should (string-equal (match-string 1 reply) "PARTSTAT=ACCEPTED")))))
+
 (provide 'gnus-icalendar-tests)
 ;;; gnus-icalendar-tests.el ends here
