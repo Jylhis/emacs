@@ -1686,11 +1686,13 @@ If PROMPT is non-nil, prompt for the Git command to run."
                              (replace-regexp-in-string "\r\\(\\'\\|[^\n]\\)"
                                                        "\n\\1" string))))
     (with-current-buffer buffer
-      (vc-run-delayed
+        (vc-run-delayed
         (vc-compilation-mode 'git)
         (setq-local compile-command
-                    (concat git-program " " command " "
-                            (mapconcat #'identity extra-args " ")))
+                    (mapconcat #'shell-quote-argument
+                               (cons git-program
+                                     (cons command extra-args))
+                               " "))
         (setq-local compilation-directory root)
         ;; Either set `compilation-buffer-name-function' locally to nil
         ;; or use `compilation-arguments' to set `name-function'.
