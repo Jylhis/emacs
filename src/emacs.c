@@ -1860,10 +1860,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
 #endif
 
 #ifdef HAVE_NS
-  /* For early calls to ns_lisp_to_color or Fns_list_colors.  */
-  if (!dump_mode)
-    ns_init_colors ();
-
   if (!noninteractive)
     {
 #ifdef NS_IMPL_COCOA
@@ -2073,6 +2069,13 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
       exit (0);
     }
 
+
+#ifdef HAVE_NS
+  /* For early calls to ns_lisp_to_color or Fns_list_colors.
+     Must follow init_callproc which sets data-directory.  */
+  if (!dump_mode)
+    ns_init_colors ();
+#endif
 
   /* Intern the names of all standard functions and variables;
      define standard keys.  */
