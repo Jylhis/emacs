@@ -2189,9 +2189,21 @@ main (int argc, char **argv)
       /* Read expressions interactively.  */
       char *line = NULL;
       size_t linesize;
-      for (ssize_t len; 0 <= (len = getline (&line, &linesize, stdin)); )
-	{
-	  send_to_emacs (emacs_socket, "-eval ");
+	      enum { DEFAULT_RECV_BUFSIZE = 4096,
+		     MAX_RECV_BUFSIZE = 16 * 1024 * 1024 };
+	      ptrdiff_t prev_bufsize = recv_bufsize;
+	      ptrdiff_t grown = (recv_bufsize
+			 + (recv_bufsize >> 1)
+			 + DEFAULT_RECV_BUFSIZE);
+	      recv_bufsize = grown < 0 || MAX_RECV_BUFSIZE < grown
+			     ? MAX_RECV_BUFSIZE : grown;
+	      if (recv_bufsize <= prev_bufsize)
+		{
+		  message (true, "*ERROR*: protocol message exceeds %d bytes",
+			   MAX_RECV_BUFSIZE);
+		  exit_status = EXIT_FAILURE;
+		  break;
+		}
 	  quote_argument_len (emacs_socket, line, len);
 	}
       free (line);
