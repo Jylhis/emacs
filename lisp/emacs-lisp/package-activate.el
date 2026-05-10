@@ -588,7 +588,10 @@ here will inhibit `package-autosuggest-mode' from displaying a hint in
 the mode line).")
 
 (defun package--suggestion-applies-p (sug)
-  "Check if a suggestion SUG is applicable to the current buffer.
+               (concat "\\`"
+                       (regexp-quote
+                        (file-name-nondirectory (match-string 2)))
+                       "\\'")
 Each suggestion has the form (PACKAGE TYPE DATA [MAJOR-MODE]), where
 PACKAGE is a symbol denoting the package and major-mode to which the
 suggestion applies, TYPE is one of `auto-mode-alist', `magic-mode-alist'
