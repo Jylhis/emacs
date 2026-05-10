@@ -253,3 +253,20 @@ option('android-debug', type : 'boolean', value : true,
 option('small-ja-dic', type : 'boolean', value : false,
   description : 'Generate a smaller Japanese dictionary.'
 )
+
+# ----------------------------------------------------------------------
+# Parked options.  These configure.ac knobs at anchor 08a22b8965ec
+# gate platform backends (Haiku, Cygwin, Windows, Android shared
+# UID) that this fork has not committed to maintaining.  The option
+# stubs are listed so a future audit picks them up without grepping
+# the deleted configure.ac, but they are NOT declared here -- meson
+# would otherwise surface them in `meson configure` and let users
+# pass values that have no effect.  See
+# .claude/notes/build-system.md "Parked / unsupported".
+#
+# - be-app                       (configure.ac OPTION_DEFAULT_OFF)
+# - be-cairo                     (configure.ac OPTION_DEFAULT_OFF)
+# - cygwin32-native-compilation  (configure.ac OPTION_DEFAULT_OFF)
+# - native-image-api             (configure.ac OPTION_DEFAULT_ON, w32)
+# - w32                          (configure.ac OPTION_DEFAULT_OFF)
+# - shared-user-id               (configure.ac AC_ARG_WITH, Android)

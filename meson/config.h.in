@@ -135,6 +135,22 @@
 #mesondefine HAVE_THREADS
 #mesondefine HAVE_XINPUT2
 #mesondefine HAVE_XDBE
+#mesondefine HAVE_XIM
+#mesondefine USE_XIM
+#mesondefine HAVE_NS
+#mesondefine NS_IMPL_COCOA
+#mesondefine GC_REMEMBER_LAST_MARKED
+
+/* Mail / POP / Kerberos auth (configure.ac AC_ARG_WITH at anchor
+   08a22b8965ec).  movemail / pop.c gate on these. */
+#mesondefine HAVE_MAILUTILS
+#mesondefine MAIL_USE_POP
+#mesondefine KERBEROS
+#mesondefine KERBEROS5
+#mesondefine HESIOD
+#mesondefine MAIL_UNLINK_SPOOL
+#mesondefine MAILHOST
+#mesondefine USE_TOOLKIT_SCROLL_BARS
 
 /* C99 flexible array member: empty if supported, "1" otherwise (cf.
    m4/flexmember.m4).  */

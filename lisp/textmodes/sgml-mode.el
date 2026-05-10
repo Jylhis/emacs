@@ -47,8 +47,8 @@
 
 (defcustom sgml-basic-offset 2
   "Specifies the basic indentation level for `sgml-indent-line'."
-  :type 'integer
-  :safe #'integerp)
+  :type 'natnum
+  :safe #'natnump)
 
 (defcustom sgml-attribute-offset 0
   "Specifies a delta for attribute indentation in `sgml-indent-line'.
@@ -65,14 +65,15 @@ When 2, attribute indentation looks like this:
       attribute=\"value\">
   </element>"
   :version "25.1"
-  :type 'integer
-  :safe #'integerp)
+  :type 'natnum
+  :safe #'natnump)
 
 (defcustom sgml-xml-mode nil
   "When non-nil, tag insertion functions will be XML-compliant.
 It is set to be buffer-local when the file has
 a DOCTYPE or an XML declaration."
   :type 'boolean
+  :safe #'booleanp
   :version "22.1")
 
 (define-obsolete-variable-alias 'sgml-transformation
@@ -211,7 +212,7 @@ This takes effect when first loading the `sgml-mode' library.")
     table)
   "Syntax table used to parse SGML tags.")
 
-(defcustom sgml-name-8bit-mode nil
+(define-minor-mode sgml-name-8bit-mode
   "When non-nil, insert non-ASCII characters as named entities."
   :type 'boolean)
 
@@ -277,12 +278,11 @@ Currently, only Latin-1 characters are supported.")
         ((executable-find "onsgmls")
          ;; onsgmls is the community version of `nsgmls'
          ;; hosted on https://openjade.sourceforge.net/
-         "onsgmls -s")
-        (t "Install (o)nsgmls, tidy, or some other SGML validator, and set `sgml-validate-command'"))
+         "onsgmls -s"))
   "The command to validate an SGML document.
 The file name of current buffer file name will be appended to this,
 separated by a space."
-  :type 'string
+  :type '(choice (const :tag "Unset" nil) string)
   :version "21.1")
 
 (defvar sgml-saved-validate-command nil
@@ -774,14 +774,6 @@ Uses `sgml-char-names'."
       (sgml-name-char last-command-event)
     (self-insert-command 1)))
 
-(defun sgml-name-8bit-mode ()
-  "Toggle whether to insert named entities instead of non-ASCII characters.
-This only works for Latin-1 input."
-  (interactive)
-  (setq sgml-name-8bit-mode (not sgml-name-8bit-mode))
-  (message "sgml name entity mode is now %s"
-	   (if sgml-name-8bit-mode "ON" "OFF")))
-
 ;; When an element of a skeleton is a string "str", it is passed
 ;; through `skeleton-transformation-function' and inserted.
 ;; If "str" is to be inserted literally, one should obtain it as
@@ -1199,13 +1191,14 @@ with output going to the buffer `*compilation*'.
 You can then use the command \\[next-error] to find the next error message
 and move to the line in the SGML document that caused it."
   (interactive
-   (list (read-string "Validate command: "
-		      (or sgml-saved-validate-command
-			  (concat sgml-validate-command
-				  " "
-                                  (when-let* ((name (buffer-file-name)))
-				    (shell-quote-argument
-				     (file-name-nondirectory name))))))))
+   (list (read-shell-command "Validate command: "
+		             (or sgml-saved-validate-command
+                                 sgml-validate-command
+			         (concat sgml-validate-command
+				         " "
+                                         (when-let* ((name (buffer-file-name)))
+				           (shell-quote-argument
+				            (file-name-nondirectory name))))))))
   (setq sgml-saved-validate-command command)
   (save-some-buffers (not compilation-ask-about-save) nil)
   (compilation-start command))
@@ -1616,6 +1609,8 @@ the current start-tag or the current comment or the current cdata, ..."
   (and (not sgml-xml-mode)
        (assoc-string tag-name sgml-unclosed-tags 'ignore-case)))
 
+(defvar sgml-whitespace-sensitive-tags nil
+  "List of tags where the contents shouldn't be reindented.")
 
 (defun sgml-calculate-indent (&optional lcon)
   "Calculate the column to which this line should be indented.
@@ -1628,7 +1623,16 @@ LCON is the lexical context, if any."
 	   (save-excursion (goto-char (cdr lcon)) (looking-at "<!--")))
       (setq lcon (cons 'comment (+ (cdr lcon) 2))))
 
-  (pcase (car lcon)
+  (pcase-exhaustive (car lcon)
+
+    ((or (guard (let ((case-fold-search t))
+              (cl-find (concat "\\`" (regexp-opt sgml-whitespace-sensitive-tags) "\\'")
+                       (save-excursion (sgml-get-context))
+                       :test #'string-match-p
+                       :key #'sgml-tag-name)))
+         ;; We don't know how to indent it.  Let's be honest about it.
+         'pi 'cdata)
+     nil)
 
     ('string
      ;; Go back to previous non-empty line.
@@ -1658,11 +1662,6 @@ LCON is the lexical context, if any."
        (when (and (not mark) (looking-at "--"))
 	 (forward-char 2) (skip-chars-forward " \t"))
        (current-column)))
-
-    ;; We don't know how to indent it.  Let's be honest about it.
-    ('cdata nil)
-    ;; We don't know how to indent it.  Let's be honest about it.
-    ('pi nil)
 
     ('tag
      (goto-char (+ (cdr lcon) sgml-attribute-offset))
@@ -1732,12 +1731,7 @@ LCON is the lexical context, if any."
 	(t
 	 (goto-char there)
 	 (+ (current-column)
-	    (* sgml-basic-offset (length context)))))))
-
-    (_
-     (error "Unrecognized context %s" (car lcon)))
-
-    ))
+	    (* sgml-basic-offset (length context)))))))))
 
 (defun sgml-indent-line ()
   "Indent the current line as SGML."
@@ -2034,10 +2028,12 @@ This takes effect when first loading the library.")
       ("caption" ("valign" ("top") ("bottom")))
       ("center" \n)
       ("cite")
-      ("code" \n)
+      ("code")
       ("datalist" \n)
       ("dd" ,(not sgml-xml-mode))
       ("del" nil ("cite") ("datetime"))
+      ("details"
+       (\n "<summary>" (read-string "Title: ") "</summary>" \n _))
       ("dfn")
       ("div" \n ("id") ("class"))
       ("dl" (nil \n
@@ -2099,6 +2095,7 @@ This takes effect when first loading the library.")
       ("param" t ("name") ("value")
        ("valuetype" ("data") ("ref") ("object")) ("type"))
       ("person") ;; Tag for person's name tag deprecated in HTML 3.2
+      ("picture" \n)                    ;TODO: suggest inserting <source> and <img>
       ("pre" \n)
       ("progress" nil ("value") ("max"))
       ("q" nil ("cite"))
@@ -2180,6 +2177,7 @@ This takes effect when first loading the library.")
     ("datalist" . "A set of predefined options")
     ("dd" . "Definition of term")
     ("del" . "Deleted text")
+    ("details" . "Details disclosure")
     ("dfn" . "Defining instance of a term")
     ("dir" . "Directory list (obsolete)")
     ("div" . "Generic block-level container")
@@ -2247,6 +2245,7 @@ This takes effect when first loading the library.")
     ("panel" . "Floating panel")
     ("param" . "Parameters for an object")
     ("person" . "Person's name")
+    ("picture" . "Picture")
     ("pre" . "Preformatted fixed width text")
     ("progress" . "Completion progress of a task")
     ("q" . "Quotation")
@@ -2399,6 +2398,7 @@ To work around that, do:
   (setq-local sgml-tag-alist html-tag-alist)
   (setq-local sgml-face-tag-alist html-face-tag-alist)
   (setq-local sgml-tag-help html-tag-help)
+  (setq-local sgml-whitespace-sensitive-tags '("pre" "textarea"))
   (setq-local outline-regexp "^.*<[Hh][1-6]\\>")
   (setq-local outline-heading-end-regexp "</[Hh][1-6]>")
   (setq-local outline-level
