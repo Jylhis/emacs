@@ -57,9 +57,12 @@ be comprehensive, but just to handle the kinds of expressions that
      (cons
       (if (eq (car-safe car) '\,) (scrape-elpa--safe-eval (cadr car) vars) car)
       (if (eq (car-safe cdr) '\,) (scrape-elpa--safe-eval (cadr cdr) vars) cdr)))
-    ;; allow calling `side-effect-free' functions
-    (`(,(and (pred symbolp) (pred (get _ 'side-effect-free)) fn) . ,args)
-     (apply fn (mapcar #'scrape-elpa--safe-eval args)))
+    ;; allow only the known-safe constructors we need here
+    (`(cons ,a ,b)
+     (cons (scrape-elpa--safe-eval a vars)
+           (scrape-elpa--safe-eval b vars)))
+    (`(concat . ,args)
+     (apply #'concat (mapcar #'scrape-elpa--safe-eval args)))
     ;; self-evaluating forms
     ((pred macroexp-const-p) exp)
     ;; variable evaluation
