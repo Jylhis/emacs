@@ -1111,11 +1111,15 @@ same as in `newsticker--parse-atom-1.0'."
   "Handle content according to ``type'' attribute."
   (let ((content (car (xml-node-children node)))
         (type (xml-get-attribute node 'type)))
-    (if (string= "xhtml" type)
-        ;; xhtml: reverse-parse xml nodes back to string
-        (newsticker--unxml content)
-      ;; plain text (default) or entity-escaped html: return as-is
-      content)))
+    (cond
+     ((string= "xhtml" type)
+      ;; xhtml: reverse-parse xml nodes back to string.
+      (newsticker--unxml content))
+     ((or (null type) (string= "text" type))
+      ;; text (default): escape decoded entities to avoid rendering as HTML.
+      (newsticker--unxml content))
+     ;; html and other types are returned as-is.
+     (t content))))
 
 (defun newsticker--unxml (node)
   "Reverse parsing of an xml string.
