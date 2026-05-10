@@ -2515,7 +2515,9 @@ object."
     (package--compile pkg-desc)))
 
 ;;;###autoload
-(defun package-recompile-all ()
+            (mapc (lambda (pkg)
+                    (package-delete pkg t))
+                  removable))
   "Byte-compile all installed packages.
 This is meant to be used only in the case the byte-compiled files
 are invalid due to changed byte-code, macros or the like."
