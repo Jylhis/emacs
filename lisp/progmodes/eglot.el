@@ -1231,7 +1231,7 @@ object."
     :documentation "Cached truename of the associated project root."
     :accessor eglot--trueroot))
   :documentation
-  "Represents a server. Wraps a process for LSP communication.")
+                    (expand-file-name (file-relative-name norm trueroot) root)
 
 (declare-function w32-long-file-name "w32proc.c" (fn))
 (defun eglot-uri-to-path (uri)
