@@ -1165,14 +1165,18 @@ With prefix argument ARG, repeat this ARG times."
   ;; Show preceding or following hidden tag, depending of cursor direction (and
   ;; `dir' is not the direction in this sense).
   (when (eq dir 'entered)
-    (ignore-errors
-      (let* ((y (window-point window))
-             (otherend
-              (save-excursion
-                (goto-char y)
-                (cond
-                 ((and (eq (char-before) ?>)
-                       (or (not (eq (char-after) ?<))
+   (let ((default-command
+          (or sgml-saved-validate-command
+              (when sgml-validate-command
+                (if-let* ((name (buffer-file-name)))
+                    (concat sgml-validate-command
+                            " "
+                            (shell-quote-argument
+                             (file-name-nondirectory name)))
+                  sgml-validate-command)))))
+     (unless default-command
+       (user-error "No SGML validator configured; customize `sgml-validate-command'"))
+     (list (read-shell-command "Validate command: " default-command))))
                            (> x y)))
                   (sgml-forward-sexp -1))
                  ((eq (char-after y) ?<)
