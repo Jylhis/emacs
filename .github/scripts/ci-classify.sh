@@ -58,6 +58,16 @@ else
         actionlint=true
         codeql_actions=true
         ;;
+      .github/scripts/**)
+        actionlint=true
+        meson_python=true
+        meson_guard=true
+        linux_meson=true
+        sonar=true
+        codeql_actions=true
+        codeql_cpp=true
+        codeql_python=true
+        ;;
       action.yml|action.yaml|*/action.yml|*/action.yaml)
         codeql_actions=true
         ;;

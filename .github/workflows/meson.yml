@@ -57,7 +57,14 @@ jobs:
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
           REF: ${{ github.ref }}
-        run: bash .github/scripts/ci-classify.sh
+        run: |
+          script=.github/scripts/ci-classify.sh
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git show "${{ github.event.pull_request.base.sha }}:.github/scripts/ci-classify.sh" > /tmp/ci-classify.sh
+            chmod +x /tmp/ci-classify.sh
+            script=/tmp/ci-classify.sh
+          fi
+          bash "$script"
 
   # ================================================================
   # Stage 1 -- Lint (cheap checks, no compilation)
