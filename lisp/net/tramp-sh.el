@@ -3104,7 +3104,7 @@ will be used."
 	     (eenv (setenv-internal eenv "PS1" nil nil))
 	     (command
 	      (when (stringp program)
-		(format "cd %s && %s exec %s %s env %s %s"
+		(format "cd %s && %s exec %s %s %s %s"
 			(tramp-shell-quote-argument localname)
 			(if uenv
 			    (format
