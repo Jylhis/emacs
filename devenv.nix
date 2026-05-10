@@ -48,6 +48,13 @@ in
       zlib
       gawk
 
+      # Upstream-commit-review skill: syntax-aware merge driver,
+      # syntax-aware diff renderer, and incremental-merge fallback used
+      # by .claude/skills/upstream-commit-review/
+      mergiraf
+      difftastic
+      git-imerge
+
       # Debugging
       # gdb
     ])
@@ -142,7 +149,7 @@ in
     set -euo pipefail
     echo "Running devenv tests"
     git --version | grep --color=auto "${pkgs.git.version}"
-    gcc --version | head -1
+    cc --version | head -1
     pkg-config --version
   '';
 

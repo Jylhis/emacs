@@ -412,6 +412,13 @@ an \\+`up-to-date' or \\+`ignored' file."
     (define-key map "TL" #'vc-root-log-unintegrated)
     (define-key map "T=" #'vc-diff-unintegrated)
     (define-key map "TD" #'vc-root-diff-unintegrated)
+    (define-key map "TRl" #'vc-log-remote-unintegrated)
+    (define-key map "TRL" #'vc-root-log-remote-unintegrated)
+    (define-key map "TR=" #'vc-diff-remote-unintegrated)
+    (define-key map "TRD" #'vc-root-diff-remote-unintegrated)
+    (define-key map "EL" #'vc-root-log-outgoing)
+    (define-key map "E=" #'vc-diff-outgoing-and-edited)
+    (define-key map "ED" #'vc-root-diff-outgoing-and-edited)
     (define-key map "V" #'vc-dir-root-next-action)
 
     (let ((branch-map (make-sparse-keymap)))
@@ -1254,8 +1261,12 @@ that file."
 	     (vc-dir-fileinfo->state crt-data)) result))
     (nreverse result)))
 
-(defun vc-dir-recompute-file-state (fname def-dir)
-  (let* ((file-short (file-relative-name fname def-dir))
+(defun vc-dir-recompute-file-state (fname def-dir &optional truename)
+  "Compute state of FNAME known to live inside DEF-DIR.
+If TRUENAME is non-nil, FNAME is a truename, DEF-DIR not necessarily."
+  (let* ((file-short (file-relative-name
+                      fname (if truename (file-truename def-dir) def-dir)))
+         (fname (if truename (expand-file-name file-short def-dir) fname))
 	 (_remove-me-when-CVS-works
 	  (when (eq vc-dir-backend 'CVS)
 	    ;; FIXME: Warning: UGLY HACK.  The CVS backend caches the state
@@ -1298,7 +1309,7 @@ that file."
 
 (defun vc-dir-resynch-file (&optional fname)
   "Update the entries for FNAME in any directory buffers that list it."
-  (let ((file (expand-file-name (or fname buffer-file-name)))
+  (let ((file (file-truename (or fname buffer-file-name)))
         (drop '()))
     (save-current-buffer
       ;; look for a vc-dir buffer that might show this file.
@@ -1323,7 +1334,11 @@ that file."
 		      (vc-dir-resync-directory-files file)
 		      (ewoc-set-hf vc-ewoc
 				   (vc-dir-headers vc-dir-backend ddir) ""))
-                  (let* ((complete-state (vc-dir-recompute-file-state file ddir))
+                  (let* ((complete-state
+                          ;; Make sure 'vc-dir-recompute-file-state'
+                          ;; knows about the truename nature of 'file'
+                          ;; (bug#80967).
+                          (vc-dir-recompute-file-state file ddir t))
 			 (state (cadr complete-state)))
                     (vc-dir-update
                      (list complete-state)
