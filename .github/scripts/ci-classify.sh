@@ -82,7 +82,7 @@ else
     esac
 
     case "$path" in
-      .github/workflows/meson.yml|meson.build|meson.options|*/meson.build|meson/**|src/**|lib/**|lib-src/**|lisp/**|test/**|admin/**|m4/gnulib-common.m4|m4/extern-inline.m4)
+      .github/workflows/meson.yml|.github/scripts/check-install-parity.sh|meson.build|meson.options|*/meson.build|meson/**|src/**|lib/**|lib-src/**|lisp/**|test/**|admin/**|m4/gnulib-common.m4|m4/extern-inline.m4)
         linux_meson=true
         ;;
     esac

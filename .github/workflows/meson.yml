@@ -473,6 +473,69 @@ jobs:
             echo "emacs.pdmp not produced; skipping ERT tests"
           fi
 
+      # ---- Staged install + parity check ------------------------------
+      # Verifies that meson install lays out a tree that matches what
+      # autotools `make install` used to produce.  Catches regressions
+      # in build_by_default flips and meson_install.py walks.
+      - name: meson install (staged)
+        continue-on-error: true
+        if: success()
+        run: |
+          if [ -f build/lisp/emacs.pdmp ]; then
+            meson install -C build --destdir="$PWD/stage"
+          else
+            echo "emacs.pdmp not produced; skipping staged install"
+          fi
+
+      - name: Check installed-tree parity
+        continue-on-error: true
+        if: success()
+        run: |
+          if [ -d stage/usr/local ]; then
+            bash .github/scripts/check-install-parity.sh \
+              stage/usr/local 31.0.50 x86_64-linux-gnu
+          else
+            echo "no stage/ produced; skipping parity check"
+          fi
+
+      - name: Smoke test installed Emacs (batch eval)
+        continue-on-error: true
+        if: success()
+        run: |
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/emacs.pdmp
+          if [ -x "$bin" ] && [ -f "$dump" ]; then
+            EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+            EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/etc \
+            EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+              "$bin" --dump-file="$dump" --batch \
+              --eval '(princ emacs-version)'
+          else
+            echo "installed emacs missing; skipping batch-eval smoke"
+          fi
+
+      - name: Avy byte-compile reproducer (downstream segfault gate)
+        continue-on-error: true
+        if: success()
+        run: |
+          # Heavy byte-compile workload that segfaulted under the
+          # undumped temacs-as-emacs binary in downstream Nix builds.
+          # Gates against regressions in the dump pipeline.
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/emacs.pdmp
+          if [ -x "$bin" ] && [ -f "$dump" ]; then
+            mkdir -p stage-test
+            cp -r lisp stage-test/lisp-copy
+            EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+            EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/etc \
+            EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+              "$bin" --dump-file="$dump" --batch -Q \
+              --eval '(byte-compile-file "stage-test/lisp-copy/subr.el")'
+            test -f stage-test/lisp-copy/subr.elc
+          else
+            echo "installed emacs missing; skipping avy-reproducer"
+          fi
+
       # ---- Artefacts --------------------------------------------------
       - name: Upload Meson logs
         if: always()
@@ -491,5 +554,98 @@ jobs:
           path: |
             build/src/bootstrap-emacs.pdmp
             build/lisp/emacs.pdmp
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ================================================================
+  # macOS terminal-only build + install + parity check.  Mirrors the
+  # downstream Nix package build that exposed the missing-pdmp /
+  # missing-loaddefs / missing-charscript install gaps.
+  # ================================================================
+  macos-build-and-test:
+    name: macos build + install (terminal-only)
+    needs: [classify, lint]
+    if: needs.classify.outputs.macos_meson == 'true'
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install build dependencies
+        run: |
+          brew install meson ninja pkg-config gnutls texinfo
+          meson --version
+          ninja --version
+
+      - name: meson setup (terminal-only)
+        run: |
+          meson setup build \
+            -Dtoolkit=none \
+            -Dnative-compilation=no \
+            -Dxft=disabled \
+            -Dxpm=disabled \
+            -Dxinput2=disabled \
+            -Dxdbe=disabled \
+            -Dgpm=disabled \
+            -Dselinux=disabled \
+            -Dlibotf=disabled \
+            -Dm17n-flt=disabled \
+            -Dgsettings=disabled
+
+      - name: meson compile
+        run: meson compile -C build --verbose 2>&1 | tee build/compile.log
+
+      - name: Dump build diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== last 200 lines of compile.log ==="
+          tail -200 build/compile.log || true
+          echo "=== meson-log.txt ==="
+          tail -200 build/meson-logs/meson-log.txt || true
+
+      - name: meson install (staged)
+        run: meson install -C build --destdir="$PWD/stage"
+
+      - name: Check installed-tree parity
+        run: |
+          arch=$(uname -m)
+          bash .github/scripts/check-install-parity.sh \
+            stage/usr/local 31.0.50 "$arch-darwin"
+
+      - name: Smoke test installed Emacs
+        run: |
+          arch=$(uname -m)
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/emacs.pdmp
+          EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+          EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/etc \
+          EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+            "$bin" --dump-file="$dump" --batch \
+            --eval '(princ emacs-version)'
+
+      - name: Avy byte-compile reproducer
+        run: |
+          arch=$(uname -m)
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/emacs.pdmp
+          mkdir -p stage-test
+          cp lisp/subr.el stage-test/subr-copy.el
+          EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+          EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/etc \
+          EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+            "$bin" --dump-file="$dump" --batch -Q \
+            --eval '(byte-compile-file "stage-test/subr-copy.el")'
+          test -f stage-test/subr-copy.elc
+
+      - name: Upload Meson logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-meson-logs
+          path: |
+            build/meson-logs/
+            build/compile.log
           retention-days: 14
           if-no-files-found: ignore
