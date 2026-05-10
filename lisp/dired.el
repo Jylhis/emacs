@@ -1442,10 +1442,9 @@ The return value is the target column for the file names."
 	      ((when (dired-directory-changed-p dirname)
 		 (message "%s"
 			  (substitute-command-keys
-			   "Directory has changed on disk; type \\[revert-buffer] to update Dired")))))
-      ;; Else a new buffer
-      (setq default-directory
-            (or (car-safe (insert-directory-wildcard-in-dir-p dirname))
+    ;; Pop up a warning if the Dired listing displays a literal newline.
+    ;; We do this here in order to
+      (when (dired--filename-with-newline-p)
 	        ;; We can do this unconditionally
 	        ;; because dired-noselect ensures that the name
 	        ;; is passed in directory name syntax
