@@ -55,8 +55,12 @@ def main() -> int:
                    help="(self-contained) path to emacs.pdmp")
     args = p.parse_args()
 
-    bundle = args.bundle.resolve()
+    bundle = args.bundle if args.bundle.is_absolute() else Path.cwd() / args.bundle
+    if bundle.is_symlink():
+        p.error(f"refusing to operate on symlinked bundle path: {bundle}")
     if bundle.exists():
+        if not bundle.is_dir():
+            p.error(f"bundle path exists and is not a directory: {bundle}")
         shutil.rmtree(bundle)
     bundle.mkdir(parents=True)
 
