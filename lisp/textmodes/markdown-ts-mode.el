@@ -2810,34 +2810,15 @@ content as a standalone markdown document, which is what we want."
            (nreverse res)))))
 
 (defun markdown-ts--code-block-language-mode (lang)
-  "Compute and cache a mode symbol from LANG, a symbol.
-Consult the `markdown-ts-code-block-modes' cache, or consult
-`treesit-major-mode-remap-alist' and `major-mode-remap-alist', or brute
-force mode probe.  Return a valid mode symbol or nil."
-  (if-let* ((mapped-mode (car (alist-get lang markdown-ts-code-block-modes))))
-      mapped-mode
-    (let* ((lang-string (symbol-name lang))
-           (lang-mode (concat lang-string "-mode"))
-           (mode))
-      (if (setq mode (alist-get lang-mode treesit-major-mode-remap-alist))
-          mode
-        (if (setq mode (alist-get lang-mode major-mode-remap-alist))
-            mode
-          (catch :mode
-            (dolist (mode
-                     (list
-                      ;; Try a treesit mode using the raw string.
-                      (concat lang-string "-ts-mode")
-                      ;; Try a conventional mode using the raw string.
-                      lang-mode
-                      ;; Try a treesit mode using the downcased string.
-                      (concat (downcase lang-string) "-ts-mode")
-                      ;; Try a conventional mode using the downcased string.
-                      (concat (downcase lang-string) "-mode")))
-              (setq mode (intern mode))
-              (when (fboundp mode)
-                (push (list lang mode) markdown-ts-code-block-modes)
-                (throw :mode mode)))))))))
+  "Return a mode symbol for LANG (a symbol), or nil.
+Consult the `markdown-ts-code-block-modes' cache, then optional mode
+remapping via `treesit-major-mode-remap-alist' and
+`major-mode-remap-alist'."
+  (or (car (alist-get lang markdown-ts-code-block-modes))
+      (let* ((lang-string (symbol-name lang))
+             (lang-mode (concat lang-string "-mode")))
+        (or (alist-get lang-mode treesit-major-mode-remap-alist)
+            (alist-get lang-mode major-mode-remap-alist)))))
 
 (defun markdown-ts--code-block-ts-language (node)
   "Convert NODE to a language for the code block."
