@@ -784,7 +784,7 @@ mailutils_install_movemail = not conf_data.has('HAVE_MAILUTILS')
 
 # --with-pop -- enables POP3 in movemail (MAIL_USE_POP).
 pop_opt = get_option('pop')
-if pop_opt.allowed()
+if pop_opt.enabled()
   conf_data.set('MAIL_USE_POP', 1)
 endif
 
