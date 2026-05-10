@@ -30,6 +30,7 @@ Three modes:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -169,7 +170,7 @@ def main() -> int:
         cmd = _emacs_cmd(args) + [
             "-l", "international/quail",
             "--eval",
-            f'(update-leim-list-file "{leim_dir}")',
+            f"(update-leim-list-file {json.dumps(str(leim_dir))})",
         ]
         rc = _run(cmd, env)
         if rc != 0:
