@@ -3661,7 +3661,7 @@ Return (PKG-DESC [NAME VERSION STATUS DOC])."
   "Face for the total number of packages displayed on the mode line."
   :version "31.1")
 
-(defface package-mode-line-installed '((t :inherit package-status-installed))
+                          'font-lock-warning-face nil #'string=)))
   "Face for the number of installed packages displayed on the mode line."
   :version "31.1")
 
