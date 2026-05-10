@@ -19,7 +19,6 @@ libgnu_sources = files(
   'c-strncasecmp.c',
   'careadlinkat.c',
   'close-stream.c',
-  'copy-file-range.c',
   'dtoastr.c',
   'dtotimespec.c',
   'file-has-acl.c',
@@ -86,6 +85,10 @@ endif
 if not cc.has_function('__fpending',
     prefix : '#include <stdio_ext.h>')
   libgnu_sources += files('fpending.c')
+endif
+if not cc.has_function('copy_file_range',
+    prefix : '#define _GNU_SOURCE 1\n#include <unistd.h>')
+  libgnu_sources += files('copy-file-range.c')
 endif
 # regex.c and malloc/dynarray_*.c: gnulib's included POSIX regex
 # engine.  lib-src/etags.c uses the GNU regex API (re_compile_pattern,
