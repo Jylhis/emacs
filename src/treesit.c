@@ -4011,7 +4011,6 @@ treesit_traverse_sibling_helper (TSTreeCursor *cursor,
       /* Else named...  */
       while (ts_tree_cursor_goto_previous_sibling (cursor))
 	{
-	  if (ts_node_is_named (ts_tree_cursor_current_node (cursor)))
 	    return true;
 	}
       return false;
