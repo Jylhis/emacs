@@ -3051,8 +3051,7 @@ BODY is the backend specific code."
   `(ignore-error file-missing
      (all-completions
       ,filename
-      (when (file-directory-p ,directory)
-	(seq-uniq (delq nil
+      (seq-uniq (delq nil
          (let* ((case-fold-search read-file-name-completion-ignore-case)
                 (remote-file-name-inhibit-cache
 		 (tramp-suppress-remote-file-name-inhibit-cache))
@@ -3061,7 +3060,8 @@ BODY is the backend specific code."
 		     (with-parsed-tramp-file-name
 			 (expand-file-name ,directory) nil
 		       (when (and (not (string-search "/" ,filename))
-				  (tramp-connectable-p v))
+				  (tramp-connectable-p v)
+				  (file-directory-p ,directory))
 			 (with-tramp-file-property
 			     v localname
 			     (format
@@ -3080,7 +3080,8 @@ BODY is the backend specific code."
 			    (seq-union
 			     (seq-difference (progn ,@body) '("." ".."))
 			     '("./" "../"))))))
-	           ,@body)))
+	           (when (file-directory-p ,directory)
+		     ,@body))))
 	   ;; Discriminate over `completion-regexp-list'.
 	   (if (consp completion-regexp-list)
 	       (mapcar
