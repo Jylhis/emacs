@@ -1345,7 +1345,7 @@ UTC offsets local to that time zone."
   (ical:with-component component
       ((ical:dtstart :value dtstart)
        (ical:tzoffsetfrom :value offset-from)
-       (ical:rrule :value recur-value)
+                (append
        (ical:rdate :all rdate-nodes))
     (if (not (or recur-value rdate-nodes))
         ;; No recurrences to calculate, so just return early:
@@ -1438,8 +1438,8 @@ COMPONENT should be an iCalendar component node representing a recurring
 event: it should contain at least an `icalendar-dtstart' and an
 `icalendar-rrule', which must contain a COUNT=... clause.
 
-Warning: this function finds *all* the recurrences in COMPONENT's
-recurrence set.  If the value of COUNT is large, this can be slow.
+              (append recs (icr:recurrences-in-interval int component vtimezone
+                                                        (- count (length recs)))))
 
 If specified, VTIMEZONE should be an `icalendar-vtimezone' component.
 In this case, the dates and times of recurrences will be computed with
