@@ -212,6 +212,8 @@ stddef_overrides = {
 sys_types_overrides = {
   'GUARD_PREFIX': 'GL',
   'NEXT_SYS_TYPES_H': '<sys/types.h>',
+  'HAVE_BLKSIZE_T': cc.has_type('blksize_t', prefix : '#include <sys/types.h>') ? '1' : '0',
+  'HAVE_BLKCNT_T': cc.has_type('blkcnt_t', prefix : '#include <sys/types.h>') ? '1' : '0',
 }
 
 # ---- string.h: GNU extensions that gnulib portably provides.
@@ -379,10 +381,14 @@ foreach spec : gnulib_in_h_specs
   foreach k, v : overrides
     set_args += ['--set', k + '=' + v]
   endforeach
+  out_name = name + '.h'
+  if name == 'sys_types'
+    out_name = 'sys/types.h'
+  endif
   out = custom_target(
-    name + '.h',
+    out_name,
     input : name + '.in.h',
-    output : name + '.h',
+    output : out_name,
     command : [py, process_in_h, '--input', '@INPUT@',
                '--output', '@OUTPUT@',
                '--lib-dir', meson.current_source_dir()] + set_args,
