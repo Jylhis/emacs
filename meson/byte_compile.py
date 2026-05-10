@@ -8,6 +8,7 @@ the env vars and load-path needed for an out-of-tree meson build.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -70,7 +71,7 @@ def main() -> int:
         "--no-site-file",
         "--no-site-lisp",
         "--eval",
-        f'(byte-compile-file "{args.input}")',
+        f"(byte-compile-file {json.dumps(str(args.input))})",
     ]
     rc = subprocess.run(cmd, env=env).returncode
     if rc != 0:
