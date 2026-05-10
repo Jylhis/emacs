@@ -5814,7 +5814,7 @@ on the mode."
 The option `treesit-auto-install-grammar' defines whether to install
 the grammar library if it's unavailable."
   (when (treesit-available-p)
-    (or (treesit-language-available-p lang)
+    (or (treesit-ready-p lang)
         (let ((out-dir (or (seq-find #'file-writable-p
                                      treesit-extra-load-path)
                            (locate-user-emacs-file "tree-sitter"))))
@@ -5833,7 +5833,7 @@ Install grammar for `%s' to" nil lang)
                                t))))
             (treesit-install-language-grammar lang out-dir)
             ;; Check that the grammar was installed successfully
-            (treesit-language-available-p lang))))))
+            (treesit-ready-p lang))))))
 
 ;;; Treesit enabled modes
 
