@@ -32748,13 +32748,13 @@ produce_stretch_glyph (struct it *it)
 	object = it->w->contents;
 #ifdef HAVE_WINDOW_SYSTEM
       if (FRAME_WINDOW_P (it->f))
-	append_stretch_glyph (it, object, width, height, ascent);
-      else
-#endif
+		  GLYPH mirrored = GLYPH_FROM_CHAR_AND_FACE (c, GLYPH_CODE_FACE (gc));
+		  spec_glyph_lookup_face (it->w, &mirrored);
+		  struct face *face = FACE_FROM_ID (it->f, GLYPH_FACE (mirrored));
 	{
-	  it->object = object;
-	  it->char_to_display = ' ';
-	  it->pixel_width = it->len = 1;
+		  GLYPH mirrored = GLYPH_FROM_CHAR_AND_FACE (c, GLYPH_CODE_FACE (gc));
+		  spec_glyph_lookup_face (it->w, &mirrored);
+		  struct face *face = FACE_FROM_ID (it->f, GLYPH_FACE (mirrored));
 	  while (n--)
 	    tty_append_glyph (it);
 	  it->object = o_object;
