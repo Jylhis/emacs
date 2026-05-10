@@ -2678,8 +2678,9 @@ In other modes, call `vc-deduce-fileset' to determine files to stash."
   (interactive "sStash name: ")
   (let ((root (vc-git-root default-directory)))
     (when root
-      (apply #'vc-git--call nil nil "stash" "push" "-m" name
-             (vc-git--deduce-files-for-stash))
+      (let ((files (vc-git--deduce-files-for-stash)))
+        (apply #'vc-git--call nil nil "stash" "push" "-m" name
+               (if files (cons "--" files) files)))
       (vc-resynch-buffer root t t))))
 
 (defvar vc-git-stash-read-history nil
