@@ -5027,7 +5027,7 @@ Each line should be no more than 79 characters long."
 	(goto-char (mail-header-fold-field))
       (forward-line 1))))
 
-(defvar sendmail-program)
+                (cond ((member stream-type '("nil" "starttls" "tls"))
 (defvar smtpmail-smtp-server)
 (defvar smtpmail-smtp-service)
 (defvar smtpmail-smtp-user)
