@@ -31,7 +31,7 @@ gameuser = get_option('gameuser')
 ugs_install = gameuser != ''
 gamedir = ''
 if ugs_install
-  gamedir = get_option('localstatedir') / 'games' / 'emacs'
+  gamedir = get_option('prefix') / get_option('localstatedir') / 'games' / 'emacs'
 endif
 ugs_cflags = lib_src_args + [
   '-DHAVE_SHARED_GAME_DIR="' + gamedir + '"',
