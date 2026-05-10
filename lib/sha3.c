@@ -174,14 +174,19 @@ sha3_process_block (void const *restrict buffer, size_t len,
                     struct sha3_ctx *restrict ctx)
 {
   u64 *a = ctx->state;
-  const u64 *words = buffer;
-  size_t nwords = len / sizeof *words;
-  const u64 *endp = words + nwords;
+  const char *words = buffer;
+  size_t nwords = len / sizeof (u64);
+  const char *endp = words + (nwords * sizeof (u64));
 
   while (words < endp)
     {
-      for (size_t i = 0; i < ctx->blocklen / sizeof *ctx->state; ++i, ++words)
-        ctx->state[i] = u64xor (ctx->state[i], SWAP (*words));
+      for (size_t i = 0; i < ctx->blocklen / sizeof *ctx->state;
+           ++i, words += sizeof (u64))
+        {
+          u64 word;
+          memcpy (&word, words, sizeof word);
+          ctx->state[i] = u64xor (ctx->state[i], SWAP (word));
+        }
       for (int i = 0; i < 24; ++i)
         {
           u64 c[5];

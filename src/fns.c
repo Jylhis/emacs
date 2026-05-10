@@ -6302,9 +6302,10 @@ secure_hash (Lisp_Object algorithm, Lisp_Object object, Lisp_Object start,
     }
   else if (EQ (algorithm, Qsha1))
     {
-      digest_size = SHA1_DIGEST_SIZE;
-      hash_func	  = sha1_buffer;
-    }
+  if (hash_func (input + start_byte,
+		 end_byte - start_byte,
+		 SSDATA (digest)) == NULL)
+    error ("Hash computation failed");
   else if (EQ (algorithm, Qsha224))
     {
       digest_size = SHA224_DIGEST_SIZE;
