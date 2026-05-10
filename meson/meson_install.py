@@ -31,6 +31,7 @@ from pathlib import Path
 
 def gzip_file(src: Path) -> None:
     """Replace `src` with `src.gz` (gzip -9n -- no name/timestamp metadata)."""
+    st = src.stat()
     dst = src.with_suffix(src.suffix + ".gz")
     with src.open("rb") as fin, gzip.GzipFile(
         filename=str(dst),
@@ -39,6 +40,7 @@ def gzip_file(src: Path) -> None:
         mtime=0,  # -n: no timestamp
     ) as fout:
         shutil.copyfileobj(fin, fout)
+    os.utime(dst, ns=(st.st_atime_ns, st.st_mtime_ns))
     src.unlink()
 
 
