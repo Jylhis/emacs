@@ -3,12 +3,11 @@
 #
 # This file is part of GNU Emacs.
 #
-# Build the Meson tree.  CI uses Ubuntu's apt-get for the toolchain
-# because the Nix gcc-wrapper / binutils-wrapper hooks don't activate
-# reliably under `devenv shell -- bash -c '...'` on GitHub-hosted
-# runners (the wrapped gcc invokes raw binutils ld which can't find
-# Scrt1.o).  Local dev still gets the pinned Nix toolchain via
-# devenv.nix.
+# Build the Meson tree inside a devenv.sh shell so CI uses the same
+# Nix-pinned toolchain as a developer's local environment.  Pattern
+# follows https://devenv.sh/integrations/github-actions/ .  The
+# jylhis Cachix cache is pulled from on every run; pushes to it are
+# restricted to main branches (see authToken expression below).
 
 name: meson
 
@@ -224,6 +223,13 @@ jobs:
     if: needs.classify.outputs.linux_meson == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    defaults:
+      run:
+        # Every step inherits this shell, so the Nix gcc/binutils
+        # wrapper setup hooks run per-step and NIX_CC_WRAPPER_* env
+        # vars stay live.  Steps that must run before devenv is
+        # installed override this with `shell: bash`.
+        shell: devenv shell bash -- -e {0}
     strategy:
       # Don't fast-fail the gtk3 variant when no-X variant breaks (or
       # vice versa); the parity audit tracks each independently.
@@ -248,27 +254,56 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        # Use plain bash so checkout runs before devenv is installed.
+        # (uses: steps ignore defaults.run.shell, but listing it is
+        # harmless and documents the intent.)
 
-      # ---- System dependencies ----------------------------------------
-      - name: Install build dependencies
+      # ---- Nix + Cachix + devenv setup --------------------------------
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Set up Cachix (pull jylhis + devenv)
+        uses: cachix/cachix-action@v16
+        with:
+          name: jylhis
+          extraPullNames: devenv
+          # Push only on pushes to dev / master / emacs-* release
+          # branches.  PR runs (incl. fork PRs) and workflow_dispatch
+          # get pull-only.  Empty token => cachix-action runs in
+          # pull-only mode.
+          authToken: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
+
+      - name: Install devenv
+        shell: bash
+        run: nix profile add nixpkgs#devenv
+
+      # ---- Verify Nix-wrapped toolchain is active ---------------------
+      # Sanity-check that fails fast on the wrapper drift that broke
+      # prior devenv-in-CI attempts (commits 2d85459, dcd928c): the
+      # wrapped gcc must be able to link a hello-world before we let
+      # meson setup try.
+      - name: Verify Nix-wrapped toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            meson ninja-build python3 pkg-config \
-            gcc libc6-dev \
-            libgtk-3-dev libcairo2-dev libpango1.0-dev \
-            libharfbuzz-dev libfreetype-dev libfontconfig1-dev libxft-dev \
-            libgnutls28-dev libtree-sitter-dev libsqlite3-dev libxml2-dev \
-            libsystemd-dev libgmp-dev libgccjit-13-dev libjansson-dev \
-            libncurses-dev libacl1-dev \
-            libx11-dev libxfixes-dev libxrender-dev libxrandr-dev \
-            libxcomposite-dev libxinerama-dev libxi-dev libxext-dev \
-            libxtst-dev libsm-dev libice-dev libtinfo-dev \
-            libjpeg-dev libtiff-dev libgif-dev libpng-dev librsvg2-dev \
-            libwebp-dev liblcms2-dev libdbus-1-dev zlib1g-dev \
-            texinfo gawk
+          set -euo pipefail
+          echo "cc:       $(command -v cc)"
+          echo "gcc:      $(command -v gcc || true)"
+          echo "ld:       $(command -v ld)"
+          echo "pkg-config: $(command -v pkg-config)"
+          echo "meson:    $(command -v meson)"
+          echo "ninja:    $(command -v ninja)"
+          cc --version | head -1
+          ld --version | head -1
+          pkg-config --version
           meson --version
           ninja --version
+          printf 'int main(void){return 0;}\n' > /tmp/hello.c
+          cc /tmp/hello.c -o /tmp/hello
+          /tmp/hello
+          echo "Toolchain link sanity check passed."
 
       # ---- Build cache ------------------------------------------------
       # Bump the version suffix (currently `-v2`) whenever a change to a
@@ -568,16 +603,46 @@ jobs:
     if: needs.classify.outputs.macos_meson == 'true'
     runs-on: macos-14
     timeout-minutes: 90
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install build dependencies
+      # ---- Nix + Cachix + devenv setup --------------------------------
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Set up Cachix (pull jylhis + devenv)
+        uses: cachix/cachix-action@v16
+        with:
+          name: jylhis
+          extraPullNames: devenv
+          authToken: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
+
+      - name: Install devenv
+        shell: bash
+        run: nix profile add nixpkgs#devenv
+
+      - name: Verify Nix-wrapped toolchain
         run: |
-          brew install meson ninja pkg-config gnutls texinfo
+          set -euo pipefail
+          echo "cc:       $(command -v cc)"
+          echo "ld:       $(command -v ld)"
+          echo "pkg-config: $(command -v pkg-config)"
+          cc --version | head -1
           meson --version
           ninja --version
+          printf 'int main(void){return 0;}\n' > /tmp/hello.c
+          cc /tmp/hello.c -o /tmp/hello
+          /tmp/hello
+          echo "Toolchain link sanity check passed."
 
       - name: meson setup (terminal-only)
         run: |
