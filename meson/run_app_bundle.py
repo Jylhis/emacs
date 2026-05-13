@@ -55,7 +55,7 @@ def main() -> int:
                    help="(self-contained) path to emacs.pdmp")
     args = p.parse_args()
 
-    bundle = args.bundle if args.bundle.is_absolute() else Path.cwd() / args.bundle
+    bundle = Path.cwd() / args.bundle
     if bundle.is_symlink():
         p.error(f"refusing to operate on symlinked bundle path: {bundle}")
     if bundle.exists():
