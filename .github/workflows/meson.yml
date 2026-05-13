@@ -223,13 +223,6 @@ jobs:
     if: needs.classify.outputs.linux_meson == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-    defaults:
-      run:
-        # Every step inherits this shell, so the Nix gcc/binutils
-        # wrapper setup hooks run per-step and NIX_CC_WRAPPER_* env
-        # vars stay live.  Steps that must run before devenv is
-        # installed override this with `shell: bash`.
-        shell: devenv shell bash -- -e {0}
     strategy:
       # Don't fast-fail the gtk3 variant when no-X variant breaks (or
       # vice versa); the parity audit tracks each independently.
@@ -254,9 +247,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-        # Use plain bash so checkout runs before devenv is installed.
-        # (uses: steps ignore defaults.run.shell, but listing it is
-        # harmless and documents the intent.)
 
       # ---- Nix + Cachix + devenv setup --------------------------------
       - name: Install Nix
@@ -278,32 +268,62 @@ jobs:
           authToken: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
 
       - name: Install devenv
-        shell: bash
         run: nix profile add nixpkgs#devenv
 
+      # ---- Hoist devenv env into $GITHUB_ENV --------------------------
+      # Per-step "devenv shell bash -- -e {0}" loses NIX_LDFLAGS /
+      # NIX_CC_WRAPPER_TARGET_HOST_* between invocations (the
+      # gcc-wrapper specs file isn't applied to subprocesses), which
+      # made meson's compiler probe fall back to raw binutils ld and
+      # miss Scrt1.o / crti.o / -lgcc_s.  This step enters devenv
+      # *once*, captures every env var the wrapper sets, and writes
+      # them to $GITHUB_ENV so every subsequent step inherits the
+      # fully-activated Nix toolchain.
+      - name: Activate devenv into $GITHUB_ENV
+        run: |
+          set -euo pipefail
+          devenv shell bash -c 'env -0' > /tmp/devenv.env0
+          # Vars GitHub manages or that would break the runner if
+          # overwritten.  Everything else is exported.
+          excluded='^(_|PWD|OLDPWD|SHLVL|HOME|USER|LOGNAME|SHELL|TERM|HOSTNAME|HOSTTYPE|MACHTYPE|OSTYPE|TMPDIR|GITHUB_|RUNNER_|ImageOS|ImageVersion|ACTIONS_|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID)'
+          while IFS= read -r -d '' kv; do
+            key=${kv%%=*}
+            val=${kv#*=}
+            if printf '%s\n' "$key" | grep -Eq "$excluded"; then
+              continue
+            fi
+            if [[ "$val" == *$'\n'* ]]; then
+              tag="DEVENV_HEREDOC_${RANDOM}_${RANDOM}"
+              printf '%s<<%s\n%s\n%s\n' "$key" "$tag" "$val" "$tag" >> "$GITHUB_ENV"
+            else
+              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
+            fi
+          done < /tmp/devenv.env0
+          echo "Exported $(wc -l < /tmp/devenv.env0) env vars from devenv shell."
+
       # ---- Verify Nix-wrapped toolchain is active ---------------------
-      # Sanity-check that fails fast on the wrapper drift that broke
-      # prior devenv-in-CI attempts (commits 2d85459, dcd928c): the
-      # wrapped gcc must be able to link a hello-world before we let
-      # meson setup try.
+      # Compile + link a sentinel that exercises the same gcc/ld/crt
+      # path meson's compiler probe uses.  Fails fast on wrapper drift.
       - name: Verify Nix-wrapped toolchain
         run: |
           set -euo pipefail
-          echo "cc:       $(command -v cc)"
-          echo "gcc:      $(command -v gcc || true)"
-          echo "ld:       $(command -v ld)"
+          echo "cc:         $(command -v cc)"
+          echo "gcc:        $(command -v gcc || true)"
+          echo "ld:         $(command -v ld)"
           echo "pkg-config: $(command -v pkg-config)"
-          echo "meson:    $(command -v meson)"
-          echo "ninja:    $(command -v ninja)"
+          echo "meson:      $(command -v meson)"
+          echo "ninja:      $(command -v ninja)"
+          echo "NIX_LDFLAGS=${NIX_LDFLAGS:-<unset>}"
           cc --version | head -1
           ld --version | head -1
           pkg-config --version
           meson --version
           ninja --version
-          printf 'int main(void){return 0;}\n' > /tmp/hello.c
-          cc /tmp/hello.c -o /tmp/hello
-          /tmp/hello
-          echo "Toolchain link sanity check passed."
+          # Match meson's sanity check exactly (same flags meson uses).
+          printf 'int main(void){return 0;}\n' > /tmp/sanity.c
+          cc /tmp/sanity.c -o /tmp/sanity -D_FILE_OFFSET_BITS=64
+          /tmp/sanity
+          echo "Toolchain sanity check passed."
 
       # ---- Build cache ------------------------------------------------
       # Bump the version suffix (currently `-v2`) whenever a change to a
@@ -572,11 +592,14 @@ jobs:
           fi
 
       # ---- Artefacts --------------------------------------------------
+      # Suffix with matrix.label (sanitised: '/' -> '-') so the two
+      # matrix entries don't collide on the same artifact name
+      # (upload-artifact@v7 returns 409 Conflict on duplicates).
       - name: Upload Meson logs
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: meson-logs
+          name: meson-logs-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
             build/meson-logs/
           retention-days: 14
@@ -585,7 +608,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: pdumper-images
+          name: pdumper-images-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
             build/src/bootstrap-emacs.pdmp
             build/lisp/emacs.pdmp
@@ -603,9 +626,6 @@ jobs:
     if: needs.classify.outputs.macos_meson == 'true'
     runs-on: macos-14
     timeout-minutes: 90
-    defaults:
-      run:
-        shell: devenv shell bash -- -e {0}
 
     steps:
       - name: Checkout
@@ -627,22 +647,42 @@ jobs:
           authToken: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
 
       - name: Install devenv
-        shell: bash
         run: nix profile add nixpkgs#devenv
+
+      # Hoist devenv env into $GITHUB_ENV — see comment on the Linux job.
+      - name: Activate devenv into $GITHUB_ENV
+        run: |
+          set -euo pipefail
+          devenv shell bash -c 'env -0' > /tmp/devenv.env0
+          excluded='^(_|PWD|OLDPWD|SHLVL|HOME|USER|LOGNAME|SHELL|TERM|HOSTNAME|HOSTTYPE|MACHTYPE|OSTYPE|TMPDIR|GITHUB_|RUNNER_|ImageOS|ImageVersion|ACTIONS_|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID)'
+          while IFS= read -r -d '' kv; do
+            key=${kv%%=*}
+            val=${kv#*=}
+            if printf '%s\n' "$key" | grep -Eq "$excluded"; then
+              continue
+            fi
+            if [[ "$val" == *$'\n'* ]]; then
+              tag="DEVENV_HEREDOC_${RANDOM}_${RANDOM}"
+              printf '%s<<%s\n%s\n%s\n' "$key" "$tag" "$val" "$tag" >> "$GITHUB_ENV"
+            else
+              printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
+            fi
+          done < /tmp/devenv.env0
+          echo "Exported $(wc -l < /tmp/devenv.env0) env vars from devenv shell."
 
       - name: Verify Nix-wrapped toolchain
         run: |
           set -euo pipefail
-          echo "cc:       $(command -v cc)"
-          echo "ld:       $(command -v ld)"
+          echo "cc:         $(command -v cc)"
+          echo "ld:         $(command -v ld)"
           echo "pkg-config: $(command -v pkg-config)"
           cc --version | head -1
           meson --version
           ninja --version
-          printf 'int main(void){return 0;}\n' > /tmp/hello.c
-          cc /tmp/hello.c -o /tmp/hello
-          /tmp/hello
-          echo "Toolchain link sanity check passed."
+          printf 'int main(void){return 0;}\n' > /tmp/sanity.c
+          cc /tmp/sanity.c -o /tmp/sanity -D_FILE_OFFSET_BITS=64
+          /tmp/sanity
+          echo "Toolchain sanity check passed."
 
       - name: meson setup (terminal-only)
         run: |
