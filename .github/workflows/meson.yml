@@ -271,21 +271,44 @@ jobs:
         run: nix profile add nixpkgs#devenv
 
       # ---- Hoist devenv env into $GITHUB_ENV --------------------------
-      # Per-step "devenv shell bash -- -e {0}" loses NIX_LDFLAGS /
-      # NIX_CC_WRAPPER_TARGET_HOST_* between invocations (the
-      # gcc-wrapper specs file isn't applied to subprocesses), which
-      # made meson's compiler probe fall back to raw binutils ld and
-      # miss Scrt1.o / crti.o / -lgcc_s.  This step enters devenv
-      # *once*, captures every env var the wrapper sets, and writes
-      # them to $GITHUB_ENV so every subsequent step inherits the
-      # fully-activated Nix toolchain.
+      # `devenv shell bash -c '...'` is fragile: devenv's CLI has its
+      # own `-c, --config` flag and globally parses short options
+      # regardless of position, so `-c 'env -0'` is consumed by devenv
+      # (config path) and bash runs with no command, exiting empty.
+      # Instead we write a script and pass it as the single positional
+      # argument to `devenv shell`, which exec's it inside the
+      # activated shell with all NIX_LDFLAGS / NIX_CC_WRAPPER_* env
+      # vars live.  Then we write the captured env to $GITHUB_ENV so
+      # every subsequent step inherits the Nix-wrapped toolchain
+      # without re-entering the shell.
       - name: Activate devenv into $GITHUB_ENV
         run: |
           set -euo pipefail
-          devenv shell bash -c 'env -0' > /tmp/devenv.env0
-          # Vars GitHub manages or that would break the runner if
-          # overwritten.  Everything else is exported.
-          excluded='^(_|PWD|OLDPWD|SHLVL|HOME|USER|LOGNAME|SHELL|TERM|HOSTNAME|HOSTTYPE|MACHTYPE|OSTYPE|TMPDIR|GITHUB_|RUNNER_|ImageOS|ImageVersion|ACTIONS_|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID)'
+          cat > /tmp/devenv-dump-env.sh <<'DUMP'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          # Sanity hints visible in the workflow log
+          echo "[dump] DEVENV_ROOT=${DEVENV_ROOT:-<unset>}" >&2
+          echo "[dump] which cc: $(command -v cc || true)" >&2
+          echo "[dump] which meson: $(command -v meson || true)" >&2
+          echo "[dump] NIX_LDFLAGS=${NIX_LDFLAGS:-<unset>}" >&2
+          env -0
+          DUMP
+          chmod +x /tmp/devenv-dump-env.sh
+          devenv shell /tmp/devenv-dump-env.sh > /tmp/devenv.env0
+          bytes=$(wc -c < /tmp/devenv.env0)
+          entries=$(tr -cd '\0' < /tmp/devenv.env0 | wc -c)
+          echo "Captured $entries env entries ($bytes bytes) from devenv shell"
+          if [ "$entries" -lt 10 ]; then
+            echo "::error::devenv shell produced suspiciously little env (entries=$entries). Aborting."
+            xxd /tmp/devenv.env0 | head -20 || true
+            exit 1
+          fi
+
+          # GitHub-managed / runner-only vars we must NOT overwrite.
+          excluded='^(_|PWD|OLDPWD|SHLVL|HOME|USER|LOGNAME|SHELL|TERM|HOSTNAME|HOSTTYPE|MACHTYPE|OSTYPE|TMPDIR)$|^(GITHUB_|RUNNER_|ACTIONS_|ImageOS|ImageVersion|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID)'
+
+          n_written=0
           while IFS= read -r -d '' kv; do
             key=${kv%%=*}
             val=${kv#*=}
@@ -298,8 +321,13 @@ jobs:
             else
               printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
             fi
+            n_written=$((n_written + 1))
           done < /tmp/devenv.env0
-          echo "Exported $(wc -l < /tmp/devenv.env0) env vars from devenv shell."
+          echo "Wrote $n_written env vars to \$GITHUB_ENV"
+          echo "--- PATH (first 300 chars) ---"
+          grep -E '^PATH=' "$GITHUB_ENV" | tail -1 | cut -c1-300 || echo "(no PATH written!)"
+          echo "--- NIX_LDFLAGS (first 200 chars) ---"
+          grep -E '^NIX_LDFLAGS=' "$GITHUB_ENV" | tail -1 | cut -c1-200 || echo "(no NIX_LDFLAGS written)"
 
       # ---- Verify Nix-wrapped toolchain is active ---------------------
       # Compile + link a sentinel that exercises the same gcc/ld/crt
@@ -653,8 +681,26 @@ jobs:
       - name: Activate devenv into $GITHUB_ENV
         run: |
           set -euo pipefail
-          devenv shell bash -c 'env -0' > /tmp/devenv.env0
-          excluded='^(_|PWD|OLDPWD|SHLVL|HOME|USER|LOGNAME|SHELL|TERM|HOSTNAME|HOSTTYPE|MACHTYPE|OSTYPE|TMPDIR|GITHUB_|RUNNER_|ImageOS|ImageVersion|ACTIONS_|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID)'
+          cat > /tmp/devenv-dump-env.sh <<'DUMP'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          echo "[dump] DEVENV_ROOT=${DEVENV_ROOT:-<unset>}" >&2
+          echo "[dump] which cc: $(command -v cc || true)" >&2
+          echo "[dump] which meson: $(command -v meson || true)" >&2
+          env -0
+          DUMP
+          chmod +x /tmp/devenv-dump-env.sh
+          devenv shell /tmp/devenv-dump-env.sh > /tmp/devenv.env0
+          entries=$(tr -cd '\0' < /tmp/devenv.env0 | wc -c)
+          echo "Captured $entries env entries from devenv shell"
+          if [ "$entries" -lt 10 ]; then
+            echo "::error::devenv shell produced suspiciously little env (entries=$entries). Aborting."
+            exit 1
+          fi
+
+          excluded='^(_|PWD|OLDPWD|SHLVL|HOME|USER|LOGNAME|SHELL|TERM|HOSTNAME|HOSTTYPE|MACHTYPE|OSTYPE|TMPDIR)$|^(GITHUB_|RUNNER_|ACTIONS_|ImageOS|ImageVersion|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID)'
+
+          n_written=0
           while IFS= read -r -d '' kv; do
             key=${kv%%=*}
             val=${kv#*=}
@@ -667,8 +713,9 @@ jobs:
             else
               printf '%s=%s\n' "$key" "$val" >> "$GITHUB_ENV"
             fi
+            n_written=$((n_written + 1))
           done < /tmp/devenv.env0
-          echo "Exported $(wc -l < /tmp/devenv.env0) env vars from devenv shell."
+          echo "Wrote $n_written env vars to \$GITHUB_ENV"
 
       - name: Verify Nix-wrapped toolchain
         run: |
