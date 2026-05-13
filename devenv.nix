@@ -77,7 +77,7 @@ in
       xorg.libXext
       xorg.libXtst
       xorg.libXft
-      xorg.libXt
+      libxt
       xorg.libSM
       xorg.libICE
     ]);
