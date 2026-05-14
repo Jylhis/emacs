@@ -46,8 +46,10 @@ Supporting machinery in `src/lisp.h`:
   `FIXNUM_BITS = VALBITS + 1`
 - `:245,277-282` -- `IDEAL_GCALIGNMENT = 8`, with
   `static_assert (GCALIGNMENT == 1 << GCTYPEBITS)`
-- `:252-260` -- `USE_LSB_TAG` is true when the host's pointer width
-  fits within `VAL_MAX / 2`; otherwise tags go in the high bits
+- `:252-260` -- `USE_LSB_TAG` is false when the host's pointer width
+  fits within `VAL_MAX / 2` (top bits are unused, so tags go in the
+  high bits and LSB tagging would just add masking overhead);
+  otherwise it is true and tags go in the low bits
 - `:582-597` -- `Lisp_Object` is either `Lisp_Word` (a plain integer)
   or, with `CHECK_LISP_OBJECT_TYPE`, a one-field struct wrapper to
   catch implicit `Lisp_Object x = 0;` mistakes
@@ -111,9 +113,16 @@ In-source recipe at `src/lisp.h:539-580`.  Summary:
 
 1. Add a member to `enum pvec_type`.
 2. Add switch arms in `src/print.c` (`print_object`, possibly
-   `print_preprocess`) and `src/alloc.c` (`mark_object`, `gc_sweep`).
+   `print_preprocess`) and `src/alloc.c`.  The in-source recipe at
+   `src/lisp.h:568-571` names `mark_object` and `gc_sweep`, but in the
+   current tree those are thin wrappers -- the per-type pseudovector
+   logic actually lives in `process_mark_stack`
+   (`src/alloc.c:6454`) for marking and `cleanup_vector`
+   (`src/alloc.c:3058`) for sweeping / finalization.
 3. Add a switch arm in `src/data.c` (`Fcl_type_of`) and a clause in
-   `lisp/emacs-lisp/cl-preloaded.el` (`cl--define-builtin-type`).
+   `lisp/emacs-lisp/cl-preloaded.el` (`cl--define-built-in-type` --
+   note the in-source recipe at `src/lisp.h:580` misspells this as
+   `cl--define-builtin-type`).
 4. Keep the type below `VBLOCK_BYTES_MAX` (defined in `alloc.c`) or
    teach `sweep_vectors` about it.
 5. For pointer-to-C-struct payloads with no Lisp slots, prefer the
