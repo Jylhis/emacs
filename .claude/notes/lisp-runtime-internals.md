@@ -28,9 +28,18 @@ in this note flows from that one design choice.
 - Tag placement: `USE_LSB_TAG` selection at `src/lisp.h:252-258`;
   least-significant-bit tagging is used when pointer alignment makes
   the low bits free.
-- Accessor and constructor macros: `XTYPE` (`src/lisp.h:422`),
-  `XCONS` (`src/lisp.h:407`), `make_fixnum` (`src/lisp.h:461`).
-- Distinguished singletons: `Qnil` and `Qt` at `src/lisp.h:376-387`.
+- Accessors and constructors (inline functions, with parallel
+  `lisp_h_*` macros for the hot paths and GDB visibility): `XTYPE`
+  (`src/lisp.h:723`, macro at `src/lisp.h:422`), `XCONS`
+  (`src/lisp.h:1468`), `make_fixnum` (`src/lisp.h:1212`).
+- Distinguished singletons:
+  - `Qnil` has a dedicated macro `lisp_h_Qnil` at `src/lisp.h:376` and
+    `src/lisp.h:387` (the two `CHECK_LISP_OBJECT_TYPE` branches).
+  - `Qt` and every other `Q*` symbol are registered by `DEFSYM`
+    placeholders -- e.g. `DEFSYM (Qt, "t")` at `src/lread.c:5181` --
+    and surfaced through the make-docfile-generated `globals.h`,
+    which `src/lisp.h:913` includes.  See the comment at
+    `src/lisp.h:892-898` on `DEFINE_NON_NIL_Q_SYMBOL_MACROS`.
 
 Debug build with `--enable-check-lisp-object-type` (Meson:
 `-Dcheck-lisp-object-type=true`, see `build-system.md`) selects the
