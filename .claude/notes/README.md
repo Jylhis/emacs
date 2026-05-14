@@ -18,6 +18,9 @@ session.
   merging release branches, and bisecting.
 - [DevEnv Gaps](devenv-gaps.md) -- packages and scripts missing from
   devenv.nix that the upstream docs recommend.
+- [Lisp_Object Tagging](lisp-object-tagging.md) -- 3-bit primary tag
+  layout, pvec_type secondary tags, vectorlike_header invariant, and
+  the recipe for adding a new Lisp type.
 
 ### External Forks and Patch Sources
 
