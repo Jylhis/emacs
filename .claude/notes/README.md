@@ -18,6 +18,9 @@ session.
   merging release branches, and bisecting.
 - [DevEnv Gaps](devenv-gaps.md) -- packages and scripts missing from
   devenv.nix that the upstream docs recommend.
+- [Lisp Runtime Internals](lisp-runtime-internals.md) -- Lisp_Object
+  tagging, the seven primitives, evaluator, cons allocator, interval
+  tree, and bytecode VM, with file:line landmarks.
 
 ### External Forks and Patch Sources
 
