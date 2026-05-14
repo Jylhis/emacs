@@ -25,35 +25,6 @@ applies, and please also update docstrings as needed.
 * Installation Changes in Emacs 31.1
 
 +++
-** Support for legacy platforms removed.
-Emacs now targets only the following platforms:
-
-  - GNU/Linux on x86_64 and aarch64.
-  - macOS on x86_64 (Intel) and arm64 (Apple Silicon), via the Cocoa
-    NS port.
-  - Android (NDK builds).
-
-Support for the following operating systems has been removed: MS-DOS,
-all variants of MS Windows (NT, 9x, MinGW, Cygwin), FreeBSD, NetBSD,
-OpenBSD, DragonFly BSD, GNU/kFreeBSD, GNU/Hurd, HP-UX, AIX,
-Solaris/SunOS, IRIX, OSF/Tru64, Unixware, QNX, NaCl, and Haiku.  The
-GNUstep build of the NS port is also gone.
-
-Support for 32-bit CPU architectures on the host system has been
-removed (i386/i486/i586/i686, m68k, vax, alpha, sparc/sparc64, mips,
-powerpc-32, ia64, hppa, sh, s390, etc.).
-
-The Lucid (Xlw), Athena (Xaw/Xaw3d), Motif (Xm), and no-toolkit X11
-builds have been removed.  GTK 3 is now the only supported X11
-toolkit.  The Pure-GTK (Wayland) and TTY backends are unchanged.
-
-Legacy terminal types are no longer supported: AT386, bobcat,
-iris-ansi, lk201, news, sun, tvi970, vt100, vt200, wyse50, fbterm.
-
-WebAssembly/web is not currently supported but is being investigated
-as a future target.
-
-+++
 ** Unexec dumper removed.
 The traditional unexec dumper, deprecated since Emacs 27, has been
 removed.
@@ -116,6 +87,13 @@ Info node "(emacs) User Lisp Directory" for more details.
 Previously, only spacing below the line could be specified.  The user
 option can now be set to a cons cell to specify spacing both above and
 below the line, which allows for vertically centering text.
+
++++
+** New face 'margin' for the window margin display.
+A new basic face 'margin' is used by default for text displayed in the
+left and right margin areas, which are used by various packages for
+per-line annotations.  Its background defaults to the frame default, so
+existing behavior is unchanged for users who do not customize it.
 
 +++
 ** 'prettify-symbols-mode' attempts to ignore undisplayable characters.
@@ -1005,11 +983,10 @@ It is equivalent to running 'project-any-command' with
 The prompt now displays the chosen project on which to invoke a command.
 
 ---
-*** 'project-prompter' values may be called with up to four arguments.
+*** 'project-prompter' values may be called with up to three arguments.
 These allow callers of the value of 'project-prompter' to specify a
 prompt string; prompt the user to choose between a subset of all the
-known projects; disallow returning arbitrary directories; and allow
-returning an empty string.
+known projects; and disallow returning arbitrary directories.
 See the docstring of 'project-prompter' for a full specification of
 these new optional arguments.
 
@@ -3037,6 +3014,19 @@ These are useful to view all outstanding (unmerged, unpushed) changes on
 the current branch.  They are also available as 'T =', 'T D', 'T l' and
 'T L' in VC Directory buffers.
 
+'C-x v T R =' ('vc-diff-remote-unintegrated'), 'C-x v T R D'
+('vc-root-diff-remote-unintegrated'), 'C-x v T R l'
+('vc-log-remote-unintegrated') and 'C-x v T R L'
+('vc-root-log-remote-unintegrated') are corresponding commands which
+report information about the remote versions of a topic branch.
+
++++
+*** New commands to report combined diffs of all local changes.
+'C-x v E =' ('vc-diff-outgoing-and-edited') and 'C-x v E D'
+('vc-root-diff-outgoing-and-edited') report combined diffs of all
+outgoing changes plus any uncommitted changes.  They are useful to show
+all work that's present only locally.
+
 +++
 *** New user option 'vc-use-incoming-outgoing-prefixes'.
 If this is customized to non-nil, 'C-x v I' and 'C-x v O' become prefix
@@ -4610,6 +4600,20 @@ is a proper list, in which case the list will be returned as is,
 otherwise the function will return the object wrapped in a
 singleton list.
 
+---
+** In batch mode, 'C-c' (i.e. SIGINT) can either 'quit' or kill Emacs.
+By default it kills Emacs, as before, but 'kill-emacs-on-sigint'
+can be set to nil to change that.
+The response to SIGINT in interactive sessions is unaffected,
+e.g. in a normal GUI session it still kills Emacs whereas in a terminal
+it causes 'quit' since it is used for 'C-g'.
+
++++
+** New ':interactive-only' way to add an advice.
+While it is marginally more efficient than ':after' or ':before',
+the main purpose is to make the intention more obvious when the advice
+modifies only the interactive form and not the actual behavior
+of the function.
 
 * Changes in Emacs 31.1 on Non-Free Operating Systems
 
