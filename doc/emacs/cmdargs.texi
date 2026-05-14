@@ -459,6 +459,24 @@ a different place, you can use this option to tell Emacs where to find
 that file.
 @end table
 
+@cindex shell alias for minimal Emacs
+  For a minimal-startup, ``open, edit, close'' workflow---for
+example, quick edits to shell init files or other
+configuration---you can combine these options in a shell alias.
+In Bash:
+
+@example
+alias emacs="emacs -Q -nw"
+export EDITOR="emacs -Q -nw"
+@end example
+
+@noindent
+This avoids loading user customizations and runs in the current
+terminal.  You can add an @samp{--eval} action argument
+(@pxref{Action Arguments}) to apply additional setup at launch.
+For an alternative that avoids startup costs on subsequent
+launches, see @ref{Emacs Server}.
+
 @node Command Example
 @appendixsec Command Argument Example
 
