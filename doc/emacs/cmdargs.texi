@@ -466,16 +466,18 @@ configuration---you can combine these options in a shell alias.
 In Bash:
 
 @example
-alias emacs="emacs -Q -nw"
+alias qemacs="emacs -Q -nw"
 export EDITOR="emacs -Q -nw"
 @end example
 
 @noindent
 This avoids loading user customizations and runs in the current
-terminal.  You can add an @samp{--eval} action argument
-(@pxref{Action Arguments}) to apply additional setup at launch.
-For an alternative that avoids startup costs on subsequent
-launches, see @ref{Emacs Server}.
+terminal.  Use a distinct alias name (here, @command{qemacs}) rather
+than shadowing @command{emacs} itself, so that interactive
+invocations still load your full configuration.  You can add an
+@samp{--eval} action argument (@pxref{Action Arguments}) to apply
+additional setup at launch.  For an alternative that avoids startup
+costs on subsequent launches, see @ref{Emacs Server}.
 
 @node Command Example
 @appendixsec Command Argument Example
