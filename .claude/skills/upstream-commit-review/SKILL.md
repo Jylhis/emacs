@@ -61,25 +61,47 @@ Empty result ⇒ a one-line "no candidates" report and the script stops.
 `scripts/classify.py` implements the rule ladder.  First match wins;
 all rules are unit-tested in `scripts/test_classify.py`.
 
-| # | Bucket          | Match                                                                 | Action     |
-|---|-----------------|-----------------------------------------------------------------------|------------|
-| 1 | autotools       | any file matches `^(configure\.ac\|autogen\.sh\|make-dist\|GNUmakefile)$`, `Makefile\.in$`, `^m4/` | SKIP |
-| 2 | merge-noise     | subject matches `^(; *)?Merge \b` or contains `gitmerge`              | SKIP       |
-| 3 | admin           | every file under `admin/`, or matches `^ChangeLog(\.[0-9]+)?$` or `^etc/MAINTAINERS$` | SKIP |
-| — | (missing-file)  | any file in commit not present in HEAD                                | force REVIEW |
-| 4 | doc-only        | every file under `doc/`, `etc/(NEWS\|NEWS.NN\|ERC-NEWS\|HISTORY\|AUTHORS)`, or matches `\.texi(nfo)?$`, `\.org$` | AUTO |
-| 5 | test-only       | every file under `test/`                                              | AUTO       |
-| 6 | lisp-bugfix     | subject contains `Bug#` AND every file under `lisp/` or `test/`       | AUTO       |
-| 7 | lisp-doc-style  | every file matches `^lisp/.+\.el$`, `LINES < 50`, AND (subject begins with `; ` OR matches `\b(docstring\|doc fix\|typo\|when-let\|comment fix)\b`) | AUTO |
-| 8 | small-src       | every file under `src/`, `LINES < 50`, AND (subject begins with `Fix `, `; Fix `, `Pacify `, `Avoid `, `; Avoid `, `Don't `, `; * src/` OR contains `Bug#` OR `LINES < 20`) | AUTO |
-| 9 | lisp+news-bug   | subject contains `Bug#` AND every file under `lisp/`, `test/`, or `etc/NEWS(\.NN)?` | AUTO |
-| 10| review (feature)| subject matches `^(Add\|New\|Introduce)\b`                            | REVIEW with reason `feature` |
-| 11| review          | everything else                                                       | REVIEW     |
+| #   | Bucket            | Match                                                                 | Action     |
+|-----|-------------------|-----------------------------------------------------------------------|------------|
+| 1   | autotools         | any file matches `^(configure\.ac\|autogen\.sh\|make-dist\|GNUmakefile)$`, `Makefile\.in$`, `^m4/` | SKIP |
+| 2   | merge-noise       | subject matches `^(; *)?Merge \b` or contains `gitmerge`              | SKIP       |
+| 3   | admin             | every file under `admin/`, or matches `^ChangeLog(\.[0-9]+)?$` or `^etc/MAINTAINERS$` | SKIP |
+| 3.5 | release-branch    | subject matches `^Change \w+ version for Emacs \d+ to `, `^Cut the emacs-\d+ release branch`, or `^Bump (master )?Emacs version` | SKIP |
+| —   | (missing-file)    | any file in commit not present in HEAD, **excluding** files the commit adds (`A` in `--name-status`) AND with `etc/NEWS` mapped to `etc/NEWS.31` via the fork's rename table | force REVIEW |
+| 4   | doc-only          | every file under `doc/`, `etc/(NEWS\|NEWS.NN\|ERC-NEWS\|HISTORY\|AUTHORS\|PROBLEMS)`, or matches `\.texi(nfo)?$`, `\.org$` | AUTO |
+| 5   | test-only         | every file under `test/`                                              | AUTO       |
+| 6   | lisp-bugfix       | **`Bug#` anywhere in subject or body** AND every file under `lisp/` or `test/` | AUTO       |
+| 7   | lisp-doc-style    | every file matches `^lisp/.+\.el$`, `LINES < 50`, AND (subject begins with `; ` OR matches `\b(docstring\|doc fix\|typo\|when-let\|comment fix)\b`) | AUTO |
+| 8   | small-src         | every file under `src/`, `LINES < 50`, AND (**`Bug#` anywhere in subject or body** OR `LINES < 20` OR subject begins with `Fix `/`; Fix `/`Pacify `/`Avoid `/`; Avoid `/`Don't `/`; * src/`) | AUTO |
+| 9   | lisp+news-bug     | **`Bug#` anywhere in subject or body** AND every file under `lisp/`, `test/`, `doc/`, or `etc/NEWS(\.NN)?` | AUTO |
+| 10  | review (feature)  | subject matches `^(Add\|New\|Introduce)\b`                            | REVIEW with reason `feature` |
+| 11  | review            | everything else                                                       | REVIEW     |
 
 Why-column tags for REVIEW rows: `feature`, `large`, `lisp+src`,
 `lisp-multi-area`, `src-multi-file`, `lisp-no-bug`, `unclassified`,
 `missing-file:<path>`, `conflict:<paths>` (set during apply, not
 classification).
+
+### Rule ladder design notes
+
+- **`Bug#` is matched in body too.**  Many upstream commits keep
+  `Bug#NNNNN` only in the trailer / body, not the subject — the
+  classifier walks both.
+- **Added files are not "missing".**  A commit that creates
+  `test/.../new-scenario.el` shouldn't be demoted just because that
+  file isn't in HEAD yet — we use `git show --name-status` and
+  exclude `A` entries from the missing-file check.
+- **`etc/NEWS` is rename-aware.**  Upstream's `etc/NEWS` is
+  `etc/NEWS.31` in this fork; the renamed-paths map in
+  `classify.py` (`RENAMED_TO`) covers this so commits touching
+  `etc/NEWS` are not falsely flagged.  Git's rename detection
+  routes the diff hunk during cherry-pick.
+- **Release-branch commits are auto-skipped.**  Version bumps and
+  release-branch cuts (e.g. `Change ERC version for Emacs 31 to
+  5.6.2.31.1`) live on the `emacs-NN` release branch and travel to
+  master only via merge.  The standalone commit doesn't apply to
+  master-tracking forks and previously had to be hand-skipped on
+  every run.
 
 ## Cherry-pick & conflict ladder
 
@@ -144,6 +166,13 @@ The script prints:
 5. A reminder that nothing has been pushed.  Recommend running
    `meson test -C build --suite smoke` (or pass `--smoke` next time)
    before pushing.
+
+When `--smoke` is passed, `apply.sh` runs `meson setup build
+--reconfigure` first.  This is idempotent when nothing changed, but
+necessary when the batch included a file rename or add — Meson's
+lisp file manifest is captured at configure time by
+`meson/list_lisp_files.py`, so a stale manifest would otherwise
+break the build.
 
 For backport-commit conventions when finalizing the merge into `dev`,
 see `.claude/rules/commits.md` and `.claude/notes/git-workflow.md`.
