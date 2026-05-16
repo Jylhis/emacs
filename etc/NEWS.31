@@ -3283,6 +3283,14 @@ If a package has dependencies not available on any of the archives in
 'package-archives', it will appear as unavailable, with the reasons
 stated in its description.
 
+---
+*** Package-vc can copy local changes from existing installations
+When installing the latest release of a package, package-vc will propose
+copying files from an existing, tarball installation of the same package
+with the same version.  This is useful if you have started making local
+changes to your tarball installation, and then decide to check out the
+repository to prepare a patch for the package maintainer.
+
 ** Rcirc
 
 +++
