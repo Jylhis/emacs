@@ -86,7 +86,7 @@ mergiraf_resolved_files() {
 while IFS=$'\t' read -r SHA BUCKET REASON LINES FILES; do
     [ -z "$SHA" ] && continue
     case "$BUCKET" in
-        autotools|merge-noise|admin|review)
+        autotools|merge-noise|admin|release-branch|review)
             continue ;;
         doc-only|test-only|lisp-bugfix|lisp-doc-style|small-src|lisp+news-bug)
             ;;
@@ -199,6 +199,17 @@ log "report: $REPORT"
 # ---- Optional smoke test ----------------------------------------------------
 
 if [ "$SMOKE" -eq 1 ]; then
+    # Cherry-picks can rename or add .el files (e.g. moves under
+    # lisp/obsolete/, new test scenario files).  Meson's file
+    # manifest is captured at configure time by
+    # `meson/list_lisp_files.py`; without a reconfigure ninja will
+    # complain about stale paths.  meson setup --reconfigure is a
+    # no-op when nothing changed.
+    if [ -d "${REPO_ROOT}/build" ]; then
+        log "meson reconfigure (for any cherry-picked file moves/adds)"
+        meson setup "${REPO_ROOT}/build" --reconfigure >>"$LOG" 2>&1 \
+            || die "meson setup --reconfigure failed"
+    fi
     log "running smoke tests"
     if meson test -C "${REPO_ROOT}/build" --suite smoke 2>&1 | tee -a "$LOG"; then
         log "smoke OK"

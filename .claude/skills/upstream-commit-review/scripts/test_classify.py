@@ -19,8 +19,16 @@ import classify  # noqa: E402  (module-style import after sys.path)
 
 
 def commit(sha: str, subject: str, files: list[str], lines: int = 5,
-           missing: bool = False) -> classify.Commit:
-    c = classify.Commit(sha=sha, subject=subject, files=files, lines=lines)
+           missing: bool = False, body: str = "",
+           added_files: set[str] | None = None) -> classify.Commit:
+    c = classify.Commit(
+        sha=sha,
+        subject=subject,
+        body=body,
+        files=files,
+        added_files=added_files or set(),
+        lines=lines,
+    )
     return c
 
 
@@ -192,6 +200,72 @@ class ClassifyTests(unittest.TestCase):
             self.assertEqual(d.bucket, "review")
             # Ordering: feature wins over `large`.
             self.assertEqual(d.reason, "feature")
+
+    # ---- Bug# matched in body (not subject) --------------------------------
+
+    def test_lisp_bugfix_bug_in_body(self):
+        """`c68f3237bea2` shape: Bug# only in body, subject doesn't say."""
+        with patch.object(os.path, "exists", return_value=True):
+            d = classify.classify(commit(
+                "a" * 40, "Fix file-name-non-special impl of get-file-buffer",
+                ["lisp/files.el", "test/lisp/files-tests.el"],
+                lines=18,
+                body=("* lisp/files.el (file-name-non-special): "
+                      "Fix `get-file-buffer'.  (Bug#80718)")))
+            self.assertEqual(d.bucket, "lisp-bugfix")
+
+    def test_small_src_bug_in_body(self):
+        with patch.object(os.path, "exists", return_value=True):
+            d = classify.classify(commit(
+                "a" * 40, "Tweak compositor",
+                ["src/composite.c"], lines=30,
+                body="Tighten the loop, see Bug#80999."))
+            self.assertEqual(d.bucket, "small-src")
+
+    # ---- etc/NEWS rename: not flagged as missing-file ----------------------
+
+    def test_etc_news_routes_to_news_31(self):
+        """`984024daf3ce` shape: commit touches upstream etc/NEWS; the
+        fork has etc/NEWS.31 instead.  Should not be demoted on missing."""
+        def fake_exists(p: str) -> bool:
+            return p == "etc/NEWS.31" or p.startswith(("lisp/", "doc/"))
+        with patch.object(os.path, "exists", side_effect=fake_exists):
+            d = classify.classify(commit(
+                "a" * 40, "Eglot: rendering tweak (bug#80127)",
+                ["lisp/progmodes/eglot.el", "doc/misc/eglot.texi",
+                 "etc/NEWS"], lines=12))
+            self.assertEqual(d.bucket, "lisp+news-bug")
+
+    # ---- Added files: not flagged missing ----------------------------------
+
+    def test_added_file_is_not_missing(self):
+        """`cf9728c4be8f` shape: commit creates a new test scenario file."""
+        def fake_exists(p: str) -> bool:
+            return p != "test/lisp/erc/erc-scenarios-log-options.el"
+        with patch.object(os.path, "exists", side_effect=fake_exists):
+            d = classify.classify(commit(
+                "a" * 40, "Only perform erc-log-insert-log-on-open setup once",
+                ["lisp/erc/erc-log.el", "etc/ERC-NEWS",
+                 "test/lisp/erc/erc-scenarios-log-options.el"],
+                lines=316,
+                added_files={"test/lisp/erc/erc-scenarios-log-options.el"}))
+            # Large but should land in REVIEW for size, not missing-file.
+            self.assertEqual(d.bucket, "review")
+            self.assertEqual(d.reason, "large")
+
+    # ---- Release-branch detection ------------------------------------------
+
+    def test_release_branch_skip(self):
+        with patch.object(os.path, "exists", return_value=True):
+            for subj in [
+                "Change ERC version for Emacs 31 to 5.6.2.31.1",
+                "Cut the emacs-31 release branch",
+                "Bump master Emacs version to 32.0.50",
+            ]:
+                with self.subTest(subj=subj):
+                    d = classify.classify(commit(
+                        "a" * 40, subj, ["lisp/erc/erc.el"]))
+                    self.assertEqual(d.bucket, "release-branch")
 
 
 if __name__ == "__main__":

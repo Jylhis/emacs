@@ -18,6 +18,8 @@ session.
   merging release branches, and bisecting.
 - [DevEnv Gaps](devenv-gaps.md) -- packages and scripts missing from
   devenv.nix that the upstream docs recommend.
+- [Fork TODOs](fork-todos.md) -- open follow-up work for this fork
+  (local ldefs-boot.el regeneration, etc.).
 
 ### External Forks and Patch Sources
 
