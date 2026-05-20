@@ -413,7 +413,12 @@ if gtk3_dep.found()
   # All true on Linux/X11R7+ and X11 via Nix on macOS.
   # HAVE_X_I18N is unconditional for X11R6+ in autotools (configure.ac
   # XLIB AC_DEFINE block); xterm.c's GTK + XInput2 path expects it.
+  # HAVE_X11R6 is the umbrella; xterm.c gates xim_destroy_callback's
+  # definition under HAVE_X11R6 && HAVE_X11R6_XIM but the caller only
+  # under HAVE_X11R6_XIM, so both must be set together or the symbol
+  # is referenced without a definition.
   conf_data.set('HAVE_X_I18N', 1)
+  conf_data.set('HAVE_X11R6', 1)
   conf_data.set('HAVE_X11R6_XIM', 1)
   conf_data.set('HAVE_XRMSETDATABASE', 1)
   conf_data.set('HAVE_XKB', 1)
