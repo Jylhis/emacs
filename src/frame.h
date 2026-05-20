@@ -68,7 +68,8 @@ enum ns_appearance_type
   {
     ns_appearance_system_default,
     ns_appearance_aqua,
-    ns_appearance_vibrant_dark
+    ns_appearance_vibrant_dark,
+    ns_appearance_dark_aqua
   };
 #endif
 #endif /* HAVE_WINDOW_SYSTEM */
@@ -434,6 +435,9 @@ struct frame
 
   /* True if this is an undecorated frame.  */
   bool_bf undecorated : 1;
+
+  /* True if this is an undecorated frame with round corners.  */
+  bool_bf undecorated_round : 1;
 
   /* Nonzero if this frame's window does not want to receive input focus
      via mouse clicks or by moving the mouse into it.  */
@@ -1204,6 +1208,7 @@ FRAME_PARENT_FRAME (struct frame *f)
 }
 
 #define FRAME_UNDECORATED(f) ((f)->undecorated)
+#define FRAME_UNDECORATED_ROUND(f) ((f)->undecorated_round)
 
 #if defined (HAVE_WINDOW_SYSTEM)
 #define FRAME_OVERRIDE_REDIRECT(f) ((f)->override_redirect)

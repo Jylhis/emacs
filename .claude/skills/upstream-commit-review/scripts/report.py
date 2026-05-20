@@ -103,6 +103,10 @@ def render(args) -> str:
     retry_rows = read_tsv(args.retry_tsv)
     failed_rows = read_tsv(args.failed_tsv)
     news_rows = read_tsv(args.news_port_tsv)
+    patch_source_rows = (
+        read_tsv(args.patch_sources_tsv)
+        if getattr(args, "patch_sources_tsv", None) else []
+    )
 
     n_total = len(classify_rows)
     n_applied = len(applied_rows)
@@ -224,6 +228,51 @@ def render(args) -> str:
             lines.append("```")
             lines.append("")
 
+    # PATCH-SOURCE drift + candidates
+    drift_rows = [r for r in patch_source_rows
+                  if len(r) >= 3 and r[2] in {"new", "changed",
+                                              "removed", "error"}]
+    if drift_rows:
+        lines.append("## Patch-source drift")
+        lines.append("")
+        lines.append("File-based patches tracked from external repos "
+                     "(see `references/patch-sources.md`).  Status "
+                     "compares the SHA-256 of each patch body against "
+                     "`scripts/state/patch-sources.json`.")
+        lines.append("")
+        by_source: dict[str, list[list[str]]] = defaultdict(list)
+        for row in drift_rows:
+            by_source[row[0]].append(row)
+        for src in sorted(by_source):
+            lines.append(f"### {src}")
+            lines.append("")
+            lines.append("| Path | Status | Verdict | Note |")
+            lines.append("|---|---|---|---|")
+            for row in by_source[src]:
+                # row layout: name, path, status, verdict, note?
+                path = row[1]
+                status = row[2]
+                verdict = row[3] if len(row) >= 4 else ""
+                note = row[4] if len(row) >= 5 else ""
+                lines.append(
+                    f"| `{path}` | {status} | {verdict} | {note} |"
+                )
+            lines.append("")
+        # Highlight new rows for human action.
+        new_rows = [r for r in drift_rows if r[2] == "new"]
+        if new_rows:
+            lines.append("#### New patches awaiting verdict")
+            lines.append("")
+            lines.append("Run `python3 scripts/patch_sources.py "
+                         "update-baseline` after writing per-patch "
+                         "verdicts into `scripts/state/patch-sources.json`. "
+                         "Verdict values: `absorb-now`, "
+                         "`verify-then-absorb`, `defer`, `not-applicable`.")
+            lines.append("")
+            for r in new_rows:
+                lines.append(f"- **{r[0]}** — `{r[1]}`")
+            lines.append("")
+
     # NEWS-port section
     if news_rows:
         lines.append("## NEWS hunks needing port to etc/NEWS.31")
@@ -258,6 +307,7 @@ def main(argv: list[str]) -> int:
     p.add_argument("--retry-tsv", required=True)
     p.add_argument("--failed-tsv", required=True)
     p.add_argument("--news-port-tsv", required=True)
+    p.add_argument("--patch-sources-tsv", required=False, default="")
     p.add_argument("--anchor", required=True)
     p.add_argument("--anchor-subject", required=True)
     p.add_argument("--anchor-date", required=True)
