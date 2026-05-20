@@ -4710,6 +4710,16 @@ You may notice a slight change in dictation UI provided by macOS.
 ** On Mac OS X, stipples now render with color.
 
 ---
+** New macOS hook 'ns-system-appearance-change-functions'.
+The Cocoa port now exposes the system's light / dark appearance via
+the variable 'ns-system-appearance' (a symbol, either 'light or 'dark)
+and runs 'ns-system-appearance-change-functions' with that symbol
+whenever the system switches.  This lets configurations select a
+matching theme automatically without polling.  Effective on macOS
+10.14 (Mojave) and later.  This is a downstream extension carried by
+the jylhis/emacs fork; not part of upstream Emacs 31.
+
+---
 ** Emacs on MS-Windows now supports GUI dialogs and message boxes better.
 In particular, it is now possible to show text with embedded newlines in
 a dialog popped by 'message-box'.  This is supported on Windows Vista
