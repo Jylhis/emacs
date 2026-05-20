@@ -90,6 +90,25 @@ in
     shell.enable = true;
   };
 
+  # The `libgccjit` package in the packages list above puts an
+  # *unwrapped* `gcc` first on PATH, which shadows the gcc-wrapper
+  # provided by `languages.c.enable`.  meson probes the compiler
+  # via `gcc`, so it picks the unwrapped one whose link line has
+  # no `-L /nix/store/.../glibc/lib` and fails with "cannot find
+  # Scrt1.o".  `cc` is symlinked only into the wrapper; force the
+  # toolchain through it via env vars.  `languages.c.enable`
+  # sets CC=gcc / CXX=g++ in its own enterShell, so we re-export
+  # *after* that to win.
+  env = {
+    CC = "cc";
+    CXX = "c++";
+  };
+
+  enterShell = ''
+    export CC=cc
+    export CXX=c++
+  '';
+
   # https://devenv.sh/binary-caching/
   cachix = {
     enable = true;
