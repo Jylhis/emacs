@@ -4710,7 +4710,7 @@ android_get_image (android_drawable handle,
       if (ckd_mul (&byte_size, bitmap_info.stride, bitmap_info.height))
 	{
 	  ANDROID_DELETE_LOCAL_REF (bitmap);
-	  memory_full (0);
+	  memory_full_up ();
 	}
     }
   else
