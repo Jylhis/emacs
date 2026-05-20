@@ -305,7 +305,7 @@ gnulib_in_h_specs = [
   ['ieee754',      {}],
   ['errno',        errno_overrides],
   ['stddef',       stddef_overrides],
-  ['sys_types',    sys_types_overrides],
+  ['sys_types',    sys_types_overrides, 'sys/types.h'],
   ['string',       string_overrides],
   ['getopt-cdefs', getopt_cdefs_overrides],
   ['getopt',       getopt_overrides],
@@ -381,10 +381,7 @@ foreach spec : gnulib_in_h_specs
   foreach k, v : overrides
     set_args += ['--set', k + '=' + v]
   endforeach
-  out_name = name + '.h'
-  if name == 'sys_types'
-    out_name = 'sys/types.h'
-  endif
+  out_name = spec.length() > 2 ? spec[2] : name + '.h'
   out = custom_target(
     out_name,
     input : name + '.in.h',
