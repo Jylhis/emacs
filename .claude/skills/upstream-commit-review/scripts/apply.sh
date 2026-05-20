@@ -6,10 +6,13 @@
 # Usage:
 #   bash scripts/apply.sh [--dry-run] [--smoke]
 #                         [--retry-allow=PATH,PATH,...]
+#                         [--skip-patch-sources]
 #
-# --dry-run    print the classification TSV; do not cherry-pick.
-# --smoke      after the batch, run `meson test -C build --suite smoke`.
-# --retry-allow override the tier-3 drift allowlist (defaults below).
+# --dry-run            print the classification TSV; do not cherry-pick.
+# --smoke              after the batch, run `meson test -C build --suite smoke`.
+# --retry-allow=...    override the tier-3 drift allowlist (defaults below).
+# --skip-patch-sources skip the patch-source poll step (see
+#                      references/patch-sources.md).
 
 set -uo pipefail
 
@@ -19,12 +22,14 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 DRY_RUN=0
 SMOKE=0
+SKIP_PATCH_SOURCES=0
 RETRY_ALLOW="src/keyboard.c,src/xdisp.c,src/coding.c,etc/AUTHORS"
 for arg in "$@"; do
     case $arg in
         --dry-run)              DRY_RUN=1 ;;
         --smoke)                SMOKE=1 ;;
         --retry-allow=*)        RETRY_ALLOW=${arg#--retry-allow=} ;;
+        --skip-patch-sources)   SKIP_PATCH_SOURCES=1 ;;
         -h|--help)
             sed -n '/^# Usage:/,/^[^#]/p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) die "unknown arg: $arg" ;;
@@ -53,6 +58,19 @@ log "classified: $(wc -l <"$CLASSIFY_TSV" | tr -d ' ') candidates"
 if [ "$DRY_RUN" -eq 1 ]; then
     cat "$CLASSIFY_TSV"
     log "dry run: stopping before cherry-pick"
+    # The patch-source poll is independent of the cherry-pick loop;
+    # run it anyway so dry-run also surfaces patch drift.
+    if [ "$SKIP_PATCH_SOURCES" -eq 0 ]; then
+        PATCH_SOURCES_TSV=${RUN_DIR}/patch-sources.tsv
+        export RUN_DIR
+        if RUN_DIR="$RUN_DIR" python3 "${SCRIPT_DIR}/patch_sources.py" \
+                report --report-tsv "$PATCH_SOURCES_TSV" >>"$LOG" 2>&1; then
+            log "patch-source poll: $(wc -l <"$PATCH_SOURCES_TSV" | tr -d ' ') rows"
+            cat "$PATCH_SOURCES_TSV"
+        else
+            log "patch-source poll FAILED — see $LOG (continuing)"
+        fi
+    fi
     printf '%s\n' "${RUN_DIR}"
     exit 0
 fi
@@ -163,6 +181,25 @@ F=$(wc -l <"$FAILED_TSV"  | tr -d ' ')
 N=$(wc -l <"$NEWS_PORT_TSV" | tr -d ' ')
 log "applied=${A} retried=${R} failed=${F} news-port=${N}"
 
+# ---- Patch-source poll ------------------------------------------------------
+# Runs independently of the cherry-pick loop.  Writes a TSV the report
+# renderer picks up; failures degrade gracefully (a section is just
+# omitted).
+PATCH_SOURCES_TSV=${RUN_DIR}/patch-sources.tsv
+if [ "$SKIP_PATCH_SOURCES" -eq 0 ]; then
+    export RUN_DIR
+    if RUN_DIR="$RUN_DIR" python3 "${SCRIPT_DIR}/patch_sources.py" \
+            report --report-tsv "$PATCH_SOURCES_TSV" >>"$LOG" 2>&1; then
+        log "patch-source poll: $(wc -l <"$PATCH_SOURCES_TSV" | tr -d ' ') rows"
+    else
+        log "patch-source poll FAILED — see $LOG (continuing)"
+        : > "$PATCH_SOURCES_TSV"  # ensure empty so report.py skips section
+    fi
+else
+    : > "$PATCH_SOURCES_TSV"
+    log "patch-source poll skipped (--skip-patch-sources)"
+fi
+
 # ---- Report -----------------------------------------------------------------
 
 REPORT_DIR=${REPO_ROOT}/.claude/notes
@@ -179,6 +216,7 @@ python3 "${SCRIPT_DIR}/report.py" \
     --retry-tsv "$RETRY_TSV" \
     --failed-tsv "$FAILED_TSV" \
     --news-port-tsv "$NEWS_PORT_TSV" \
+    --patch-sources-tsv "$PATCH_SOURCES_TSV" \
     --anchor "$ANCHOR" \
     --anchor-subject "$ANCHOR_SUBJ" \
     --anchor-date "$ANCHOR_DATE_FMT" \
