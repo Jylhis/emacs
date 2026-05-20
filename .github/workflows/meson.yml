@@ -278,20 +278,28 @@ jobs:
         run: |
           set -uo pipefail
           set -x
-          devenv version || true
-          devenv --version || true
-          # Show what `devenv shell` does with various invocation forms.
-          # `|| true` so a failing form doesn't abort -- we want to see
-          # which ones work.
-          devenv shell -- bash -c 'echo "[A] PATH=$PATH"; command -v meson; command -v cc' || echo "[A] failed"
-          devenv shell bash -c 'echo "[B] PATH=$PATH"; command -v meson; command -v cc' || echo "[B] failed"
-          echo '#!/usr/bin/env bash
+          # Single quotes below are intentional: $PATH / $DEVENV_ROOT
+          # must be expanded *inside* devenv shell, not by this outer
+          # bash.  Suppress the SC2016 false positive.
+          # shellcheck disable=SC2016
+          {
+            devenv version || true
+            devenv --version || true
+            # Show what `devenv shell` does with various invocation forms.
+            # `|| true` so a failing form doesn't abort -- we want to see
+            # which ones work.
+            devenv shell -- bash -c 'echo "[A] PATH=$PATH"; command -v meson; command -v cc' || echo "[A] failed"
+            devenv shell bash -c 'echo "[B] PATH=$PATH"; command -v meson; command -v cc' || echo "[B] failed"
+            cat > /tmp/smoke.sh <<'SMOKE'
+          #!/usr/bin/env bash
           echo "[C] PATH=$PATH"
           command -v meson
-          command -v cc' > /tmp/smoke.sh
-          chmod +x /tmp/smoke.sh
-          devenv shell /tmp/smoke.sh || echo "[C] failed"
-          devenv shell -- /tmp/smoke.sh || echo "[C2] failed"
+          command -v cc
+          SMOKE
+            chmod +x /tmp/smoke.sh
+            devenv shell /tmp/smoke.sh || echo "[C] failed"
+            devenv shell -- /tmp/smoke.sh || echo "[C2] failed"
+          }
 
       # ---- Hoist devenv env via $BASH_ENV -----------------------------
       # `$GITHUB_ENV` writes name=value pairs, but Nix gcc-wrapper
