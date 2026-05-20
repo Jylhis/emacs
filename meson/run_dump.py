@@ -34,6 +34,10 @@ def main() -> int:
     p.add_argument("--doc-file", type=Path,
                    help="generated etc/DOC; required for pdump mode "
                         "where loadup.el's Snarf-documentation reads it.")
+    p.add_argument("--no-build-details", action="store_true",
+                   help="pass --no-build-details to the dump invocation "
+                        "(omits build time, host name, etc. from the "
+                        "dumped image; mirrors autotools BUILD_DETAILS).")
     args = p.parse_args()
 
     src_root = args.source_root.resolve()
@@ -101,9 +105,11 @@ def main() -> int:
     out_dir = args.output_pdmp.parent
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        args.bootstrap_emacs,
-        "--batch", "-l", "loadup",
+    cmd = [args.bootstrap_emacs, "--batch"]
+    if args.no_build_details:
+        cmd.append("--no-build-details")
+    cmd += [
+        "-l", "loadup",
         f"--temacs={args.mode}",
         "--bin-dest", str(out_dir / "bin"),
         "--eln-dest", str(out_dir / "native-lisp"),
