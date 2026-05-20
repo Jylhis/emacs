@@ -78,16 +78,14 @@ if not cc.has_function('sigdescr_np',
     prefix : '#define _GNU_SOURCE 1\n#include <string.h>')
   libgnu_sources += files('sigdescr_np.c')
 endif
-if not cc.has_function('getrandom',
-    prefix : '#include <sys/random.h>')
+if not conf_data.has('HAVE_GETRANDOM')
   libgnu_sources += files('getrandom.c')
 endif
 if not cc.has_function('__fpending',
     prefix : '#include <stdio_ext.h>')
   libgnu_sources += files('fpending.c')
 endif
-if not cc.has_function('copy_file_range',
-    prefix : '#define _GNU_SOURCE 1\n#include <unistd.h>')
+if not conf_data.has('HAVE_COPY_FILE_RANGE')
   libgnu_sources += files('copy-file-range.c')
 endif
 # regex.c and malloc/dynarray_*.c: gnulib's included POSIX regex
