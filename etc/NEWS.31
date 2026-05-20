@@ -25,35 +25,6 @@ applies, and please also update docstrings as needed.
 * Installation Changes in Emacs 31.1
 
 +++
-** Support for legacy platforms removed.
-Emacs now targets only the following platforms:
-
-  - GNU/Linux on x86_64 and aarch64.
-  - macOS on x86_64 (Intel) and arm64 (Apple Silicon), via the Cocoa
-    NS port.
-  - Android (NDK builds).
-
-Support for the following operating systems has been removed: MS-DOS,
-all variants of MS Windows (NT, 9x, MinGW, Cygwin), FreeBSD, NetBSD,
-OpenBSD, DragonFly BSD, GNU/kFreeBSD, GNU/Hurd, HP-UX, AIX,
-Solaris/SunOS, IRIX, OSF/Tru64, Unixware, QNX, NaCl, and Haiku.  The
-GNUstep build of the NS port is also gone.
-
-Support for 32-bit CPU architectures on the host system has been
-removed (i386/i486/i586/i686, m68k, vax, alpha, sparc/sparc64, mips,
-powerpc-32, ia64, hppa, sh, s390, etc.).
-
-The Lucid (Xlw), Athena (Xaw/Xaw3d), Motif (Xm), and no-toolkit X11
-builds have been removed.  GTK 3 is now the only supported X11
-toolkit.  The Pure-GTK (Wayland) and TTY backends are unchanged.
-
-Legacy terminal types are no longer supported: AT386, bobcat,
-iris-ansi, lk201, news, sun, tvi970, vt100, vt200, wyse50, fbterm.
-
-WebAssembly/web is not currently supported but is being investigated
-as a future target.
-
-+++
 ** Unexec dumper removed.
 The traditional unexec dumper, deprecated since Emacs 27, has been
 removed.
@@ -116,6 +87,13 @@ Info node "(emacs) User Lisp Directory" for more details.
 Previously, only spacing below the line could be specified.  The user
 option can now be set to a cons cell to specify spacing both above and
 below the line, which allows for vertically centering text.
+
++++
+** New face 'margin' for the window margin display.
+A new basic face 'margin' is used by default for text displayed in the
+left and right margin areas, which are used by various packages for
+per-line annotations.  Its background defaults to the frame default, so
+existing behavior is unchanged for users who do not customize it.
 
 +++
 ** 'prettify-symbols-mode' attempts to ignore undisplayable characters.
@@ -795,7 +773,7 @@ more terminals and applications than the old capabilities, 'setf24' and
 +++
 ** New user option 'xterm-update-cursor' to update cursor display on TTYs.
 When enabled, Emacs sends Xterm escape sequences on Xterm-compatible
-terminals to update the cursor's appearacse.  Emacs can update the
+terminals to update the cursor's appearance.  Emacs can update the
 cursor's shape and color.  For example, if you use a purple bar cursor
 on graphical displays then when this option is enabled Emacs will use a
 purple bar cursor on compatible terminals as well.  See the Info node
@@ -817,7 +795,7 @@ docstring for the new option.
 See the file "etc/ORG-NEWS" for user-visible changes in Org.
 
 +++
-** New user option 'compilation-search-extra-path'
+** New user option 'compilation-search-extra-path'.
 compile.el will now use paths specified in both
 'compilation-search-extra-path' and 'compilation-search-path', when
 doing search.  'compilation-search-extra-path' is consulted first.
@@ -1005,11 +983,10 @@ It is equivalent to running 'project-any-command' with
 The prompt now displays the chosen project on which to invoke a command.
 
 ---
-*** 'project-prompter' values may be called with up to four arguments.
+*** 'project-prompter' values may be called with up to three arguments.
 These allow callers of the value of 'project-prompter' to specify a
 prompt string; prompt the user to choose between a subset of all the
-known projects; disallow returning arbitrary directories; and allow
-returning an empty string.
+known projects; and disallow returning arbitrary directories.
 See the docstring of 'project-prompter' for a full specification of
 these new optional arguments.
 
@@ -1990,6 +1967,17 @@ Gnus, see "(gnus) Symbolic Prefixes" in the Gnus manual.
 ---
 *** Sorting selected groups is now possible with 'gnus-topic-mode'.
 
+---
+*** gnus-dbus.el is now obsolete.
+
++++
+*** System sleep integration is now independent of D-Bus.
+The system sleep integration previously provided by customizing the
+variable 'gnus-dbus-close-on-sleep' is now deprecated.  A new system
+using the builtin 'system-sleep' library is now available by customizing
+'gnus-close-on-sleep'.  This will work on all systems that the
+'system-sleep' library supports.
+
 ** Sieve
 
 +++
@@ -2463,6 +2451,13 @@ This can be used by external ELPA packages for performance optimizations
 in special cases.  For more information, see "(tramp) New operations" in
 the Tramp manual.
 
++++
+*** New user option 'tramp-propagate-emacsclient-tramp'.
+When this option is non-nil, Tramp propagates the environment variable
+EMACSCLIENT_TRAMP with a proper value to remote processes.  This is
+helpful if you want to start emacsclient on a remote host from a process
+started inside Emacs.
+
 ** Isearch and Replace
 
 *** Typing 'd' during 'query-replace' shows the diff buffer with replacements.
@@ -2834,7 +2829,7 @@ another branch.
 ---
 *** VC Annotate for Mercurial repositories shows changeset hashes.
 To restore showing revision numbers instead of changeset hashes,
-customize the new option vc-hg-annotate-show-revision-numbers to
+customize the new user option 'vc-hg-annotate-show-revision-numbers' to
 non-nil.
 
 +++
@@ -3036,6 +3031,19 @@ base with the remote branch, including uncommitted changes.
 These are useful to view all outstanding (unmerged, unpushed) changes on
 the current branch.  They are also available as 'T =', 'T D', 'T l' and
 'T L' in VC Directory buffers.
+
+'C-x v T R =' ('vc-diff-remote-unintegrated'), 'C-x v T R D'
+('vc-root-diff-remote-unintegrated'), 'C-x v T R l'
+('vc-log-remote-unintegrated') and 'C-x v T R L'
+('vc-root-log-remote-unintegrated') are corresponding commands which
+report information about the remote versions of a topic branch.
+
++++
+*** New commands to report combined diffs of all local changes.
+'C-x v E =' ('vc-diff-outgoing-and-edited') and 'C-x v E D'
+('vc-root-diff-outgoing-and-edited') report combined diffs of all
+outgoing changes plus any uncommitted changes.  They are useful to show
+all work that's present only locally.
 
 +++
 *** New user option 'vc-use-incoming-outgoing-prefixes'.
@@ -3274,6 +3282,14 @@ upgrade.  By default, this is set to nil, to keep the previous behavior.
 If a package has dependencies not available on any of the archives in
 'package-archives', it will appear as unavailable, with the reasons
 stated in its description.
+
+---
+*** Package-vc can copy local changes from existing installations.
+When installing the latest release of a package, 'package-vc' will
+propose copying files from an existing tarball installation of the same
+package with the same version.  This is useful if you have started
+making local changes to your tarball installation, and then decided to
+check out the repository to prepare a patch for the package maintainer.
 
 ** Rcirc
 
@@ -4609,6 +4625,28 @@ This function is a variation on 'ensure-list' that checks if an object
 is a proper list, in which case the list will be returned as is,
 otherwise the function will return the object wrapped in a
 singleton list.
+
+---
+** In batch mode, 'C-c' (i.e. SIGINT) can either 'quit' or kill Emacs.
+By default it kills Emacs, as before, but 'kill-emacs-on-sigint'
+can be set to nil to change that.
+The response to SIGINT in interactive sessions is unaffected,
+e.g., in a normal GUI session it still kills Emacs whereas in a terminal
+it causes 'quit' since it is used for 'C-g'.
+
++++
+** New ':interactive-only' way to add an advice.
+While it is marginally more efficient than ':after' or ':before',
+the main purpose is to make the intention more obvious when the advice
+modifies only the interactive form and not the actual behavior
+of the function.
+
+---
+** New variable 'completion-frontend-properties'.
+This variable generalizes the 'completion-lazy-hilit' variable added in
+Emacs 30.  It allows Lisp programs that present completion candidates
+("completion frontends") to provide additional information which can be
+used to adjust or optimize completion candidates computation.
 
 
 * Changes in Emacs 31.1 on Non-Free Operating Systems
