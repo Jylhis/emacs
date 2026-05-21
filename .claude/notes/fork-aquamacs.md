@@ -87,40 +87,28 @@ exist.
 - `ns-cycle-frame` / `ns-visible-frame-list`
 - `ns-frame-is-on-active-space-p` (Spaces awareness)
 
-## Cherry-Pick Feasibility
+## Absorb verdict (downstream — into `jylhis/emacs`)
 
-### Likely Useful for Upstream
+Aquamacs is not patch-based (it carries a large Elisp overlay plus
+`#ifdef AQUAMACS` source blocks against Emacs 29.4), so the
+patch-source poll cannot track it mechanically.  Below is a manual
+candidate list.  Each candidate would need forward-porting from 29.4
+to this fork's 31.0.50 base and stripping the `AQUAMACS` ifdefs.
 
-1. **NSSpellChecker integration** -- The NS port has no native
-   spellchecker.  The 11 functions in nsaquamacs.m provide full
-   access.  Would need refactoring (remove AQUAMACS ifdefs,
-   follow upstream coding style) but the API design is proven.
+| Candidate | Verdict | Why |
+|---|---|---|
+| NSSpellChecker primitives (11 DEFUNs in `src/nsaquamacs.m`) | **defer (separate workstream)** | Substantive feature gap in the NS port; clean API design but ~1300 lines plus a new source file.  File under `fork-todos.md` as its own track. |
+| NSCalibratedRGBColorSpace fix in `src/nsfns.m` | **verify-then-absorb** | Trivial change; verify against this fork's current `src/nsfns.m` colorspace handling before applying. |
+| `ns-frame-is-on-active-space-p`, `ns-visible-frame-list` | **defer** | Useful for macOS Spaces awareness, but tied to Aquamacs' frame-tracking model; needs reimplementation, not a port. |
+| Native print/page-setup sheet dialogs | **defer** | Better UX than the current NS print path but non-trivial; queue behind NSSpellChecker. |
+| Copy as RTF/PDF | **not-applicable** | Uses WebKit; design controversy + adds a heavyweight dep. |
+| Smart frame positioning | **not-applicable** | Aquamacs-specific runtime model. |
+| One-buffer-one-frame, `osx-key-mode`, bundled packages | **not-applicable** | Distribution-level decisions outside the source. |
 
-2. **NSCalibratedRGBColorSpace fix** (nsfns.m) -- Trivially
-   portable, improves color accuracy.
+## Polling
 
-3. **Multi-space frame awareness** -- `ns-frame-is-on-active-space-p`
-   and `ns-visible-frame-list` for proper macOS Spaces support.
-
-4. **Native print dialog** -- Better sheet-style dialogs.
-
-### Would Need Significant Rework
-
-5. **Copy as RTF/PDF** -- Uses WebKit, may be controversial.
-
-6. **Smart frame positioning** -- Good concept but heavily
-   Aquamacs-specific.
-
-### Not Suitable for Upstream
-
-7. **One-buffer-one-frame** -- Too opinionated for vanilla Emacs.
-8. **osx-key-mode** -- Conflicts with Emacs keybinding philosophy.
-9. **Bundled packages** -- ELPA/MELPA handles this.
-
-### Key Observation
-
-The C changes are surprisingly small and surgical.  Most of
-Aquamacs' value is in Elisp that could be packaged independently.
-The NSSpellChecker wrapper is the most substantial piece with no
-upstream equivalent.  However, Aquamacs is based on Emacs 29.4,
-so patches would need forward-porting to master (31.x).
+Not tracked by the patch-source poll by default — see the seed
+manifest in `attributes/patch-sources.toml` (the `aquamacs` source is
+commented out).  Aquamacs ships diffs only as branches against
+upstream; tracking would require a separate git-diff workflow, and
+the candidate list above is the manual replacement.

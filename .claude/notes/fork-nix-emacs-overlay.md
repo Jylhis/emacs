@@ -56,14 +56,30 @@ NOT applied to emacs-unstable (uses nixpkgs upstream patch).
 - IGC variants: `mps` build input + `--with-mps=yes`
 - Tramp 2.8.0.4 tarball workaround (pinned to 2.8.0.3)
 
-## Cherry-Pick Feasibility
+## Absorb verdict (downstream — into `jylhis/emacs`)
 
-**No patches applicable to upstream GNU Emacs.**  The sole current
-patch (`native-comp-driver-options-30.patch`) is Nix-specific
-plumbing.  Historical patches were for bugs that have since been
-fixed upstream.
+**No patches to absorb.**  `native-comp-driver-options-30.patch` is
+Nix-specific plumbing — it substitutes Nix store paths
+(`@backendPath@`) into `native-comp-driver-options` so libgccjit can
+find its toolchain inside the Nix sandbox.  Outside the Nix sandbox
+the substitution is meaningless; outside libgccjit it does nothing.
 
-The overlay is useful as a **downstream consumer reference** --
-it tracks which upstream bugs affect real users (the issues/PRs
-document breakage that Nix users hit first due to building from
-HEAD daily).  Bug numbers referenced: #67916, #63288, #76523.
+Historical patches were for bugs that have since been fixed upstream
+(bug#67916, bug#63288, bug#76523) and removed from the overlay — no
+work needed here.
+
+## Reference value
+
+Still useful as a **downstream consumer canary**: the overlay's CI
+builds master daily, so when upstream master breaks the Nix build,
+this overlay's issue tracker is where users surface it first.  Watch
+for new entries in the overlay's `patches/` directory — a re-added
+patch usually means upstream regressed something that affects sandbox
+builds.
+
+## Polling
+
+Not tracked by the patch-source poll by default.  The single Nix-only
+patch wouldn't trigger any `absorb-now` verdicts and would just add
+noise to the report.  If a non-Nix-specific patch ever appears,
+re-evaluate and add a manifest entry then.

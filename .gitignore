@@ -21,6 +21,7 @@
 # Ignore all dot-files except for those under version control.
 .*
 !.claude
+.claude/settings.local.json
 !.clang-format
 !.clangd
 !.dir-locals.el

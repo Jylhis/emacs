@@ -88,7 +88,17 @@ def main() -> int:
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
     env["EMACSDOC"] = str(src_root / "etc")
-    env["EMACSLOADPATH"] = str(src_root / "lisp")
+    # Enumerate lisp/ subdirs in EMACSLOADPATH so `(require ...)` from
+    # admin/unidata/unidata-gen.el (e.g. `generate-lisp-file`, which
+    # lives at lisp/emacs-lisp/) resolves.  Setting only `lisp/` here
+    # would shadow the dumped image's load-path with a single entry
+    # and leave every subdirectory unreachable.  Mirrors the
+    # equivalent enumeration in meson/run_loaddefs.py.
+    lisp = src_root / "lisp"
+    paths = [str(lisp)] + sorted(
+        str(p) for p in lisp.iterdir() if p.is_dir()
+    )
+    env["EMACSLOADPATH"] = ":".join(paths)
 
     base_cmd = [args.bootstrap_emacs]
     if args.dump_file is not None:
