@@ -412,6 +412,13 @@ an \\+`up-to-date' or \\+`ignored' file."
     (define-key map "TL" #'vc-root-log-unintegrated)
     (define-key map "T=" #'vc-diff-unintegrated)
     (define-key map "TD" #'vc-root-diff-unintegrated)
+    (define-key map "TRl" #'vc-log-remote-unintegrated)
+    (define-key map "TRL" #'vc-root-log-remote-unintegrated)
+    (define-key map "TR=" #'vc-diff-remote-unintegrated)
+    (define-key map "TRD" #'vc-root-diff-remote-unintegrated)
+    (define-key map "EL" #'vc-root-log-outgoing)
+    (define-key map "E=" #'vc-diff-outgoing-and-edited)
+    (define-key map "ED" #'vc-root-diff-outgoing-and-edited)
     (define-key map "V" #'vc-dir-root-next-action)
 
     (let ((branch-map (make-sparse-keymap)))
@@ -1255,6 +1262,7 @@ that file."
     (nreverse result)))
 
 (defun vc-dir-recompute-file-state (fname def-dir)
+  "Compute state of FNAME known to live inside DEF-DIR."
   (let* ((file-short (file-relative-name fname def-dir))
 	 (_remove-me-when-CVS-works
 	  (when (eq vc-dir-backend 'CVS)
@@ -1298,8 +1306,9 @@ that file."
 
 (defun vc-dir-resynch-file (&optional fname)
   "Update the entries for FNAME in any directory buffers that list it."
-  (let ((file (expand-file-name (or fname buffer-file-name)))
-        (drop '()))
+  (let* ((file  (or fname buffer-file-name))
+         (file-tn (file-truename file))
+         (drop '()))
     (save-current-buffer
       ;; look for a vc-dir buffer that might show this file.
       (dolist (status-buf vc-dir-buffers)
@@ -1317,13 +1326,15 @@ that file."
                          ;; `default-directory' in order to do its work,
                          ;; but that's irrelevant to us here.
                          (buffer-local-toplevel-value 'default-directory))))
-              (when (file-in-directory-p file ddir)
-                (if (file-directory-p file)
+              (when (file-in-directory-p file-tn ddir)
+                (if (file-directory-p file-tn)
 		    (progn
-		      (vc-dir-resync-directory-files file)
+		      (vc-dir-resync-directory-files file-tn)
 		      (ewoc-set-hf vc-ewoc
 				   (vc-dir-headers vc-dir-backend ddir) ""))
-                  (let* ((complete-state (vc-dir-recompute-file-state file ddir))
+                  (let* ((complete-state
+                          ;; Pass FILE not FILE-TN here.  See bug#80967.
+                          (vc-dir-recompute-file-state file ddir))
 			 (state (cadr complete-state)))
                     (vc-dir-update
                      (list complete-state)

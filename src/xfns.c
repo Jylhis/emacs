@@ -1340,10 +1340,9 @@ x_set_mouse_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
   if (x_had_errors_p (dpy))
     {
       const char *bad_cursor_name = NULL;
-      /* Bounded by X_ERROR_MESSAGE_SIZE in xterm.c.  */
-      size_t message_length = strlen (cursor_data.error_string);
-      char *xmessage = alloca (1 + message_length);
-      memcpy (xmessage, cursor_data.error_string, message_length);
+      char xmessage[X_ERROR_MESSAGE_SIZE];
+      eassert (strlen (cursor_data.error_string) < sizeof xmessage);
+      strcpy (xmessage, cursor_data.error_string);
 
       x_uncatch_errors_after_check ();
 
@@ -4069,7 +4068,7 @@ x_window (struct frame *f)
 
   attributes.background_pixel = FRAME_BACKGROUND_PIXEL (f);
   attributes.border_pixel = f->output_data.x->border_pixel;
-  attributes.bit_gravity = NorthWestGravity;
+  attributes.bit_gravity = StaticGravity;
   attributes.backing_store = NotUseful;
   attributes.save_under = True;
   attributes.event_mask = STANDARD_EVENT_SET;
@@ -9342,7 +9341,7 @@ DEFUN ("x-gtk-debug", Fx_gtk_debug, Sx_gtk_debug, 1, 1, 0,
 #endif /* HAVE_GTK3 */
 #endif	/* USE_GTK */
 
-DEFUN ("x-display-set-last-user-time", Fx_display_last_user_time,
+DEFUN ("x-display-set-last-user-time", Fx_display_set_last_user_time,
        Sx_display_set_last_user_time, 1, 2, 0,
        doc: /* Set the last user time of TERMINAL to TIME-OBJECT.
 TIME-OBJECT is the X server time, in milliseconds, of the last user
@@ -9722,10 +9721,6 @@ default and usually works with most desktops.  Some desktop environments
 (GNOME shell in particular when using the mutter window manager),
 however, may refuse to resize a child frame when Emacs is built with
 GTK3.  For those environments, the two settings below are provided.
-
-If this equals the symbol `hide', Emacs temporarily hides the child
-frame during resizing.  This approach seems to work reliably, may
-however induce some flicker when the frame is made visible again.
 
 If this equals the symbol `resize-mode', Emacs uses GTK's resize mode to
 always trigger an immediate resize of the child frame.  This method is

@@ -7989,7 +7989,7 @@ RULE has the form (MATCH EXPANSION...).
 
 MATCH is a regular expression that should match a file name which might
 have a sibling.  It can contain sub-expressions that will be used in
-EXPANSIONs as \\N and \\& replacements.
+each EXPANSION as \\N and \\& replacements.
 
 Each EXPANSION is a string that matches names of files that are to be
 considered siblings of a file whose name matches MATCH.  For instance,
@@ -8742,6 +8742,9 @@ arguments as the running Emacs)."
 			  (file-in-directory-p 0 1)
 			  (make-symbolic-link 0 1)
 			  (add-name-to-file 0 1)
+                          ;; `get-file-buffer' shall simply run the
+                          ;; original function.
+                          (get-file-buffer)
                           ;; These file-notify-* operations take a
                           ;; descriptor.
                           (file-notify-rm-watch)

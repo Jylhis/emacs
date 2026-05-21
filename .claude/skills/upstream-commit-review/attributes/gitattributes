@@ -1,0 +1,17 @@
+# Per-file merge driver for upstream-commit-review.
+#
+# This file is symlinked into .git/info/attributes by scripts/lib.sh
+# during pre-flight, so it does NOT need to be tracked in the repo or
+# applied to upstream's working tree.  Mergiraf is registered as a
+# merge driver in scripts/lib.sh via `git config`.
+#
+# Languages mergiraf supports as of late 2025: C/C++, Java, Rust,
+# Python, Go, JSON, YAML, ~33 total.  Emacs Lisp and Texinfo are NOT
+# yet supported, so .el / .texi files keep Git's default text merge.
+
+*.c        merge=mergiraf
+*.h        merge=mergiraf
+*.cc       merge=mergiraf
+*.cpp      merge=mergiraf
+*.hh       merge=mergiraf
+*.hpp      merge=mergiraf
