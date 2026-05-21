@@ -29,11 +29,14 @@ log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "$LOG" >&2; }
 die() { log "FATAL: $*"; exit 1; }
 
 # Pre-flight: working tree must be clean ignoring known harness
-# directories; HEAD must not be detached.
+# directories; HEAD must not be detached.  Ignored paths cover both
+# untracked AND modified entries — e.g. tweaks to a skill SKILL.md or
+# its scripts shouldn't block a dry-run, and a session-local note
+# update under `.claude/notes/` is fine too.
 preflight_clean() {
     local dirty
     dirty=$(git status --porcelain \
-            | grep -Ev '^\?\? (\.claude/|\.direnv/|build[^/]*/|node_modules/)' \
+            | grep -Ev '^.. (\.claude/|\.direnv/|build[^/]*/|node_modules/)' \
             || true)
     [ -z "$dirty" ] || die "working tree has user changes:\n$dirty"
     git symbolic-ref -q HEAD >/dev/null || die "HEAD is detached"

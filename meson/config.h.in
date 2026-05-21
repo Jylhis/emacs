@@ -109,6 +109,7 @@
 #mesondefine USE_GTK_FOR_XWIDGETS
 #mesondefine WIDE_EMACS_INT
 #mesondefine HAVE_X_I18N
+#mesondefine HAVE_X11R6
 #mesondefine HAVE_X11R6_XIM
 
 /* B2 -- silent-option dependency probes (configure.ac:537-619). */

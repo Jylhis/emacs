@@ -19371,14 +19371,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
               x_clear_area (f,
                             event->xexpose.x, event->xexpose.y,
                             event->xexpose.width, event->xexpose.height);
+	      /* Paint the border before content (few operations, less
+		 chance for a compositor sync in between).  */
+	      x_clear_under_internal_border (f);
 #endif
               expose_frame (f, event->xexpose.x, event->xexpose.y,
 			    event->xexpose.width, event->xexpose.height);
 #ifndef USE_TOOLKIT_SCROLL_BARS
 	      x_scroll_bar_handle_exposure (f, (XEvent *) event);
-#endif
-#ifdef USE_GTK
-	      x_clear_under_internal_border (f);
 #endif
             }
 #ifndef USE_TOOLKIT_SCROLL_BARS
@@ -25545,8 +25545,6 @@ x_unwind_errors_to (int depth)
        x_error_message->dpy is still alive before calling XSync.  */
     x_uncatch_errors ();
 }
-
-#define X_ERROR_MESSAGE_SIZE 200
 
 /* An X error handler which stores the error message in the first
    applicable handler in the x_error_message stack.  This is called

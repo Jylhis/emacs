@@ -13013,7 +13013,6 @@ init_keyboard (void)
 
   if (!noninteractive)
     {
-#ifndef DOS_NT
       /* For systems with SysV TERMIO, C-g is set up for both SIGINT and
 	 SIGQUIT and we can't tell which one it will give us.  */
       sigaction (SIGQUIT, &action, 0);

@@ -294,7 +294,7 @@
 ;;   RCS and CVS, and is otherwise silently ignored.
 ;;
 ;;   If the backend supports async checkins and `vc-async-checkin' is
-;;   non-nil, the implementation should start an asychronous process to
+;;   non-nil, the implementation should start an asynchronous process to
 ;;   commit the changes, and return a cons whose car is `async' and
 ;;   whose cdr is that process object.
 ;;
@@ -1719,7 +1719,7 @@ from which to check out the file(s)."
             (t
              (vc-register vc-fileset))))
      ((eq state 'missing)
-      (vc-delete-file files))
+      (vc-delete-file fileset-only-files))
      ;; Files are up-to-date, or need a merge and user specified a revision
      ((or (eq state 'up-to-date) (and verbose (eq state 'needs-update)))
       (cond

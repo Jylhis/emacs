@@ -415,7 +415,12 @@ if gtk3_dep.found()
   # All true on Linux/X11R7+ and X11 via Nix on macOS.
   # HAVE_X_I18N is unconditional for X11R6+ in autotools (configure.ac
   # XLIB AC_DEFINE block); xterm.c's GTK + XInput2 path expects it.
+  # HAVE_X11R6 is the umbrella; xterm.c gates xim_destroy_callback's
+  # definition under HAVE_X11R6 && HAVE_X11R6_XIM but the caller only
+  # under HAVE_X11R6_XIM, so both must be set together or the symbol
+  # is referenced without a definition.
   conf_data.set('HAVE_X_I18N', 1)
+  conf_data.set('HAVE_X11R6', 1)
   conf_data.set('HAVE_X11R6_XIM', 1)
   conf_data.set('HAVE_XRMSETDATABASE', 1)
   conf_data.set('HAVE_XKB', 1)
@@ -456,7 +461,18 @@ endif
 if fontconfig_dep.found() and not conf_data.has('HAVE_NS')
   conf_data.set('HAVE_FONTCONFIG', 1)
 endif
-if xft_dep.found()
+if xft_dep.found() and not conf_data.has('USE_CAIRO')
+  # xsettings.c at xsettings.c:57-62 selects between
+  # `#ifdef USE_CAIRO` (include fontconfig.h + ftfont.h) and
+  # `#elif defined HAVE_XFT` (include Xft.h), making the two
+  # mutually exclusive.  Later in the same file (e.g. line 988)
+  # `#ifdef HAVE_XFT` is used as a standalone gate to call
+  # XftDefaultSet, which is only declared by Xft.h.  So if HAVE_XFT
+  # is set alongside USE_CAIRO, Xft.h is never included but the
+  # call is compiled, leading to "implicit declaration of
+  # XftDefaultSet".  Autotools made these mutually exclusive; match
+  # that here so the source stays consistent with both build
+  # systems.
   conf_data.set('HAVE_XFT', 1)
 endif
 if gnutls_dep.found()
