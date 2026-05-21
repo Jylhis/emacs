@@ -248,111 +248,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # ---- Nix + Cachix + devenv setup --------------------------------
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
         with:
-          extra_nix_config: |
-            accept-flake-config = true
-            experimental-features = nix-command flakes
-
-      - name: Set up Cachix (pull jylhis + devenv)
-        uses: cachix/cachix-action@v16
-        with:
-          name: jylhis
-          extraPullNames: devenv
           # Push only on pushes to dev / master / emacs-* release
           # branches.  PR runs (incl. fork PRs) and workflow_dispatch
           # get pull-only.  Empty token => cachix-action runs in
           # pull-only mode.
-          authToken: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
-
-      - name: Install devenv
-        run: nix profile add nixpkgs#devenv
-
-      # Smoke-test that devenv shell actually activates the environment
-      # before we try to capture its env.  Each prior iteration failed
-      # for a different reason inside this step; printing the smoke
-      # output makes the next failure self-diagnosing in the workflow log.
-      - name: devenv smoke test
-        run: |
-          set -uo pipefail
-          set -x
-          # Single quotes below are intentional: $PATH / $DEVENV_ROOT
-          # must be expanded *inside* devenv shell, not by this outer
-          # bash.  Suppress the SC2016 false positive.
-          # shellcheck disable=SC2016
-          {
-            devenv version || true
-            devenv --version || true
-            # Show what `devenv shell` does with various invocation forms.
-            # `|| true` so a failing form doesn't abort -- we want to see
-            # which ones work.
-            devenv shell -- bash -c 'echo "[A] PATH=$PATH"; command -v meson; command -v cc' || echo "[A] failed"
-            devenv shell bash -c 'echo "[B] PATH=$PATH"; command -v meson; command -v cc' || echo "[B] failed"
-            cat > /tmp/smoke.sh <<'SMOKE'
-          #!/usr/bin/env bash
-          echo "[C] PATH=$PATH"
-          command -v meson
-          command -v cc
-          SMOKE
-            chmod +x /tmp/smoke.sh
-            devenv shell /tmp/smoke.sh || echo "[C] failed"
-            devenv shell -- /tmp/smoke.sh || echo "[C2] failed"
-          }
-
-      # ---- Hoist devenv env via $BASH_ENV -----------------------------
-      # `$GITHUB_ENV` writes name=value pairs, but Nix gcc-wrapper
-      # needs the full set of env vars *and* the bash setup hooks
-      # sourced to compose NIX_LDFLAGS correctly.  Instead we capture
-      # `declare -px` (export statements) into a file, then set
-      # `BASH_ENV` in $GITHUB_ENV so every subsequent step's bash
-      # auto-sources that file at startup.  This is the same
-      # mechanism `nicknovitski/nix-develop` uses.
-      - name: Activate devenv into $BASH_ENV
-        run: |
-          set -euo pipefail
-          # Script executed *inside* devenv shell.  Dumps export
-          # statements for every exported var.  declare -px is bash
-          # builtin so it works in any bash; the output is a
-          # source-able shell script.
-          cat > /tmp/devenv-dump.sh <<'DUMP'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          echo "[dump] DEVENV_ROOT=${DEVENV_ROOT:-<unset>}" >&2
-          echo "[dump] cc:    $(command -v cc || echo MISSING)" >&2
-          echo "[dump] meson: $(command -v meson || echo MISSING)" >&2
-          echo "[dump] NIX_LDFLAGS first 200 chars: ${NIX_LDFLAGS:-<unset>}" >&2
-          # Emit export statements suitable for sourcing in a fresh
-          # bash.  `declare -px` quotes properly; output is safe to
-          # `source`.
-          declare -px
-          DUMP
-          chmod +x /tmp/devenv-dump.sh
-          # Capture inside devenv.  Allow per-step failures so we can
-          # diagnose: if devenv shell fails, /tmp/devenv-env.sh will
-          # be empty and the next assertion fires.
-          devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.sh
-          lines=$(wc -l < /tmp/devenv-env.sh)
-          echo "Captured $lines lines of export statements"
-          if [ "$lines" -lt 20 ]; then
-            echo "::error::devenv shell produced suspiciously little env ($lines lines)"
-            echo "--- /tmp/devenv-env.sh ---"
-            cat /tmp/devenv-env.sh || true
-            exit 1
-          fi
-          # Strip vars that GitHub or the runner controls -- we
-          # mustn't overwrite HOME, USER, GITHUB_*, etc.
-          grep -vE '^declare -[arx]+ (BASH|BASHOPTS|BASH_VERSINFO|BASH_VERSION|COMP_WORDBREAKS|DIRSTACK|EUID|GROUPS|HOSTNAME|HOSTTYPE|IFS|MACHTYPE|OLDPWD|OPTERR|OPTIND|OSTYPE|PIPESTATUS|PPID|PS[0-9]|PWD|RANDOM|SECONDS|SHELL|SHELLOPTS|SHLVL|UID|USER|LOGNAME|HOME|TERM|TMPDIR|GITHUB_[A-Z_]+|RUNNER_[A-Z_]+|ACTIONS_[A-Z_]+|ImageOS|ImageVersion|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID|_)=' \
-            /tmp/devenv-env.sh > /tmp/devenv-env-filtered.sh
-          mv /tmp/devenv-env-filtered.sh /tmp/devenv-env.sh
-          echo "After filtering: $(wc -l < /tmp/devenv-env.sh) lines"
-          # Have every subsequent step's bash auto-source this file.
-          echo "BASH_ENV=/tmp/devenv-env.sh" >> "$GITHUB_ENV"
-          echo "--- PATH from captured env ---"
-          grep -E '^declare -[arx]+ PATH=' /tmp/devenv-env.sh | head -1 | cut -c1-300 || echo "(no PATH!)"
-          echo "--- NIX_LDFLAGS from captured env ---"
-          grep -E '^declare -[arx]+ NIX_LDFLAGS=' /tmp/devenv-env.sh | head -1 | cut -c1-300 || echo "(no NIX_LDFLAGS)"
+          cachix-auth-token: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
 
       # ---- Verify Nix-wrapped toolchain is active ---------------------
       # Compile + link a sentinel that exercises the same gcc/ld/crt
@@ -684,49 +587,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # ---- Nix + Cachix + devenv setup --------------------------------
-      - name: Install Nix
-        uses: cachix/install-nix-action@v31
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
         with:
-          extra_nix_config: |
-            accept-flake-config = true
-            experimental-features = nix-command flakes
-
-      - name: Set up Cachix (pull jylhis + devenv)
-        uses: cachix/cachix-action@v16
-        with:
-          name: jylhis
-          extraPullNames: devenv
-          authToken: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
-
-      - name: Install devenv
-        run: nix profile add nixpkgs#devenv
-
-      # Activate devenv via $BASH_ENV — see comment on the Linux job.
-      - name: Activate devenv into $BASH_ENV
-        run: |
-          set -euo pipefail
-          cat > /tmp/devenv-dump.sh <<'DUMP'
-          #!/usr/bin/env bash
-          set -euo pipefail
-          echo "[dump] DEVENV_ROOT=${DEVENV_ROOT:-<unset>}" >&2
-          echo "[dump] cc:    $(command -v cc || echo MISSING)" >&2
-          echo "[dump] meson: $(command -v meson || echo MISSING)" >&2
-          declare -px
-          DUMP
-          chmod +x /tmp/devenv-dump.sh
-          devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.sh
-          lines=$(wc -l < /tmp/devenv-env.sh)
-          echo "Captured $lines lines of export statements"
-          if [ "$lines" -lt 20 ]; then
-            echo "::error::devenv shell produced suspiciously little env ($lines lines)"
-            cat /tmp/devenv-env.sh || true
-            exit 1
-          fi
-          grep -vE '^declare -[arx]+ (BASH|BASHOPTS|BASH_VERSINFO|BASH_VERSION|COMP_WORDBREAKS|DIRSTACK|EUID|GROUPS|HOSTNAME|HOSTTYPE|IFS|MACHTYPE|OLDPWD|OPTERR|OPTIND|OSTYPE|PIPESTATUS|PPID|PS[0-9]|PWD|RANDOM|SECONDS|SHELL|SHELLOPTS|SHLVL|UID|USER|LOGNAME|HOME|TERM|TMPDIR|GITHUB_[A-Z_]+|RUNNER_[A-Z_]+|ACTIONS_[A-Z_]+|ImageOS|ImageVersion|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID|_)=' \
-            /tmp/devenv-env.sh > /tmp/devenv-env-filtered.sh
-          mv /tmp/devenv-env-filtered.sh /tmp/devenv-env.sh
-          echo "BASH_ENV=/tmp/devenv-env.sh" >> "$GITHUB_ENV"
+          cachix-auth-token: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
 
       - name: Verify Nix-wrapped toolchain
         run: |
