@@ -67,21 +67,34 @@ Bug fixes:
 - Do not use XGSELECT even if HAVE_GLIB
 - Defer updating presentation options during FullScreen teardown
 
-## Cherry-Pick Feasibility
+## Absorb verdict (downstream — into `jylhis/emacs`)
 
-**Not feasible.**  The Mac port is architecturally incompatible:
-- Commits modify files (macterm.c, etc.) that don't exist upstream
-- Requires Clang (blocks syntax) -- violates GCC compatibility policy
-- FSF copyright assignment not in place for Yamamoto's code
-- Would require complete reimplementation to land in the NS port
+**Not feasible as patches.**  The Mac port is architecturally
+incompatible with the NS port that `jylhis/emacs` ships:
+
+- Commits modify files (`macterm.c`, `macfns.c`, …) that don't exist
+  in this tree.
+- Requires Clang-only constructs (Objective-C blocks, `CF/NS_NOESCAPE`,
+  GCD) — violates the GCC-compatibility invariant for shared code.
+- FSF copyright assignment is not in place for Yamamoto's code, so
+  even reimplementations need to be re-derived from the API, not the
+  source.
 
 A few shared-code fixes have already been upstreamed (e.g.,
 bug#80851 SVG off-by-one).  The XGSELECT change may be
 Mac-port-specific.
 
-## Value for Upstream Work
+## Reference value
 
-The Mac port is best used as **reference implementation** when
-improving the NS port.  Features like reliable C-g, zero-CPU idle,
-and gesture support could be reimplemented in nsterm.m/nsfns.m
-using NS-compatible (GCC-friendly) APIs.
+The Mac port is best used as a **reference implementation** when
+improving the NS port.  Features like reliable `C-g`, zero-CPU idle,
+and trackpad gesture support could be reimplemented in
+`src/nsterm.m`/`src/nsfns.m` using NS-compatible (GCC-friendly) APIs
+and then absorbed.  Those are separate workstreams — list them in
+`fork-todos.md` once a concrete one is scoped.
+
+## Polling
+
+Not tracked by the patch-source poll.  Yamamoto's tree is a parallel
+codebase, not a `.patch` set, so per-file SHA comparison doesn't
+apply.  Re-survey manually each release cycle.
