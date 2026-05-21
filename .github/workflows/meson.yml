@@ -24,6 +24,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind a stale build.
 concurrency:
@@ -44,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
 
@@ -69,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0   # full history for git diff
 
@@ -223,6 +226,9 @@ jobs:
     if: needs.classify.outputs.linux_meson == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    permissions:
+      contents: read
+      issues: write
     strategy:
       # Don't fast-fail the gtk3 variant when no-X variant breaks (or
       # vice versa); the parity audit tracks each independently.
@@ -246,7 +252,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -376,7 +382,7 @@ jobs:
       # visible without admin-rights log access.  Only fires on PRs.
       - name: Post build failure as PR comment
         if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9
         with:
           script: |
             const fs = await import('node:fs');
@@ -553,7 +559,7 @@ jobs:
       # (upload-artifact@v7 returns 409 Conflict on duplicates).
       - name: Upload Meson logs
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: meson-logs-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
@@ -562,7 +568,7 @@ jobs:
 
       - name: Upload pdumper images
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: pdumper-images-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
@@ -585,7 +591,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -668,7 +674,7 @@ jobs:
 
       - name: Upload Meson logs
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: macos-meson-logs
           path: |
@@ -676,3 +682,47 @@ jobs:
             build/compile.log
           retention-days: 14
           if-no-files-found: ignore
+
+  required:
+    name: meson required
+    needs: [classify, lint, build-and-test, macos-build-and-test]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check required Meson jobs
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          LINUX_RESULT: ${{ needs.build-and-test.result }}
+          MACOS_RESULT: ${{ needs.macos-build-and-test.result }}
+        run: |
+          status=0
+
+          require_success () {
+            name=$1
+            result=$2
+            if [ "$result" != success ]; then
+              echo "::error::$name finished with result: $result"
+              status=1
+            fi
+          }
+
+          allow_success_or_skip () {
+            name=$1
+            result=$2
+            case "$result" in
+              success|skipped) ;;
+              *)
+                echo "::error::$name finished with result: $result"
+                status=1 ;;
+            esac
+          }
+
+          require_success classify "$CLASSIFY_RESULT"
+          require_success lint "$LINT_RESULT"
+          allow_success_or_skip "Linux Meson matrix" "$LINUX_RESULT"
+          allow_success_or_skip "macOS Meson build" "$MACOS_RESULT"
+
+          exit "$status"

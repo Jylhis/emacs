@@ -23,6 +23,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind a stale scan.
 concurrency:
