@@ -80,6 +80,12 @@ if conf_data.has('HAVE_XWIDGETS')
   feature_obj += 'xwidget.c'
 endif
 
+# NS Objective-C sources for macOS Cocoa.  Mirror NS_OBJC_OBJ at
+# anchor 08a22b8965ec configure.ac; ns_fontfile = macfont.m on Cocoa
+# (nsfont.m is for GNUstep, which this fork doesn't target).
+ns_obj_objc = ['nsterm.m', 'nsfns.m', 'nsmenu.m', 'nsselect.m',
+                'nsimage.m', 'macfont.m']
+
 # Assemble base_obj depending on whether we have a GUI toolkit.
 if gtk3_dep.found()
   base_obj_basenames = (
@@ -87,8 +93,15 @@ if gtk3_dep.found()
     + font_obj + notify_obj + xgselect_obj
     + cm_obj + dynlib_obj + feature_obj
   )
+elif conf_data.has('HAVE_NS')
+  # macOS Cocoa: replace X11/GTK sources with NS Objective-C sources.
+  # font_obj is omitted because macfont.m supersedes ftfont/ftcrfont.
+  base_obj_basenames = (
+    base_obj_core + ns_obj_objc + window_system_obj
+    + notify_obj + cm_obj + dynlib_obj + feature_obj
+  )
 else
-  # Terminal-only or NS build (NS sources not yet wired).
+  # Terminal-only build.
   base_obj_basenames = (
     base_obj_core + notify_obj
     + cm_obj + dynlib_obj + feature_obj
@@ -184,8 +197,17 @@ localstatedir = prefix / get_option('localstatedir')
 epaths_data.set_quoted('PATH_LOADSEARCH',
     datadir + '/emacs/' + emacs_version + '/lisp')
 epaths_data.set_quoted('PATH_REL_LOADSEARCH', '')
-epaths_data.set_quoted('PATH_SITELOADSEARCH',
-    datadir + '/emacs/site-lisp')
+
+# PATH_SITELOADSEARCH -- the colon-separated default list of site-lisp
+# directories (configure.ac at anchor 08a22b8965ec sets locallisppath
+# to '${datadir}/emacs/${version}/site-lisp:${datadir}/emacs/site-lisp'
+# unless --enable-locallisppath=PATH overrides it).
+_locallisppath = get_option('locallisppath')
+if _locallisppath == ''
+  _locallisppath = (datadir + '/emacs/' + emacs_version + '/site-lisp'
+                    + ':' + datadir + '/emacs/site-lisp')
+endif
+epaths_data.set_quoted('PATH_SITELOADSEARCH', _locallisppath)
 epaths_data.set_quoted('PATH_DUMPLOADSEARCH', '../lisp')
 epaths_data.set_quoted('PATH_EXEC',
     libexecdir + '/emacs/' + emacs_version + '/' +
@@ -265,8 +287,24 @@ src_deps = [
 if gtk3_dep.found()
   src_deps += [gtk3_dep, cairo_dep, cairo_ft_dep,
                harfbuzz_dep, freetype_dep, fontconfig_dep, xft_dep]
+elif conf_data.has('HAVE_NS')
+  # Cocoa + AppKit are required.  Add WebKit when xwidgets is on.
+  src_deps += ns_dep
+  if conf_data.has('HAVE_XWIDGETS')
+    src_deps += dependency('appleframeworks',
+                            modules : ['WebKit'])
+  endif
+  # macfont.m + hbfont.c need harfbuzz / freetype on the include
+  # path (autotools wires them via $(HARFBUZZ_CFLAGS) when
+  # HAVE_HARFBUZZ).
+  if harfbuzz_dep.found()
+    src_deps += harfbuzz_dep
+  endif
+  if freetype_dep.found()
+    src_deps += freetype_dep
+  endif
 else
-  # Without GTK, still link harfbuzz/freetype if found (used by hbfont.c etc.).
+  # Terminal-only.  Still link harfbuzz/freetype if found (used by hbfont.c etc.).
   if harfbuzz_dep.found()
     src_deps += harfbuzz_dep
   endif
@@ -297,6 +335,25 @@ endforeach
 
 src_args = ['-DEMACS_CORE=1']
 
+# Quiet GTK 3 deprecation warnings unless the developer explicitly
+# wants them (configure.ac at anchor 08a22b8965ec
+# --with-gtk-deprecation-warnings, default off).  GTK 3 emits a
+# steady stream of deprecation notices the Emacs source can't act
+# on without dropping GTK 3 support entirely.
+if gtk3_dep.found() and not get_option('gtk-deprecation-warnings')
+  src_args += '-DGDK_DISABLE_DEPRECATION_WARNINGS=1'
+endif
+
+# --enable-profiling at anchor 08a22b8965ec configure.ac: adds -pg to
+# both compile and link, plus -DPROFILING=1 so src/emacs.c's main()
+# stops the profiler in the right place (cf. src/emacs.c:101).
+profiling_args = []
+profiling_link_args = []
+if get_option('profiling')
+  src_args += ['-DPROFILING=1', '-pg']
+  profiling_link_args = ['-pg']
+endif
+
 src_compile_probe = static_library(
   'emacs_src_probe',
   sources : [
@@ -325,7 +382,7 @@ temacs = executable(
   ],
   c_args : src_args,
   dependencies : src_deps,
-  link_args : is_linux ? ['-ldl', '-lm'] : ['-lm'],
+  link_args : (is_linux ? ['-ldl', '-lm'] : ['-lm']) + profiling_link_args,
   install : false,
 )
 
@@ -362,18 +419,22 @@ bootstrap_emacs = custom_target(
 # subsequent script (run_unidata, run_loaddefs, byte_compile_batch);
 # undumped temacs segfaults on those workloads.
 run_dump = files('../meson/run_dump.py')
+_bootstrap_dump_args = [
+  py, run_dump,
+  '--bootstrap-emacs', bootstrap_emacs.full_path(),
+  '--source-root',     meson.global_source_root(),
+  '--output-pdmp',     '@OUTPUT@',
+  '--mode',            'pbootstrap',
+  '--charscript',      charscript_el.full_path(),
+  '--emoji-zwj',       emoji_zwj_el.full_path(),
+]
+if not build_details_opt
+  _bootstrap_dump_args += '--no-build-details'
+endif
 bootstrap_pdmp = custom_target(
   'bootstrap-emacs.pdmp',
   output  : 'bootstrap-emacs.pdmp',
-  command : [
-    py, run_dump,
-    '--bootstrap-emacs', bootstrap_emacs.full_path(),
-    '--source-root',     meson.global_source_root(),
-    '--output-pdmp',     '@OUTPUT@',
-    '--mode',            'pbootstrap',
-    '--charscript',      charscript_el.full_path(),
-    '--emoji-zwj',       emoji_zwj_el.full_path(),
-  ],
+  command : _bootstrap_dump_args,
   depends : [bootstrap_emacs, charscript_el, emoji_zwj_el,
              charsets_stamp],
   build_by_default : false,
@@ -396,7 +457,7 @@ unidata_stamp = custom_target(
   ],
   depends : [bootstrap_emacs, bootstrap_pdmp, charsets_stamp,
              charscript_el, emoji_zwj_el],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -407,8 +468,8 @@ unidata_stamp = custom_target(
 #
 # Differs from the bootstrap dump in that loadup.el reads .elc files
 # rather than .el sources, so the full lisp/ byte-compile must
-# precede this.  We express that dependency, but build_by_default
-# stays false until phase 4 runs to completion.
+# precede this.  emacs.pdmp itself is defined in lisp/meson.build
+# (it depends on compile_main_elcs and loaddefs_stamp).
 # ----------------------------------------------------------------------
 emacs = custom_target(
   'emacs',
