@@ -1965,6 +1965,44 @@ ns_set_undecorated (struct frame *f, Lisp_Object new_value, Lisp_Object old_valu
 }
 
 void
+ns_set_undecorated_round (struct frame *f, Lisp_Object new_value, Lisp_Object old_value)
+/* --------------------------------------------------------------------------
+     Set frame F's `undecorated_round' parameter.  If non-nil, F's window-system
+     window is drawn without decorations, title, minimize/maximize boxes
+     and external borders.  This usually means that the window cannot be
+     dragged, resized, iconified, maximized or deleted with the mouse.  If
+     nil, draw the frame with all the elements listed above unless these
+     have been suspended via window manager settings.
+   -------------------------------------------------------------------------- */
+{
+  NSTRACE ("ns_set_undecorated_round");
+
+  if (!EQ (new_value, old_value))
+    {
+      EmacsView *view = (EmacsView *)FRAME_NS_VIEW (f);
+      NSWindow *oldWindow = [view window];
+      NSWindow *newWindow;
+
+      block_input ();
+
+      FRAME_UNDECORATED_ROUND (f) = !NILP (new_value);
+
+      newWindow = [[EmacsWindow alloc] initWithEmacsFrame:f];
+
+      if ([oldWindow isKeyWindow])
+        [newWindow makeKeyAndOrderFront:NSApp];
+
+      [newWindow setIsVisible:[oldWindow isVisible]];
+      if ([oldWindow isMiniaturized])
+        [newWindow miniaturize:NSApp];
+
+      [oldWindow close];
+
+      unblock_input ();
+    }
+}
+
+void
 ns_set_parent_frame (struct frame *f, Lisp_Object new_value, Lisp_Object old_value)
 /* --------------------------------------------------------------------------
      Set frame F's `parent-frame' parameter.  If non-nil, make F a child
@@ -2089,11 +2127,25 @@ void
 ns_set_appearance_1 (struct frame *f, Lisp_Object new_value)
 {
   if (EQ (new_value, Qdark))
-    FRAME_NS_APPEARANCE (f) = ns_appearance_vibrant_dark;
-  else if (EQ (new_value, Qlight))
-    FRAME_NS_APPEARANCE (f) = ns_appearance_aqua;
+    {
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+#ifndef NSAppKitVersionNumber10_14
+#define NSAppKitVersionNumber10_14 1671
+#endif
+      if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_14)
+        FRAME_NS_APPEARANCE(f) = ns_appearance_dark_aqua;
+      else
+#endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101400 */
+        FRAME_NS_APPEARANCE(f) = ns_appearance_vibrant_dark;
+    }
+  else if (EQ(new_value, Qlight))
+    {
+      FRAME_NS_APPEARANCE (f) = ns_appearance_aqua;
+    }
   else
-    FRAME_NS_APPEARANCE (f) = ns_appearance_system_default;
+    {
+      FRAME_NS_APPEARANCE (f) = ns_appearance_system_default;
+    }
 }
 
 void
@@ -6095,6 +6147,7 @@ ns_term_shutdown (int sig)
 
    ========================================================================== */
 
+static const void *kEmacsAppKVOContext = &kEmacsAppKVOContext;
 
 @implementation EmacsApp
 
@@ -6327,6 +6380,18 @@ ns_term_shutdown (int sig)
 	 object:nil];
 #endif
 
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+  [self addObserver:self
+         forKeyPath:NSStringFromSelector(@selector(effectiveAppearance))
+            options:NSKeyValueObservingOptionInitial|NSKeyValueObservingOptionNew
+            context:&kEmacsAppKVOContext];
+
+   pending_funcalls = Fcons(list3(Qrun_hook_with_args,
+                                  Qns_system_appearance_change_functions,
+                                  Vns_system_appearance),
+                            pending_funcalls);
+#endif
+
 #ifdef NS_IMPL_COCOA
   /* Sleep event notification.  */
   [[[NSWorkspace sharedWorkspace] notificationCenter]
@@ -6404,6 +6469,69 @@ ns_term_shutdown (int sig)
   kbd_buffer_store_event (&ie);
 #endif
 }
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary *)change
+                       context:(void *)context
+{
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+  if (context == kEmacsAppKVOContext
+      && object == self
+      && [keyPath isEqualToString:
+                    NSStringFromSelector (@selector(effectiveAppearance))])
+    [self systemAppearanceDidChange:
+               [change objectForKey:NSKeyValueChangeNewKey]];
+  else
+#endif /* (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400 */
+    [super observeValueForKeyPath:keyPath
+                         ofObject:object
+                           change:change
+                          context:context];
+}
+
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+#ifndef NSAppKitVersionNumber10_14
+#define NSAppKitVersionNumber10_14 1671
+#endif
+- (void)systemAppearanceDidChange:(NSAppearance *)newAppearance
+{
+
+  if (NSAppKitVersionNumber < NSAppKitVersionNumber10_14)
+    return;
+
+  NSAppearanceName appearance_name =
+      [newAppearance bestMatchFromAppearancesWithNames:@[
+        NSAppearanceNameAqua, NSAppearanceNameDarkAqua
+      ]];
+
+  BOOL is_dark_appearance =
+    [appearance_name isEqualToString:NSAppearanceNameDarkAqua];
+  Vns_system_appearance = is_dark_appearance ? Qdark : Qlight;
+
+  run_system_appearance_change_hook ();
+}
+
+static inline void run_system_appearance_change_hook (void)
+{
+  if (NILP (Vns_system_appearance_change_functions))
+    return;
+
+  block_input ();
+
+  bool owfi = waiting_for_input;
+  waiting_for_input = false;
+
+  safe_calln (Qrun_hook_with_args,
+          Qns_system_appearance_change_functions,
+          Vns_system_appearance);
+  Fredisplay(Qt);
+
+  waiting_for_input = owfi;
+
+  unblock_input ();
+}
+#endif /* (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400 */
 
 /* Termination sequences:
     C-x C-c:
@@ -6567,6 +6695,14 @@ not_in_argv (NSString *arg)
   ns_send_appdefined (-1);
 }
 
+- (void)applicationWillTerminate:(NSNotification *)notification
+{
+  NSTRACE ("[EmacsApp applicationWillTerminate:]");
+
+  [self removeObserver:self
+            forKeyPath:NSStringFromSelector(@selector(effectiveAppearance))
+               context:&kEmacsAppKVOContext];
+}
 
 
 /* ==========================================================================
@@ -9543,6 +9679,11 @@ static void cancel_ns_deferred_UAZoomChangeFocus_timer ()
 		 | NSWindowStyleMaskMiniaturizable
 		 | NSWindowStyleMaskClosable);
 
+  if (FRAME_UNDECORATED_ROUND (f))
+    {
+      styleMask |= NSFullSizeContentViewWindowMask;
+    }
+
   last_drag_event = nil;
 
   width = FRAME_TEXT_COLS_TO_PIXEL_WIDTH (f, f->text_cols);
@@ -9634,13 +9775,22 @@ static void cancel_ns_deferred_UAZoomChangeFocus_timer ()
 #endif
     }
 
+  if (FRAME_UNDECORATED_ROUND (f))
+    {
+      [self setTitlebarAppearsTransparent:YES];
+      [self setTitleVisibility:NSWindowTitleHidden];
+      [[self standardWindowButton:NSWindowCloseButton] setHidden:YES];
+      [[self standardWindowButton:NSWindowMiniaturizeButton] setHidden:YES];
+      [[self standardWindowButton:NSWindowZoomButton] setHidden:YES];
+    }
+
   return self;
 }
 
 
 - (void)createToolbar: (struct frame *)f
 {
-  if (FRAME_UNDECORATED (f)
+  if (FRAME_UNDECORATED (f) || FRAME_UNDECORATED_ROUND (f)
       || [self styleMask] == NSWindowStyleMaskBorderless
       || !FRAME_EXTERNAL_TOOL_BAR (f)
       || [self toolbar] != nil)
@@ -10093,17 +10243,26 @@ nswindow_orderedIndex_sort (id w1, id w2, void *c)
 #define NSAppKitVersionNumber10_10 1343
 #endif
 
-  if (NSAppKitVersionNumber < NSAppKitVersionNumber10_10)
-    return;
+   if (NSAppKitVersionNumber < NSAppKitVersionNumber10_10)
+     return;
 
-  if (FRAME_NS_APPEARANCE (f) == ns_appearance_vibrant_dark)
-    appearance =
-      [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark];
-  else if (FRAME_NS_APPEARANCE (f) == ns_appearance_aqua)
-    appearance =
-      [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+#ifndef NSAppKitVersionNumber10_14
+#define NSAppKitVersionNumber10_14 1671
+#endif
+   if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_14
+       && FRAME_NS_APPEARANCE(f) == ns_appearance_dark_aqua)
+     appearance = [NSAppearance appearanceNamed:NSAppearanceNameDarkAqua];
+   else
+#endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101400 */
+     if (FRAME_NS_APPEARANCE(f) == ns_appearance_vibrant_dark)
+       appearance =
+         [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark];
+     else if (FRAME_NS_APPEARANCE (f) == ns_appearance_aqua)
+       appearance =
+         [NSAppearance appearanceNamed:NSAppearanceNameAqua];
 
-  [self setAppearance:appearance];
+   [self setAppearance:appearance];
 #endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101000 */
 }
 
@@ -11411,6 +11570,25 @@ This variable is ignored on macOS < 10.7 and GNUstep.  Default is nil.  */);
                doc: /* Non-nil means mouse wheel scrolling uses momentum.
 This variable is ignored on macOS < 10.7 and GNUstep.  Default is t.  */);
   ns_use_mwheel_momentum = YES;
+
+ DEFVAR_LISP ("ns-system-appearance", Vns_system_appearance,
+               doc: /* Current system appearance, i.e. `dark' or `light'.
+
+This variable is ignored on macOS < 10.14 and GNUstep.  Default is nil.  */);
+  Vns_system_appearance = Qnil;
+  DEFSYM(Qns_system_appearance, "ns-system-appearance");
+
+  DEFVAR_LISP ("ns-system-appearance-change-functions",
+               Vns_system_appearance_change_functions,
+     doc: /* List of functions to call when the system appearance changes.
+Each function is called with a single argument, which corresponds to the new
+system appearance (`dark' or `light').
+
+This hook is also run once at startup.
+
+This variable is ignored on macOS < 10.14 and GNUstep.  Default is nil.  */);
+  Vns_system_appearance_change_functions = Qnil;
+  DEFSYM(Qns_system_appearance_change_functions, "ns-system-appearance-change-functions");
 
   /* TODO: Move to common code.  */
   DEFVAR_LISP ("x-toolkit-scroll-bars", Vx_toolkit_scroll_bars,

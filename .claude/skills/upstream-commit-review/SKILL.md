@@ -1,6 +1,6 @@
 ---
 name: upstream-commit-review
-description: Fetch new commits from GNU Emacs upstream (savannah) and triage them for backport into this fork. Auto-cherry-picks safe categories (docs, lisp bug fixes with Bug#NNNNN, lisp docstring/style fixes, test-only changes, small src/ fixes, lisp+NEWS Bug# fixes), uses mergiraf as a syntax-aware merge driver for C/C++ conflicts, and applies a bounded -X theirs retry policy for known drift files. Writes a markdown report under .claude/notes/. Use when the user asks to sync upstream, review upstream commits, or backport upstream changes.
+description: Fetch new commits from GNU Emacs upstream (savannah) and triage them for backport into this fork. Auto-cherry-picks safe categories (docs, lisp bug fixes with Bug#NNNNN, lisp docstring/style fixes, test-only changes, small src/ fixes, lisp+NEWS Bug# fixes), uses mergiraf as a syntax-aware merge driver for C/C++ conflicts, and applies a bounded -X theirs retry policy for known drift files. Also runs a patch-source poll step that watches Darwin / packaging patch repos (homebrew-emacs-plus, nix-darwin-emacs, MacPorts) for new/changed .patch files and surfaces absorb candidates. Writes a markdown report under .claude/notes/. Use when the user asks to sync upstream, review upstream commits, or backport upstream changes.
 ---
 
 # Upstream commit review
@@ -18,13 +18,18 @@ review.
 
 ```
 bash .claude/skills/upstream-commit-review/scripts/apply.sh \
-    [--dry-run] [--smoke] [--retry-allow=PATH,PATH,...]
+    [--dry-run] [--smoke] [--retry-allow=PATH,PATH,...] \
+    [--skip-patch-sources]
 ```
 
-- `--dry-run`     — print the classification TSV; do not touch HEAD.
-- `--smoke`       — run `meson test -C build --suite smoke` after the batch.
-- `--retry-allow` — override the tier-3 drift allowlist (defaults to
-                   `src/keyboard.c,src/xdisp.c,src/coding.c,etc/AUTHORS`).
+- `--dry-run`            — print the classification TSV; do not touch HEAD.
+                          Patch-source poll still runs (write its TSV to
+                          stdout); pass `--skip-patch-sources` to suppress.
+- `--smoke`              — run `meson test -C build --suite smoke` after the batch.
+- `--retry-allow`        — override the tier-3 drift allowlist (defaults to
+                          `src/keyboard.c,src/xdisp.c,src/coding.c,etc/AUTHORS`).
+- `--skip-patch-sources` — skip the patch-source poll step (see
+                          [Patch-source poll](#patch-source-poll)).
 
 ## Pre-flight (handled by `scripts/lib.sh`)
 
@@ -128,6 +133,38 @@ Full policy detail and the rationale ("prefer upstream" rule) live in
 remembered, so a second run after partial triage auto-resolves
 recurring conflict shapes without further input.
 
+## Patch-source poll
+
+A second pass, independent of the cherry-pick loop, watches a small
+set of external repos that ship Darwin / packaging patches as
+**`.patch` files in a git tree** rather than as commits.  These can't
+be cherry-picked (different history) but they're the source of truth
+for patches `jotain/`'s Nix derivation depends on, so we poll them
+each run and surface new / changed / removed patches alongside the
+cherry-pick report.
+
+Tracked sources (`attributes/patch-sources.toml`):
+
+| name | repo | glob |
+|---|---|---|
+| `homebrew-emacs-plus` | d12frosted/homebrew-emacs-plus | `patches/emacs-31/*.patch` |
+| `nix-darwin-emacs` | nix-giant/nix-darwin-emacs | `overlays/patches-31/*.patch` |
+| `macports-emacs` | macports/macports-ports | `editors/emacs/files/*.{patch,diff}` |
+| `macports-emacs-mac-app` | macports/macports-ports | `aqua/emacs-mac-app/files/*.{patch,diff}` |
+
+Per-patch verdicts (`absorb-now` / `verify-then-absorb` / `defer` /
+`not-applicable` / `unreviewed`) and SHA-256 baselines live in
+`scripts/state/patch-sources.json`.  Refresh with
+`python3 scripts/patch_sources.py update-baseline` after editing
+verdicts.  Full design rationale, retention policy, and "how to add a
+source" lives in `references/patch-sources.md`.
+
+The poll's report section lists `new` patches first (these need a
+human verdict before the baseline is refreshed) and groups
+`changed` / `removed` rows under each source.  The per-source fork
+notes under `.claude/notes/fork-*.md` carry the detailed
+"why this verdict" prose.
+
 ## Report
 
 `scripts/report.py` renders
@@ -150,6 +187,9 @@ Sections:
 - **Range-diffs of -X theirs resolutions** — `git range-diff`
   excerpts per retried commit, with `difft` rendering when the
   binary is on PATH.
+- **Patch-source drift** — per-source tables of `new` / `changed` /
+  `removed` patch files from the patch-source poll, with a
+  highlighted "New patches awaiting verdict" subsection.
 - **NEWS hunks needing port to etc/NEWS.31** — for verification of
   rename-detected NEWS edits.
 
@@ -191,13 +231,18 @@ see `.claude/rules/commits.md` and `.claude/notes/git-workflow.md`.
 ## Implementation map
 
 ```
-scripts/lib.sh             pre-flight, remote/fetch, mergiraf wiring
-scripts/classify.py        rule engine, batched git metadata gather
-scripts/test_classify.py   unittest fixtures for the rule ladder
-scripts/apply.sh           cherry-pick loop + tier ladder
-scripts/report.py          markdown rendering, range-diff embedding
-attributes/gitattributes   per-file merge driver assignments
+scripts/lib.sh               pre-flight, remote/fetch, mergiraf wiring
+scripts/classify.py          rule engine, batched git metadata gather
+scripts/test_classify.py     unittest fixtures for the rule ladder
+scripts/apply.sh             cherry-pick loop + tier ladder
+scripts/report.py            markdown rendering, range-diff embedding
+scripts/patch_sources.py     patch-source poll driver (clone, hash, diff)
+scripts/test_patch_sources.py unittest fixtures for the poll helpers
+scripts/state/patch-sources.json  baseline SHA-256 + verdicts (committed)
+attributes/gitattributes     per-file merge driver assignments
+attributes/patch-sources.toml patch-source manifest (name, url, globs)
 references/conflict-resolution.md   "prefer upstream" policy detail
+references/patch-sources.md  patch-source poll design + ops guide
 ```
 
 External tools used (registered in `devenv.nix`):

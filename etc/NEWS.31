@@ -4710,6 +4710,27 @@ You may notice a slight change in dictation UI provided by macOS.
 ** On Mac OS X, stipples now render with color.
 
 ---
+** New macOS frame parameter 'undecorated-round'.
+Creates frames without a title bar but with macOS-native rounded
+corners and shadows, via 'NSFullSizeContentViewWindowMask' plus a
+transparent titlebar.  Useful for child frames, posframes, and
+floating tooltip-like UI that should still look at home on macOS.
+The frame must be created with 'undecorated' nil; setting both to t
+prefers 'undecorated' (square-corner borderless).  This is a
+downstream extension carried by the jylhis/emacs fork; not part of
+upstream Emacs 31.
+
+---
+** New macOS hook 'ns-system-appearance-change-functions'.
+The Cocoa port now exposes the system's light / dark appearance via
+the variable 'ns-system-appearance' (a symbol, either 'light or 'dark)
+and runs 'ns-system-appearance-change-functions' with that symbol
+whenever the system switches.  This lets configurations select a
+matching theme automatically without polling.  Effective on macOS
+10.14 (Mojave) and later.  This is a downstream extension carried by
+the jylhis/emacs fork; not part of upstream Emacs 31.
+
+---
 ** Emacs on MS-Windows now supports GUI dialogs and message boxes better.
 In particular, it is now possible to show text with embedded newlines in
 a dialog popped by 'message-box'.  This is supported on Windows Vista
