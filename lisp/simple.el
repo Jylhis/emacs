@@ -362,7 +362,10 @@ until you use it in some other buffer that uses Compilation mode
 or Compilation Minor mode.
 
 To control which errors are matched, customize the variable
-`compilation-error-regexp-alist'."
+`compilation-error-regexp-alist'.  The rules there determine the
+boundaries between error messages.  In general, messages that share
+the same line and column numbers are considered parts of a single
+error message."
   (interactive "P")
   (if (consp arg) (setq reset t arg nil))
   (let ((buffer (next-error-find-buffer)))
@@ -7864,8 +7867,9 @@ This function uses the definition of the default face for the currently
 selected frame."
   (let ((dfh (default-font-height))
 	(lsp (if (display-graphic-p)
-		 (total-line-spacing (or line-spacing
-		                         (default-value 'line-spacing)
+		 (total-line-spacing (or (if (local-variable-p 'line-spacing)
+                                             line-spacing
+		                           (default-value 'line-spacing))
 		                         (frame-parameter nil 'line-spacing)
 		                         0))
 	       0)))

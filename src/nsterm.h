@@ -1165,6 +1165,8 @@ extern void ns_make_frame_invisible (struct frame *f);
 extern void ns_iconify_frame (struct frame *f);
 extern void ns_set_undecorated (struct frame *f, Lisp_Object new_value,
                                 Lisp_Object old_value);
+extern void ns_set_undecorated_round (struct frame *f, Lisp_Object new_value,
+                                      Lisp_Object old_value);
 extern void ns_set_parent_frame (struct frame *f, Lisp_Object new_value,
                                  Lisp_Object old_value);
 extern void ns_set_no_focus_on_map (struct frame *f, Lisp_Object new_value,
@@ -1317,6 +1319,11 @@ enum NSWindowTabbingMode
 #define NSControlStateValueOff NSOffState
 #define NSBezelStyleRounded NSRoundedBezelStyle
 #define NSButtonTypeMomentaryPushIn NSMomentaryPushInButton
+#endif
+
+#if !defined (NS_IMPL_COCOA) || !defined (MAC_OS_X_VERSION_10_15)
+/* Deprecated in macOS 10.15.  */
+#define NSLevelIndicatorStyleContinuousCapacity NSContinuousCapacityLevelIndicatorStyle
 #endif
 
 extern void mark_nsterm (void);
