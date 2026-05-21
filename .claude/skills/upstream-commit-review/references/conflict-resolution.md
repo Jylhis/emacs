@@ -52,6 +52,21 @@ Bucket suffix `+theirs`; the report's `## Range-diffs of -X theirs
 resolutions` section shows what was taken so a human can verify the
 NEWS section ordering.
 
+**Note.**  `classify.py` carries a `RENAMED_TO` map that treats
+upstream's `etc/NEWS` path as if it were `etc/NEWS.31` for the
+missing-file check.  This means a commit that touches `lisp/foo.el`
++ `doc/misc/foo.texi` + `etc/NEWS` is *not* demoted as
+`missing-file:etc/NEWS` — it stays in its AUTO bucket and reaches
+the cherry-pick.  Git's rename detection then routes the `etc/NEWS`
+hunk onto `etc/NEWS.31` automatically.  When upstream introduces a
+brand-new top-level section (one that doesn't exist in NEWS.31)
+the cherry-pick conflicts as `modify/delete`; resolve manually by
+porting the entry into the corresponding NEWS.31 section, then
+`git rm etc/NEWS && git cherry-pick --continue`.  The pattern is
+codified in `meson/`-adjacent commit messages with a `Bad commit
+message` warning that mentions `etc/NEWS`; this is non-fatal and
+the cherry-pick still completes.
+
 ### Tier 3 — Bounded `-X theirs` retry
 
 When the conflict files are a subset of the **drift allowlist**:
