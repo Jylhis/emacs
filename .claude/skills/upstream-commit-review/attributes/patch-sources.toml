@@ -1,0 +1,66 @@
+# Patch sources polled by upstream-commit-review.
+#
+# Each [[source]] block names a git repo that ships Darwin / packaging
+# patches we may want to absorb into this fork.  The poll step
+# (`scripts/patch_sources.py`) clones each repo shallowly into a
+# scratch dir under ${RUN_DIR}, hashes every patch matching `glob`,
+# and compares against the baseline at
+# `scripts/state/patch-sources.json` to surface new / changed /
+# removed patches in the run's report.
+#
+# Schema:
+#   name        unique identifier; matches the key under "sources" in
+#               state/patch-sources.json.
+#   url         git remote URL.
+#   branch      branch or tag to poll.
+#   globs       list of fnmatch-style glob patterns relative to the
+#               repo root.  Files that match any glob are tracked.
+#   doc         relative path (from repo root) to the fork note that
+#               documents this source's per-patch verdicts.  Used to
+#               annotate the report; not load-bearing.
+
+[[source]]
+name   = "homebrew-emacs-plus"
+url    = "https://github.com/d12frosted/homebrew-emacs-plus"
+branch = "master"
+globs  = ["patches/emacs-31/*.patch"]
+doc    = ".claude/notes/fork-homebrew-emacs-plus.md"
+
+[[source]]
+name   = "nix-darwin-emacs"
+url    = "https://github.com/nix-giant/nix-darwin-emacs"
+branch = "main"
+globs  = ["overlays/patches-31/*.patch"]
+doc    = ".claude/notes/fork-nix-darwin-emacs.md"
+
+[[source]]
+name   = "macports-emacs"
+url    = "https://github.com/macports/macports-ports"
+branch = "master"
+globs  = [
+    "editors/emacs/files/*.patch",
+    "editors/emacs/files/*.diff",
+]
+doc    = ".claude/notes/fork-macports.md"
+
+[[source]]
+name   = "macports-emacs-mac-app"
+url    = "https://github.com/macports/macports-ports"
+branch = "master"
+globs  = [
+    "aqua/emacs-mac-app/files/*.patch",
+    "aqua/emacs-mac-app/files/*.diff",
+]
+doc    = ".claude/notes/fork-macports.md"
+
+# Aquamacs is opted out by default — its patch model is full-source
+# diff against Emacs 29.4, not a per-file patch set, so the SHA-
+# comparison flow would surface noise rather than actionable rows.
+# See fork-aquamacs.md for the manual candidate list.
+#
+# [[source]]
+# name   = "aquamacs"
+# url    = "https://github.com/aquamacs-emacs/aquamacs-emacs"
+# branch = "aquamacs-4-dev"
+# globs  = ["aquamacs/src/*.patch"]
+# doc    = ".claude/notes/fork-aquamacs.md"
