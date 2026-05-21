@@ -70,18 +70,35 @@ Moves `ns_init_colors()` call to after `init_callproc()` (which sets
 - Git revision injection into `lisp/loadup.el`
 - Darwin-only platform restriction
 
-## Cherry-Pick Feasibility
+## Absorb verdict (downstream — into `jylhis/emacs`)
 
-**Three patches are directly applicable** to this GNU Emacs tree:
+This overlay just **re-hosts** patches whose source of truth is
+[homebrew-emacs-plus](fork-homebrew-emacs-plus.md).  When deciding
+what to absorb into `jylhis/emacs`, the homebrew-emacs-plus note is
+authoritative — the rows below mirror its verdicts, with cross-
+references.
 
-1. **system-appearance.patch** -- High value.  Touches nsterm.m,
-   nsfns.m, frame.h.  Clean, well-scoped.  Most requested macOS
-   feature for upstream Emacs.  Could be submitted as a bug report.
+| Patch | Verdict | Reason |
+|---|---|---|
+| `patches-31/system-appearance.patch` | **absorb-now** | See [emacs-plus row](fork-homebrew-emacs-plus.md#system-appearancepatch--absorb-now) |
+| `patches-31/round-undecorated-frame.patch` | **absorb-now** | See [emacs-plus row](fork-homebrew-emacs-plus.md#round-undecorated-framepatch--absorb-now) |
+| `patches-unstable/adjust-ns-init-colors.patch` | **not-applicable** | Already in this fork — bug#80377 (`b7aca342e69`) + bug#80752 (`112a2c4595d`).  Confirm with `grep -n "ns_init_colors" src/emacs.c` (L2077). |
+| `patches-30/fix-window-role.patch` | **not-applicable** | Already upstream as bug#77062 (`6e1054a40bf`). |
 
-2. **round-undecorated-frame.patch** -- Medium value.  Niche but
-   clean implementation.  Touches frame.c/h, nsfns.m, nsterm.m/h.
+This overlay does **not** ship `fix-ns-x-colors.patch`, which
+homebrew-emacs-plus does carry — see the emacs-plus note for that
+candidate.
 
-3. **adjust-ns-init-colors.patch** -- Small fix to src/emacs.c.
-   Worth verifying if the bug exists on master.
+## Polling
 
-The fix-window-role patch is already in master.
+The patch-source poll in `.claude/skills/upstream-commit-review`
+tracks this overlay under the name `nix-darwin-emacs` with glob
+`overlays/patches-31/*.patch`.  When emacs-31 reaches EOL, bump the
+glob to `overlays/patches-32/*.patch`.
+
+## Reference value
+
+Still useful as a downstream-consumer canary even after the per-patch
+verdicts are resolved: it builds the Darwin patches against master
+daily, so if upstream master breaks them, this overlay's CI catches
+it first.
