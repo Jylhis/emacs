@@ -20,6 +20,11 @@
 # ----------------------------------------------------------------------
 subdir('src/emacs-module-resources')
 
+# Manual itree tests (C-level, libcheck-driven).  Gated on libcheck
+# being installed; build_by_default false.  Reference:
+# anchor 08a22b8965ec test/manual/noverlay/Makefile.in.
+subdir('manual/noverlay')
+
 # ----------------------------------------------------------------------
 # Discovery: enumerate test/**/*-tests.el at configure time.
 # Follows the pattern in lisp/meson.build:107-112.
