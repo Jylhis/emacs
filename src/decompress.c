@@ -25,7 +25,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "lisp.h"
 #include "buffer.h"
 #include "composite.h"
-#include "md5.h"
+#include "emacs-hash.h"
 
 
 

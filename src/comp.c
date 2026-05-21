@@ -36,7 +36,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "buffer.h"
 #include "blockinput.h"
 #include "coding.h"
-#include "md5.h"
+#include "emacs-hash.h"
 #include "sysstdio.h"
 #include "zlib.h"
 

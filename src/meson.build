@@ -19,8 +19,8 @@ base_obj_core = [
   'callint.c', 'callproc.c', 'casefiddle.c', 'casetab.c', 'category.c',
   'ccl.c', 'character.c', 'charset.c', 'chartab.c', 'cmds.c', 'coding.c',
   'composite.c', 'comp.c', 'data.c', 'decompress.c', 'dired.c',
-  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs-module.c',
-  'emacs.c', 'eval.c',
+  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs-hash.c',
+  'emacs-module.c', 'emacs.c', 'eval.c',
   'fileio.c', 'filelock.c', 'floatfns.c', 'fns.c', 'font.c', 'frame.c',
   'gnutls.c', 'indent.c', 'insdel.c', 'intervals.c', 'itree.c', 'json.c',
   'keyboard.c', 'keymap.c', 'lcms.c', 'lread.c', 'macros.c', 'marker.c',
@@ -280,7 +280,7 @@ endif
 
 src_deps = [
   libgnu_dep, gnutls_dep, treesit_dep,
-  sqlite_dep, xml_dep, gmp_dep,
+  sqlite_dep, xml_dep, gmp_dep, gcrypt_dep,
   dependency('threads'),
   tinfo_dep,
 ] + extra_x_libs

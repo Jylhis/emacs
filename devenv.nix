@@ -13,6 +13,7 @@ in
       texinfo
       gnutls
       jansson
+      libgcrypt
       libxml2
       ncurses
       sqlite

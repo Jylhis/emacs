@@ -353,6 +353,12 @@ if not gmp_dep.found()
   gmp_dep = cc.find_library('gmp', required : true)
 endif
 
+# libgcrypt provides MD5/SHA-1/SHA-2/SHA-3 used by Fmd5,
+# Fsecure_hash, Fbuffer_hash, decompress-zlib, comp.c, and the
+# make-fingerprint host tool.  In-tree replacement for gnulib's
+# lib/{md5,sha1,sha256,sha512,sha3}.c.
+gcrypt_dep = dependency('libgcrypt', required : true)
+
 # Native compilation via libgccjit (configure.ac:1588).  No pkg-config
 # file ships with libgccjit, so probe for the header.  Try
 # platform-specific GCC include paths first, then fall back to the
