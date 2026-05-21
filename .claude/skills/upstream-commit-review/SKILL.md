@@ -74,11 +74,6 @@ For each commit `SHA`, gather metadata once:
 ```bash
 SUBJECT=$(git show -s --format=%s "$SHA")
 FILES=$(git show --name-only --format= "$SHA" | sed '/^$/d')
-LINES=$(git show --shortstat --format= "$SHA" \
-        | awk '/files? changed/ {
-                 for (i=1; i<=NF; i++)
-                   if ($i ~ /^[0-9]+$/ && $(i+1) ~ /(insertion|deletion)/) s += $i
-               } END { print s+0 }')
 ```
 
 Apply the rules **in order**, first match wins:
@@ -131,7 +126,7 @@ Write to `.claude/notes/upstream-backport-review-$(date -u +%Y-%m-%d).md`
 
 | SHA | Subject | Files | Why |
 |---|---|---|---|
-| ... | ... | ... | conflict / unclassified / large |
+| ... | ... | ... | conflict / unclassified |
 
 ## Skipped
 
