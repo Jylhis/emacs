@@ -77,7 +77,7 @@ in
       xorg.libXext
       xorg.libXtst
       xorg.libXft
-      xorg.libXt
+      libxt
       xorg.libSM
       xorg.libICE
     ]);
@@ -89,6 +89,24 @@ in
     java.enable = true;
     shell.enable = true;
   };
+
+  # The `libgccjit` package in the packages list above puts an
+  # *unwrapped* `gcc` first on PATH, which shadows the gcc-wrapper
+  # provided by `languages.c.enable`.  meson probes the compiler
+  # via `gcc`, so it picks the unwrapped one whose link line has
+  # no `-L /nix/store/.../glibc/lib` and fails with "cannot find
+  # Scrt1.o".  Point CC/CXX at the wrapped binaries by absolute
+  # store path so they're picked regardless of PATH order or what
+  # `languages.c.enable`'s own enterShell sets.
+  env = {
+    CC = "${pkgs.gcc}/bin/cc";
+    CXX = "${pkgs.gcc}/bin/c++";
+  };
+
+  enterShell = ''
+    export CC=${pkgs.gcc}/bin/cc
+    export CXX=${pkgs.gcc}/bin/c++
+  '';
 
   # https://devenv.sh/binary-caching/
   cachix = {
