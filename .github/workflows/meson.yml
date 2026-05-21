@@ -3,12 +3,11 @@
 #
 # This file is part of GNU Emacs.
 #
-# Build the Meson tree.  CI uses Ubuntu's apt-get for the toolchain
-# because the Nix gcc-wrapper / binutils-wrapper hooks don't activate
-# reliably under `devenv shell -- bash -c '...'` on GitHub-hosted
-# runners (the wrapped gcc invokes raw binutils ld which can't find
-# Scrt1.o).  Local dev still gets the pinned Nix toolchain via
-# devenv.nix.
+# Build the Meson tree inside a devenv.sh shell so CI uses the same
+# Nix-pinned toolchain as a developer's local environment.  Pattern
+# follows https://devenv.sh/integrations/github-actions/ .  The
+# jylhis Cachix cache is pulled from on every run; pushes to it are
+# restricted to main branches (see authToken expression below).
 
 name: meson
 
@@ -249,26 +248,38 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      # ---- System dependencies ----------------------------------------
-      - name: Install build dependencies
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          # Push only on pushes to dev / master / emacs-* release
+          # branches.  PR runs (incl. fork PRs) and workflow_dispatch
+          # get pull-only.  Empty token => cachix-action runs in
+          # pull-only mode.
+          cachix-auth-token: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
+
+      # ---- Verify Nix-wrapped toolchain is active ---------------------
+      # Compile + link a sentinel that exercises the same gcc/ld/crt
+      # path meson's compiler probe uses.  Fails fast on wrapper drift.
+      - name: Verify Nix-wrapped toolchain
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            meson ninja-build python3 pkg-config \
-            gcc libc6-dev \
-            libgtk-3-dev libcairo2-dev libpango1.0-dev \
-            libharfbuzz-dev libfreetype-dev libfontconfig1-dev libxft-dev \
-            libgnutls28-dev libtree-sitter-dev libsqlite3-dev libxml2-dev \
-            libsystemd-dev libgmp-dev libgccjit-13-dev libjansson-dev \
-            libncurses-dev libacl1-dev \
-            libx11-dev libxfixes-dev libxrender-dev libxrandr-dev \
-            libxcomposite-dev libxinerama-dev libxi-dev libxext-dev \
-            libxtst-dev libsm-dev libice-dev libtinfo-dev \
-            libjpeg-dev libtiff-dev libgif-dev libpng-dev librsvg2-dev \
-            libwebp-dev liblcms2-dev libdbus-1-dev zlib1g-dev \
-            texinfo gawk
+          set -euo pipefail
+          echo "cc:         $(command -v cc)"
+          echo "gcc:        $(command -v gcc || true)"
+          echo "ld:         $(command -v ld)"
+          echo "pkg-config: $(command -v pkg-config)"
+          echo "meson:      $(command -v meson)"
+          echo "ninja:      $(command -v ninja)"
+          echo "NIX_LDFLAGS=${NIX_LDFLAGS:-<unset>}"
+          cc --version | head -1
+          ld --version | head -1
+          pkg-config --version
           meson --version
           ninja --version
+          # Match meson's sanity check exactly (same flags meson uses).
+          printf 'int main(void){return 0;}\n' > /tmp/sanity.c
+          cc /tmp/sanity.c -o /tmp/sanity -D_FILE_OFFSET_BITS=64
+          /tmp/sanity
+          echo "Toolchain sanity check passed."
 
       # ---- Build cache ------------------------------------------------
       # Bump the version suffix (currently `-v2`) whenever a change to a
@@ -460,12 +471,78 @@ jobs:
             echo "emacs.pdmp not produced; skipping ERT tests"
           fi
 
+      # ---- Staged install + parity check ------------------------------
+      # Verifies that meson install lays out a tree that matches what
+      # autotools `make install` used to produce.  Catches regressions
+      # in build_by_default flips and meson_install.py walks.
+      - name: meson install (staged)
+        continue-on-error: true
+        if: success()
+        run: |
+          if [ -f build/lisp/emacs.pdmp ]; then
+            meson install -C build --destdir="$PWD/stage"
+          else
+            echo "emacs.pdmp not produced; skipping staged install"
+          fi
+
+      - name: Check installed-tree parity
+        continue-on-error: true
+        if: success()
+        run: |
+          if [ -d stage/usr/local ]; then
+            bash .github/scripts/check-install-parity.sh \
+              stage/usr/local 31.0.50 x86_64-linux-gnu
+          else
+            echo "no stage/ produced; skipping parity check"
+          fi
+
+      - name: Smoke test installed Emacs (batch eval)
+        continue-on-error: true
+        if: success()
+        run: |
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/emacs.pdmp
+          if [ -x "$bin" ] && [ -f "$dump" ]; then
+            EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+            EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/etc \
+            EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+              "$bin" --dump-file="$dump" --batch \
+              --eval '(princ emacs-version)'
+          else
+            echo "installed emacs missing; skipping batch-eval smoke"
+          fi
+
+      - name: Avy byte-compile reproducer (downstream segfault gate)
+        continue-on-error: true
+        if: success()
+        run: |
+          # Heavy byte-compile workload that segfaulted under the
+          # undumped temacs-as-emacs binary in downstream Nix builds.
+          # Gates against regressions in the dump pipeline.
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/emacs.pdmp
+          if [ -x "$bin" ] && [ -f "$dump" ]; then
+            mkdir -p stage-test
+            cp -r lisp stage-test/lisp-copy
+            EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+            EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/x86_64-linux-gnu/etc \
+            EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+              "$bin" --dump-file="$dump" --batch -Q \
+              --eval '(byte-compile-file "stage-test/lisp-copy/subr.el")'
+            test -f stage-test/lisp-copy/subr.elc
+          else
+            echo "installed emacs missing; skipping avy-reproducer"
+          fi
+
       # ---- Artefacts --------------------------------------------------
+      # Suffix with matrix.label (sanitised: '/' -> '-') so the two
+      # matrix entries don't collide on the same artifact name
+      # (upload-artifact@v7 returns 409 Conflict on duplicates).
       - name: Upload Meson logs
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: meson-logs
+          name: meson-logs-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
             build/meson-logs/
           retention-days: 14
@@ -474,9 +551,115 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v7
         with:
-          name: pdumper-images
+          name: pdumper-images-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
             build/src/bootstrap-emacs.pdmp
             build/lisp/emacs.pdmp
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # ================================================================
+  # macOS terminal-only build + install + parity check.  Mirrors the
+  # downstream Nix package build that exposed the missing-pdmp /
+  # missing-loaddefs / missing-charscript install gaps.
+  # ================================================================
+  macos-build-and-test:
+    name: macos build + install (terminal-only)
+    needs: [classify, lint]
+    if: needs.classify.outputs.macos_meson == 'true'
+    runs-on: macos-14
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          cachix-auth-token: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
+
+      - name: Verify Nix-wrapped toolchain
+        run: |
+          set -euo pipefail
+          echo "cc:         $(command -v cc)"
+          echo "ld:         $(command -v ld)"
+          echo "pkg-config: $(command -v pkg-config)"
+          cc --version | head -1
+          meson --version
+          ninja --version
+          printf 'int main(void){return 0;}\n' > /tmp/sanity.c
+          cc /tmp/sanity.c -o /tmp/sanity -D_FILE_OFFSET_BITS=64
+          /tmp/sanity
+          echo "Toolchain sanity check passed."
+
+      - name: meson setup (terminal-only)
+        run: |
+          meson setup build \
+            -Dtoolkit=none \
+            -Dnative-compilation=no \
+            -Dxft=disabled \
+            -Dxpm=disabled \
+            -Dxinput2=disabled \
+            -Dxdbe=disabled \
+            -Dgpm=disabled \
+            -Dselinux=disabled \
+            -Dlibotf=disabled \
+            -Dm17n-flt=disabled \
+            -Dgsettings=disabled
+
+      - name: meson compile
+        run: meson compile -C build --verbose 2>&1 | tee build/compile.log
+
+      - name: Dump build diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== last 200 lines of compile.log ==="
+          tail -200 build/compile.log || true
+          echo "=== meson-log.txt ==="
+          tail -200 build/meson-logs/meson-log.txt || true
+
+      - name: meson install (staged)
+        run: meson install -C build --destdir="$PWD/stage"
+
+      - name: Check installed-tree parity
+        run: |
+          arch=$(uname -m)
+          bash .github/scripts/check-install-parity.sh \
+            stage/usr/local 31.0.50 "$arch-darwin"
+
+      - name: Smoke test installed Emacs
+        run: |
+          arch=$(uname -m)
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/emacs.pdmp
+          EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+          EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/etc \
+          EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+            "$bin" --dump-file="$dump" --batch \
+            --eval '(princ emacs-version)'
+
+      - name: Avy byte-compile reproducer
+        run: |
+          arch=$(uname -m)
+          bin=stage/usr/local/bin/emacs
+          dump=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/emacs.pdmp
+          mkdir -p stage-test
+          cp lisp/subr.el stage-test/subr-copy.el
+          EMACSDATA=stage/usr/local/share/emacs/31.0.50/etc \
+          EMACSDOC=stage/usr/local/libexec/emacs/31.0.50/$arch-darwin/etc \
+          EMACSLOADPATH=stage/usr/local/share/emacs/31.0.50/lisp \
+            "$bin" --dump-file="$dump" --batch -Q \
+            --eval '(byte-compile-file "stage-test/subr-copy.el")'
+          test -f stage-test/subr-copy.elc
+
+      - name: Upload Meson logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: macos-meson-logs
+          path: |
+            build/meson-logs/
+            build/compile.log
           retention-days: 14
           if-no-files-found: ignore
