@@ -1,0 +1,73 @@
+{
+  "_doc": "Baseline SHA-256 hashes for tracked patch files; updated by patch_sources.py --update-baseline. Schema: { sources: { <name>: { <path>: { sha256, verdict, note } } } }. Verdicts: absorb-now | verify-then-absorb | defer | not-applicable | unreviewed.",
+  "sources": {
+    "homebrew-emacs-plus": {
+      "patches/emacs-31/fix-ns-x-colors.patch": {
+        "sha256": "9e5d3e26a8d388d3a000b697d582769645ca93ad597b4113744deba4b89a8b9e",
+        "verdict": "verify-then-absorb",
+        "note": "Refreshes x-colors at NS window-system-initialization; not upstream as of 2026-05-20; confirm headless dump truncates ns-list-colors before landing. See fork-homebrew-emacs-plus.md."
+      },
+      "patches/emacs-31/round-undecorated-frame.patch": {
+        "sha256": "26947b6724fc29fadd44889808c5cf0b4ce6278cf04f46086a21df50c8c4151d",
+        "verdict": "absorb-now",
+        "note": "Adds undecorated-round frame parameter; not in upstream or this fork (grep src/ for Qundecorated_round)."
+      },
+      "patches/emacs-31/system-appearance.patch": {
+        "sha256": "53283503db5ed2887e9d733baaaf80f2c810e668e782e988bda5855a0b1ebeb4",
+        "verdict": "absorb-now",
+        "note": "Adds ns-system-appearance + change hook; most-requested macOS feature; not in upstream or this fork."
+      }
+    },
+    "macports-emacs": {
+      "editors/emacs/files/patch-Info.plist.in.diff": {
+        "sha256": "a489236e552ea8af270e50dfc85197cb3531c8b4abe31068e355a6ed045ef2ac",
+        "verdict": "defer",
+        "note": "MacPorts LSEnvironment PATH injection into app bundle plist; useful pattern but the value is MacPorts-specific."
+      },
+      "editors/emacs/files/patch-allow-powerpc.diff": {
+        "sha256": "2b7f76897c07e99e02cc8e102d82a5fc46789d50e1ddd37f765bd7891410a469",
+        "verdict": "not-applicable",
+        "note": "Targets configure.ac (removed at 313f867 Meson cutover); PowerPC Darwin not a fork target."
+      },
+      "editors/emacs/files/patch-src_dbusbind.c.diff": {
+        "sha256": "263a3892c6bd54d552feb78d67f5b8cff5525c57a7d0df3b448d4f56d7da6037",
+        "verdict": "defer",
+        "note": "Disables dbus no-autolaunch guard for MacPorts launchd-managed dbus; jotain disables dbus on Darwin anyway."
+      },
+      "editors/emacs/files/patch-tree-sitter-0.26.diff": {
+        "sha256": "dd7ea5d6c1c3e75b8529602316f90ac8b04673c7450353ad396be2809af4b1dd",
+        "verdict": "not-applicable",
+        "note": "Renames :eq?/:match?/:pred? back to older spellings; fork already uses new names in doc/lispref/parsing.texi."
+      }
+    },
+    "macports-emacs-mac-app": {
+      "aqua/emacs-mac-app/files/emacs-mac-app-devel-multi-tty.patch": {
+        "sha256": "7ad0e2cab60efc25b8522abdfdaf1b641a5775d5aa42ac9973f77cbd1f533b75",
+        "verdict": "not-applicable",
+        "note": "Multi-tty patch targeting the Yamamoto Mac port (HAVE_MACGUI); not portable to NS port."
+      },
+      "aqua/emacs-mac-app/files/emacs-mac-app-multi-tty.patch": {
+        "sha256": "01b5fd436ae28d12359c8f0f74b41762b17c910414557570481d294fe1280e9f",
+        "verdict": "not-applicable",
+        "note": "Stable-branch counterpart of devel-multi-tty; same Mac-port assumptions."
+      },
+      "aqua/emacs-mac-app/files/patch-src_emacs.c.diff": {
+        "sha256": "02946d10675b67feb08972222ed4c1611f8f495a2b9e98498e27d49c76b3b1d0",
+        "verdict": "not-applicable",
+        "note": "Runtime __PREFIX__/bin PATH injection for imaxima; MacPorts-specific."
+      }
+    },
+    "nix-darwin-emacs": {
+      "overlays/patches-31/round-undecorated-frame.patch": {
+        "sha256": "f37661f616053780fcb233bb49a0205191bfe89209d4089fc2e68ec532abca88",
+        "verdict": "absorb-now",
+        "note": "Re-host of emacs-plus round-undecorated-frame; see homebrew-emacs-plus row of same name."
+      },
+      "overlays/patches-31/system-appearance.patch": {
+        "sha256": "53283503db5ed2887e9d733baaaf80f2c810e668e782e988bda5855a0b1ebeb4",
+        "verdict": "absorb-now",
+        "note": "Re-host of emacs-plus system-appearance; same SHA, see homebrew-emacs-plus row."
+      }
+    }
+  }
+}
