@@ -459,7 +459,18 @@ endif
 if fontconfig_dep.found() and not conf_data.has('HAVE_NS')
   conf_data.set('HAVE_FONTCONFIG', 1)
 endif
-if xft_dep.found()
+if xft_dep.found() and not conf_data.has('USE_CAIRO')
+  # xsettings.c at xsettings.c:57-62 selects between
+  # `#ifdef USE_CAIRO` (include fontconfig.h + ftfont.h) and
+  # `#elif defined HAVE_XFT` (include Xft.h), making the two
+  # mutually exclusive.  Later in the same file (e.g. line 988)
+  # `#ifdef HAVE_XFT` is used as a standalone gate to call
+  # XftDefaultSet, which is only declared by Xft.h.  So if HAVE_XFT
+  # is set alongside USE_CAIRO, Xft.h is never included but the
+  # call is compiled, leading to "implicit declaration of
+  # XftDefaultSet".  Autotools made these mutually exclusive; match
+  # that here so the source stays consistent with both build
+  # systems.
   conf_data.set('HAVE_XFT', 1)
 endif
 if gnutls_dep.found()
