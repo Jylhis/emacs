@@ -168,6 +168,23 @@ def main() -> int:
         copytree(lisp_src, lisp_dst,
                  exclude={"__pycache__", "Makefile.in", "Makefile"})
 
+    # --- byte-compiled .elc tree from build root ---------------------
+    # meson/byte_compile_batch.py writes .elc files into
+    # build/lisp/<rel>.elc rather than alongside their .el sources.
+    # Mirror them into the install tree so the installed Emacs picks
+    # up byte-compiled code (autotools' install-arch-indep installs
+    # both .el and .elc; reference: lisp/Makefile.in).  Stamp files
+    # produced by the build (loaddefs.stamp, compile-first.stamp,
+    # compile-main.stamp, native-lisp.stamp) live alongside the .elc
+    # tree but are not installable; the *.elc filter handles that.
+    build_lisp = args.build_root / "lisp"
+    if build_lisp.is_dir():
+        for elc in build_lisp.rglob("*.elc"):
+            rel = elc.relative_to(build_lisp)
+            dst = lisp_dst / rel
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(elc, dst)
+
     # --- etc/ tree ----------------------------------------------------
     # The build-tree etc/ is the same as the source tree (we don't
     # generate anything there other than DOC, which already went to

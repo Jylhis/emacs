@@ -52,8 +52,9 @@ loaddefs_stamp = custom_target(
     '--subdirs',
   ] + loaddefs_subdirs,
   depends : [bootstrap_emacs, bootstrap_pdmp,
-             charscript_el, emoji_zwj_el, charsets_stamp],
-  build_by_default : false,
+             charscript_el, emoji_zwj_el, charsets_stamp,
+             leim_list_stamp],
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -94,7 +95,7 @@ compile_first_elcs = custom_target(
     bootstrap_emacs, bootstrap_pdmp,
     charscript_el, emoji_zwj_el, charsets_stamp,
   ],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -132,11 +133,7 @@ compile_main_manifest = custom_target(
   # because eager macro expansion of `(autoload 'rx ... nil t)` in
   # source-loaded loaddefs.el triggers a load that pdump rejects.
   depends : [loaddefs_stamp],
-  # Don't pull this into the default build set: it transitively
-  # depends on loaddefs_stamp -> bootstrap-emacs.pdmp, which is
-  # only built when explicitly requested (the dump pipeline is
-  # known-flaky during the post-cutover migration).
-  build_by_default : false,
+  build_by_default : true,
 )
 
 compile_main_elcs = custom_target(
@@ -159,7 +156,7 @@ compile_main_elcs = custom_target(
     charscript_el, emoji_zwj_el, charsets_stamp,
     compile_first_elcs, compile_main_manifest, loaddefs_stamp,
   ],
-  build_by_default : false,
+  build_by_default : true,
 )
 
 # ----------------------------------------------------------------------
@@ -194,22 +191,26 @@ endif
 # src/Makefile.in:567-573.
 # ----------------------------------------------------------------------
 run_dump_lisp = files('../meson/run_dump.py')
+_emacs_pdmp_args = [
+  py, run_dump_lisp,
+  '--bootstrap-emacs', emacs.full_path(),
+  '--source-root',     meson.global_source_root(),
+  '--output-pdmp',     '@OUTPUT@',
+  '--mode',            'pdump',
+  '--charscript',      charscript_el.full_path(),
+  '--emoji-zwj',       emoji_zwj_el.full_path(),
+  '--doc-file',        etc_doc.full_path(),
+]
+if not build_details_opt
+  _emacs_pdmp_args += '--no-build-details'
+endif
 emacs_pdmp = custom_target(
   'emacs.pdmp',
   output  : 'emacs.pdmp',
-  command : [
-    py, run_dump_lisp,
-    '--bootstrap-emacs', emacs.full_path(),
-    '--source-root',     meson.global_source_root(),
-    '--output-pdmp',     '@OUTPUT@',
-    '--mode',            'pdump',
-    '--charscript',      charscript_el.full_path(),
-    '--emoji-zwj',       emoji_zwj_el.full_path(),
-    '--doc-file',        etc_doc.full_path(),
-  ],
+  command : _emacs_pdmp_args,
   depends : [
     emacs, charscript_el, emoji_zwj_el, charsets_stamp,
     etc_doc, compile_main_elcs, loaddefs_stamp,
   ],
-  build_by_default : false,
+  build_by_default : true,
 )

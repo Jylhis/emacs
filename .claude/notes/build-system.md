@@ -116,3 +116,27 @@ Intended for frequent re-installs during development.
     --with-pgtk                        # Pure GTK (Wayland/Broadway)
     --with-cairo                       # Cairo drawing
     --enable-link-time-optimization    # LTO (slower, crash-prone)
+
+## Parked / unsupported
+
+These platform backends from the autotools tree have intentionally
+not been ported to Meson; the fork prioritises Linux GTK3, Linux
+terminal, and macOS NS/terminal.  Reviving any of them means
+porting the platform-specific C/Java code, not just translating a
+Makefile -- the work is a port, not a migration.
+
+| Backend | Autotools recipe (at anchor `08a22b8965ec`) | Why parked |
+|---|---|---|
+| Android cross-build | `java/Makefile.in`, `exec/Makefile.in`, `cross/Makefile.in`, `cross/ndk-build/Makefile.in` | Thousands of lines of NDK + Java glue.  Re-introduces a parallel build system. |
+| Windows GUI / Cygwin | `nt/`, configure.ac w32 / native-image-api / cygwin32-native-compilation switches | C backend not on this fork's roadmap. |
+| Haiku | configure.ac be-app / be-cairo switches | Same. |
+| `admin/grammars/` | `admin/grammars/Makefile.in` | Outputs are committed to `lisp/cedet/semantic/`; only matters when editing `.by`/`.wy` source grammars. |
+| `lib-src/asset-directory-tool` | `lib-src/Makefile.in:418` | Android-only. |
+| `xaw3d` / Motif / Lucid X toolkits | configure.ac toolkit selector | Already dropped per `meson.options:52-53`. |
+| `gconf` | configure.ac AC_ARG_WITH | Deprecated; option `disabled` by default. |
+| `imagemagick` | configure.ac AC_ARG_ENABLE | `disabled` by default; security advisories argue against turning back on. |
+
+To revive a parked backend, start by `git show 08a22b8965ec:<path>`
+and translate the rules into a new Meson `subdir()` block.  Update
+`meson.build`'s parked-subdirs list and `meson.options` (which
+keeps a stub list of parked option names) when promoting one.
