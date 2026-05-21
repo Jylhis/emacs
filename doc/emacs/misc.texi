@@ -2109,6 +2109,24 @@ a message that says how to exit the client frame.  If
 @code{server-client-instructions} is set to @code{nil}, this message
 is inhibited.
 
+@cindex shell aliases for daemon and client
+  A common workflow is to start the Emacs daemon once per login
+session and then use short shell aliases to open new client frames
+quickly.  In Bash:
+
+@example
+alias emd='emacs --daemon'
+alias em='emacsclient -t'
+alias emg='emacsclient -c'
+@end example
+
+@noindent
+After running @command{emd} once, both @command{em} (a text
+terminal frame) and @command{emg} (a graphical frame) attach to
+the same server, so buffers, registers, and the kill ring are
+shared across all client frames.  @xref{emacsclient Options}, for
+the full list of flags.
+
 @node emacsclient Options
 @subsection @code{emacsclient} Options
 @cindex @code{emacsclient} options
