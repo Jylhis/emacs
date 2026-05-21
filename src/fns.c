@@ -6050,11 +6050,7 @@ DEFUN ("internal--hash-table-index-size",
 			MD5, SHA-1, SHA-2, and SHA-3
  ************************************************************************/
 
-#include "md5.h"
-#include "sha1.h"
-#include "sha256.h"
-#include "sha512.h"
-#include "sha3.h"
+#include "emacs-hash.h"
 
 /* Store into HEXBUF an unterminated hexadecimal character string
    representing DIGEST, which is binary data of size DIGEST_SIZE bytes.

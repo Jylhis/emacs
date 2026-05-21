@@ -41,7 +41,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <getopt.h>
 #include <intprops.h>
 #include <min-max.h>
-#include <sha256.h>
+#include "emacs-hash.h"
 
 #ifndef SSIZE_MAX
 # define SSIZE_MAX TYPE_MAXIMUM (ssize_t)
