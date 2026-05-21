@@ -20,6 +20,10 @@ session.
   devenv.nix that the upstream docs recommend.
 - [Fork TODOs](fork-todos.md) -- open follow-up work for this fork
   (local ldefs-boot.el regeneration, etc.).
+- [Upstream-patch work review (2026-05-21)](upstream-work-review-2026-05-21.md)
+  -- consolidated retrospective of all savannah backports and Darwin
+  patch absorption to date; entry point for the per-session
+  `upstream-backport-review-*.md` reports.
 
 ### External Forks and Patch Sources
 
