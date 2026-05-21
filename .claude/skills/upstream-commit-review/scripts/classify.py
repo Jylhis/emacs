@@ -39,10 +39,19 @@ AUTOTOOLS_RX = re.compile(
 )
 ADMIN_RX = re.compile(r"^admin/|^ChangeLog(\.[0-9]+)?$|^etc/MAINTAINERS$")
 MERGE_SUBJECT_RX = re.compile(r"^(; *)?Merge \b|gitmerge", re.IGNORECASE)
+# Release-branch-only commits.  These appear on emacs-NN release branches
+# and travel to master only as merge commits; the standalone commit on
+# the release branch does not apply cleanly to master-tracking forks.
+RELEASE_BRANCH_SUBJ_RX = re.compile(
+    r"^(Change \w+ version for Emacs \d+ to "
+    r"|Cut the emacs-\d+ release branch"
+    r"|Bump (master )?Emacs version)",
+    re.IGNORECASE,
+)
 
 DOC_ONLY_RX = re.compile(
     r"^doc/"
-    r"|^etc/(NEWS(\.[0-9]+)?|ERC-NEWS|HISTORY|AUTHORS)$"
+    r"|^etc/(NEWS(\.[0-9]+)?|ERC-NEWS|HISTORY|AUTHORS|PROBLEMS)$"
     r"|\.texi(nfo)?$"
     r"|\.org$"
 )
@@ -50,13 +59,15 @@ TEST_ONLY_RX = re.compile(r"^test/")
 LISP_RX = re.compile(r"^lisp/.+\.el$")
 LISP_OR_TEST_RX = re.compile(r"^(lisp/|test/)")
 SRC_RX = re.compile(r"^src/")
-LISP_TEST_NEWS_RX = re.compile(r"^(lisp/|test/)|^etc/NEWS(\.[0-9]+)?$")
+LISP_TEST_NEWS_RX = re.compile(r"^(lisp/|test/|doc/)|^etc/NEWS(\.[0-9]+)?$")
 
 DOC_STYLE_SUBJ_RX = re.compile(
     r"\b(docstring|doc string|doc fix|typo|when-let|comment fix)\b",
     re.IGNORECASE,
 )
-SMALL_SRC_PREFIX_RX = re.compile(
+# Small-src cleanup-shape prefixes.  Used as a permissive gate alongside
+# size + Bug#; not the only signal.
+SMALL_SRC_SHAPE_RX = re.compile(
     r"^(Fix |; Fix |Pacify |Avoid |; Avoid |Don't |; \* src/)"
 )
 FEATURE_SUBJ_RX = re.compile(r"^(Add|New|Introduce)\b")
@@ -65,17 +76,42 @@ BUG_RX = re.compile(r"\bBug#\d+", re.IGNORECASE)
 
 # ---- Data model -------------------------------------------------------------
 
+# Renames applied at the cutover: upstream paths that map to a different
+# path in this fork.  Used by missing_file() so commits that touch
+# upstream's `etc/NEWS` don't trip the missing-file demotion — git's
+# rename detection already routes them to `etc/NEWS.31` at cherry-pick.
+RENAMED_TO: dict[str, str] = {
+    "etc/NEWS": "etc/NEWS.31",
+}
+
+
 @dataclass
 class Commit:
     sha: str
     subject: str
+    body: str = ""
     files: list[str] = field(default_factory=list)
+    # Files the commit ADDS (status `A` in `git show --name-status`).
+    # These are excluded from the missing_file check because the commit
+    # creates them — the absence in HEAD is expected.
+    added_files: set[str] = field(default_factory=set)
     lines: int = 0
+
+    @property
+    def has_bug(self) -> bool:
+        """Bug#NNNN in subject OR body."""
+        return bool(BUG_RX.search(self.subject)
+                    or (self.body and BUG_RX.search(self.body)))
 
     @property
     def missing_file(self) -> str | None:
         for f in self.files:
-            if not os.path.exists(f):
+            # A commit that adds a file naturally doesn't have it in HEAD.
+            if f in self.added_files:
+                continue
+            # Rename: treat upstream path as if it were the renamed path.
+            check = RENAMED_TO.get(f, f)
+            if not os.path.exists(check):
                 return f
         return None
 
@@ -92,7 +128,8 @@ class Decision:
         }
 
     def is_skip(self) -> bool:
-        return self.bucket in {"autotools", "merge-noise", "admin"}
+        return self.bucket in {"autotools", "merge-noise", "admin",
+                               "release-branch"}
 
 
 # ---- Rule engine ------------------------------------------------------------
@@ -123,7 +160,13 @@ def classify(c: Commit) -> Decision:
     if all_match(files, ADMIN_RX):
         return Decision("admin", "admin/ or ChangeLog only")
 
+    # Rule 3.5: SKIP / release-branch-only commit.  These travel to
+    # master via merges; the standalone commit doesn't apply.
+    if RELEASE_BRANCH_SUBJ_RX.search(subj):
+        return Decision("release-branch", "release-branch commit")
+
     # Missing-file forces REVIEW regardless of file pattern.
+    # (added_files and renamed paths handled inside missing_file.)
     missing = c.missing_file
     if missing is not None:
         return Decision("review", f"missing-file:{missing}")
@@ -136,8 +179,8 @@ def classify(c: Commit) -> Decision:
     if all_match(files, TEST_ONLY_RX):
         return Decision("test-only", "test-only")
 
-    # Rule 6: AUTO / lisp bugfix
-    if BUG_RX.search(subj) and all_match(files, LISP_OR_TEST_RX):
+    # Rule 6: AUTO / lisp bugfix (Bug# anywhere in subject or body)
+    if c.has_bug and all_match(files, LISP_OR_TEST_RX):
         return Decision("lisp-bugfix", "lisp+test, has Bug#")
 
     # Rule 7: AUTO / lisp doc-or-style fix
@@ -146,16 +189,22 @@ def classify(c: Commit) -> Decision:
             and (subj.startswith("; ") or DOC_STYLE_SUBJ_RX.search(subj))):
         return Decision("lisp-doc-style", "lisp doc/style, < 50 lines")
 
-    # Rule 8: AUTO / small src fix
+    # Rule 8: AUTO / small src fix.  Any src/-only change under 50
+    # lines is auto-applied if any of:
+    #   - it is tiny (< 20 lines),
+    #   - it carries a Bug# tag anywhere (subject or body),
+    #   - its subject matches a cleanup shape (Fix/Pacify/Avoid/...).
     if all_match(files, SRC_RX) and c.lines < 50:
-        if (SMALL_SRC_PREFIX_RX.search(subj)
-                or BUG_RX.search(subj)
-                or c.lines < 20):
-            return Decision("small-src", "src/ < 50 lines, fix-shape")
+        if (c.has_bug
+                or c.lines < 20
+                or SMALL_SRC_SHAPE_RX.search(subj)):
+            return Decision("small-src", "src/ < 50 lines")
 
-    # Rule 9: AUTO / lisp+NEWS Bug#
-    if BUG_RX.search(subj) and all_match(files, LISP_TEST_NEWS_RX):
-        return Decision("lisp+news-bug", "lisp+test+NEWS, has Bug#")
+    # Rule 9: AUTO / lisp+doc+NEWS Bug#.  Extended from the original
+    # lisp+test+NEWS rule to cover the very common "feature/fix + doc +
+    # NEWS" pattern of mature subsystems (Eglot, Tramp, ERC, Gnus).
+    if c.has_bug and all_match(files, LISP_TEST_NEWS_RX):
+        return Decision("lisp+news-bug", "lisp+test+doc+NEWS, has Bug#")
 
     # Rule 11 (REVIEW with feature tag) — eyeballs required even if small.
     if FEATURE_SUBJ_RX.search(subj):
@@ -180,7 +229,7 @@ def _review_reason(c: Commit) -> str:
         return "lisp-multi-area"
     if in_src and len(files) > 1:
         return "src-multi-file"
-    if in_lisp and not BUG_RX.search(c.subject):
+    if in_lisp and not c.has_bug:
         return "lisp-no-bug"
     return "unclassified"
 
@@ -188,9 +237,9 @@ def _review_reason(c: Commit) -> str:
 # ---- Git plumbing -----------------------------------------------------------
 
 # The chosen format uses single-character record separators rather than
-# tabs because file lists can contain spaces.  Field separator: \x1f
-# Record separator: \x1e
-GIT_FORMAT = "%H%x1f%s"
+# tabs because file lists and commit bodies can contain spaces and
+# newlines.  Field separator: \x1f  Body terminator: \x1e (record-end).
+GIT_FORMAT = "%H%x1f%s%x1f%b%x1e"
 
 
 def gather(shas: list[str]) -> list[Commit]:
@@ -202,27 +251,36 @@ def gather(shas: list[str]) -> list[Commit]:
     if not shas:
         return out
     for chunk in _chunks(shas, 100):
-        # Subjects in one batched call.
+        # Subjects and bodies in one batched call.
         meta = subprocess.check_output(
             ["git", "log", "--no-walk=unsorted", f"--format={GIT_FORMAT}",
              *chunk],
             text=True,
         )
-        meta_map: dict[str, str] = {}
-        for line in meta.split("\n"):
-            if not line:
+        meta_map: dict[str, tuple[str, str]] = {}
+        for record in meta.split("\x1e"):
+            record = record.strip("\n")
+            if not record:
                 continue
-            sha, _, subject = line.partition("\x1f")
-            meta_map[sha] = subject
+            parts = record.split("\x1f", 2)
+            if len(parts) < 2:
+                continue
+            sha = parts[0]
+            subject = parts[1]
+            body = parts[2] if len(parts) > 2 else ""
+            meta_map[sha] = (subject, body)
         # Files + shortstat per commit.  `git show` is per-commit; we
         # batch via xargs-style loop but each is sub-millisecond.
         for sha in chunk:
-            files = _files_for(sha)
+            files, added = _files_for(sha)
             lines = _lines_for(sha)
+            subject, body = meta_map.get(sha, ("", ""))
             out.append(Commit(
                 sha=sha,
-                subject=meta_map.get(sha, ""),
+                subject=subject,
+                body=body,
                 files=files,
+                added_files=added,
                 lines=lines,
             ))
     return out
@@ -233,12 +291,30 @@ def _chunks(seq: list[str], n: int) -> Iterable[list[str]]:
         yield seq[i:i + n]
 
 
-def _files_for(sha: str) -> list[str]:
+def _files_for(sha: str) -> tuple[list[str], set[str]]:
+    """Return (all_files, added_files) for SHA via --name-status."""
     raw = subprocess.check_output(
-        ["git", "show", "--name-only", "--format=", sha],
+        ["git", "show", "--name-status", "--format=", sha],
         text=True,
     )
-    return [f for f in raw.splitlines() if f]
+    files: list[str] = []
+    added: set[str] = set()
+    for line in raw.splitlines():
+        if not line:
+            continue
+        parts = line.split("\t")
+        status = parts[0]
+        # Renames look like "R100\told\tnew" — record the new path.
+        if status.startswith("R") and len(parts) >= 3:
+            files.append(parts[2])
+            continue
+        if len(parts) < 2:
+            continue
+        path = parts[1]
+        files.append(path)
+        if status == "A":
+            added.add(path)
+    return files, added
 
 
 _SHORTSTAT_NUM_RX = re.compile(r"(\d+) (insertion|deletion)")

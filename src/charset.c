@@ -1139,7 +1139,7 @@ usage: (define-charset-internal ...)  */)
 	  charset_table.start = new_table;
 	  charset_table.size = new_size;
 	  Lisp_Object new_attr_table = make_vector (new_size, Qnil);
-	  for (size_t i = 0; i < old_size; i++)
+	  for (int i = 0; i < old_size; i++)
 	    ASET (new_attr_table, i,
 		  AREF (charset_table.attributes_table, i));
 	  charset_table.attributes_table = new_attr_table;
@@ -2357,7 +2357,7 @@ init_charset_once (void)
   PDUMPER_REMEMBER_SCALAR (charset_ksc5601);
 }
 
-/* Intitial value for charset_table_size.  As of October 2025, the
+/* Initial value for charset_table_size.  As of October 2025, the
    charset table uses 179 entries.  charset_table grows if needed and
    we only dump the used entries; so getting the initial value right
    is not overly important.  */
