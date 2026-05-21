@@ -94,12 +94,15 @@ emacsclient = executable('emacsclient',
   install : true,
 )
 
+# movemail is NOT installed when --with-mailutils=true (configure.ac
+# UTILITIES filter at anchor 08a22b8965ec lib-src/Makefile.in:163).
+# It still builds either way so test/lib-src/* exercises stay green.
 movemail = executable('movemail',
   sources : files('movemail.c', 'pop.c'),
   include_directories : lib_src_inc,
   c_args : lib_src_args,
-  dependencies : libgnu_dep,
-  install : true,
+  dependencies : [libgnu_dep] + movemail_extra_libs,
+  install : mailutils_install_movemail,
   install_dir : emacs_arch,
 )
 
@@ -128,3 +131,38 @@ install_data(
   install_dir : emacs_arch,
   install_mode : 'rwxr-xr-x',
 )
+
+# ----------------------------------------------------------------------
+# seccomp-filter -- Linux Secure Computing filter generator.
+# Mirrors the gates in lib-src/Makefile.in:225-249 at anchor
+# 08a22b8965ec: Linux + x86_64 + libseccomp present.  The binary is
+# build-only (DONT_INSTALL); the .bpf and .pfc filter files it
+# emits are installed under emacs_arch so the daemon mode can load
+# them at runtime.
+# ----------------------------------------------------------------------
+if is_linux and host_machine.cpu_family() == 'x86_64'
+  libseccomp_dep = dependency('libseccomp', required : false)
+  if libseccomp_dep.found()
+    seccomp_filter = executable('seccomp-filter',
+      sources : files('seccomp-filter.c'),
+      include_directories : lib_src_inc,
+      c_args : lib_src_args,
+      dependencies : [libgnu_dep, libseccomp_dep],
+      install : false,
+    )
+    custom_target('seccomp-bpf',
+      output : [
+        'seccomp-filter.bpf', 'seccomp-filter.pfc',
+        'seccomp-filter-exec.bpf', 'seccomp-filter-exec.pfc',
+      ],
+      command : [
+        seccomp_filter,
+        '@OUTPUT0@', '@OUTPUT1@',
+        '@OUTPUT2@', '@OUTPUT3@',
+      ],
+      install : true,
+      install_dir : emacs_arch,
+      build_by_default : true,
+    )
+  endif
+endif
