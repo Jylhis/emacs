@@ -52,6 +52,11 @@ let
     fetchurl
     fetchzip
     ;
+  # Shared across entries that pull from the Unicode 17.0.0 UCD.zip.
+  ucd17 = fetchzip {
+    url = "https://www.unicode.org/Public/17.0.0/ucd/UCD.zip";
+    hash = "sha256-k2OFy8xPvn+Bboyr1EsmZNeVDOglvk2kSZ+H17YaX60=";
+  };
 in
 {
   ## =====================================================================
@@ -689,10 +694,7 @@ in
       uvs.el) and the README/copyright.html are Emacs-local and not
       fetched.
     '';
-    src = fetchzip {
-      url = "https://www.unicode.org/Public/17.0.0/ucd/UCD.zip";
-      hash = "sha256-k2OFy8xPvn+Bboyr1EsmZNeVDOglvk2kSZ+H17YaX60=";
-    };
+    src = ucd17;
     destination = "admin/unidata";
     files = [
       "UnicodeData.txt"
@@ -851,13 +853,21 @@ in
 
   unicode-bidi-test-data = {
     kind = "vendored-test-data";
-    upstream = "https://www.unicode.org/Public/UCD/latest/ucd/BidiCharacterTest.txt";
+    upstream = "https://www.unicode.org/Public/17.0.0/ucd/BidiCharacterTest.txt";
     paths = [ "test/manual/BidiCharacterTest.txt" ];
     sync = "upstream-to-emacs";
     elpa = null;
     license = "Unicode-TOU";
-    src = null;
-    destination = null;
+    notes = ''
+      Shipped inside UCD.zip; we reuse the same fetched archive
+      pinned by the unicode-character-database entry.  In-tree
+      differs from upstream only in one stripped trailing space on
+      line 99 -- the overlay restores it, which is harmless for
+      the test fixture's purpose.
+    '';
+    src = ucd17;
+    destination = "test/manual";
+    files = [ "BidiCharacterTest.txt" ];
   };
 
   unicode-idna-test-data = {
@@ -867,6 +877,16 @@ in
     sync = "upstream-to-emacs";
     elpa = null;
     license = "Unicode-TOU";
+    notes = ''
+      In-tree pins IDNA 14.0.0 (2021-08-17).  The canonical URL
+      https://www.unicode.org/reports/tr46/IdnaTestV2.txt and the
+      versioned alternative
+      https://www.unicode.org/Public/14.0.0/IDNA/IdnaTestV2.txt
+      both return 404 as of 2026-05.  Unicode appears to have
+      reorganised TR46 distribution.  No usable upstream URL found,
+      so the file stays in tree without a fetcher; revisit when
+      Unicode republishes the test data.
+    '';
     src = null;
     destination = null;
   };
