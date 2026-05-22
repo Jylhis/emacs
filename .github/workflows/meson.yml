@@ -287,6 +287,25 @@ jobs:
           /tmp/sanity
           echo "Toolchain sanity check passed."
 
+      # ---- Compiler cache --------------------------------------------
+      # ccache wraps the Nix-wrapped cc.  devenv.nix exports
+      # CC="ccache <wrapped-cc>", so meson picks it up as a launcher
+      # automatically; the meson setup step below re-asserts the prefix
+      # as defence in depth.  The action restores ~/.cache/ccache from
+      # actions/cache before meson setup and saves it at job end; the
+      # save step is also gated to push branches to keep PR cache
+      # writes bounded.  500 MB is sized for the ~1500 C objects of
+      # src/+lib/+lib-src/ with headroom.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03  # v1.2.23
+        with:
+          key: ccache-${{ runner.os }}-${{ matrix.label }}
+          max-size: 500M
+          verbose: 1
+          # The devenv shell already provides ccache from nixpkgs; this
+          # avoids the action installing a second copy via apt/brew.
+          install: 'no'
+
       # ---- Build cache ------------------------------------------------
       # Bump the version suffix (currently `-v2`) whenever a change to a
       # meson.build affects the default-target set or build_by_default
@@ -327,6 +346,11 @@ jobs:
         env:
           SETUP_ARGS: ${{ matrix.setup-args }}
         run: |
+          # Defence in depth: devenv.nix already sets
+          # CC="ccache <wrapped-cc>", but if that regressed for any
+          # reason the prefix is added here.  Idempotent.
+          case "$CC"  in *ccache*) ;; *) export CC="ccache $CC"   ;; esac
+          case "$CXX" in *ccache*) ;; *) export CXX="ccache $CXX" ;; esac
           # If the cache restored a complete build dir, `meson setup
           # --wipe build` keeps the .o cache but rewrites
           # meson-private/ + build.ninja from scratch -- the right
@@ -369,6 +393,10 @@ jobs:
             update-game-score \
             charsets-stamp charscript.el emoji-zwj.el \
             2>&1 | tee build/compile.log
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats --verbose || true
 
       - name: Dump build diagnostics on failure
         if: failure()
@@ -612,8 +640,19 @@ jobs:
           /tmp/sanity
           echo "Toolchain sanity check passed."
 
+      # See the matching block in build-and-test for rationale.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03  # v1.2.23
+        with:
+          key: ccache-macos-14-terminal
+          max-size: 500M
+          verbose: 1
+          install: 'no'
+
       - name: meson setup (terminal-only)
         run: |
+          case "$CC"  in *ccache*) ;; *) export CC="ccache $CC"   ;; esac
+          case "$CXX" in *ccache*) ;; *) export CXX="ccache $CXX" ;; esac
           meson setup build \
             -Dtoolkit=none \
             -Dnative-compilation=no \
@@ -629,6 +668,10 @@ jobs:
 
       - name: meson compile
         run: meson compile -C build --verbose 2>&1 | tee build/compile.log
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats --verbose || true
 
       - name: Dump build diagnostics on failure
         if: failure()

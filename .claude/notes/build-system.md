@@ -140,3 +140,21 @@ To revive a parked backend, start by `git show 08a22b8965ec:<path>`
 and translate the rules into a new Meson `subdir()` block.  Update
 `meson.build`'s parked-subdirs list and `meson.options` (which
 keeps a stub list of parked option names) when promoting one.
+
+## Compilation caching (ccache)
+
+Both the local devenv and CI wrap the Nix-wrapped `cc`/`c++` with
+ccache as a compiler launcher.  `devenv.nix` exports
+`CC="ccache <nix-cc>"` (multi-word -- Meson splits on whitespace and
+treats `argv[0]` as the launcher), so no `meson.build` changes are
+needed.  CI uses `hendrikmuhs/ccache-action` with separate 500 MB
+cache entries per matrix variant (`Linux/GTK3`, `Linux/no-X`,
+`macos-14-terminal`); the action restores the cache before
+`meson setup` and saves at job end.  Locally, ccache uses its
+default directory (`~/.cache/ccache` on Linux,
+`~/Library/Caches/ccache` on macOS).
+
+Inspect with `ccache --show-stats`.  Bypass with
+`CCACHE_DISABLE=1 meson compile -C build`.  ccache does NOT cache
+`.eln` native-comp artefacts or link steps -- the `build/`
+actions/cache entry handles link outputs across runs.

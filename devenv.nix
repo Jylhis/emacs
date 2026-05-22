@@ -22,6 +22,10 @@ in
       ninja
       python3
 
+      # Compiler cache: wraps cc/c++ via CC/CXX below so repeated
+      # builds of the same translation unit are hashed and reused.
+      ccache
+
       # Text/image stack used by both X11/GTK and NS/Cocoa builds
       cairo
       pango
@@ -98,14 +102,21 @@ in
   # Scrt1.o".  Point CC/CXX at the wrapped binaries by absolute
   # store path so they're picked regardless of PATH order or what
   # `languages.c.enable`'s own enterShell sets.
+  #
+  # ccache is prepended as a compiler launcher.  Meson splits CC on
+  # whitespace and treats argv[0] as the launcher, so this works
+  # without any meson.build changes.  ccache execs the wrapped cc
+  # with the original env, so NIX_LDFLAGS / NIX_CC_WRAPPER_* stay
+  # live.  Defaults: ~/.cache/ccache, 5 GB max -- override with
+  # CCACHE_DIR / CCACHE_MAXSIZE if needed.
   env = {
-    CC = "${pkgs.gcc}/bin/cc";
-    CXX = "${pkgs.gcc}/bin/c++";
+    CC = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc";
+    CXX = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/c++";
   };
 
   enterShell = ''
-    export CC=${pkgs.gcc}/bin/cc
-    export CXX=${pkgs.gcc}/bin/c++
+    export CC="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc"
+    export CXX="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/c++"
   '';
 
   # https://devenv.sh/binary-caching/
@@ -168,6 +179,7 @@ in
     echo "Running devenv tests"
     git --version | grep --color=auto "${pkgs.git.version}"
     cc --version | head -1
+    ccache --version | head -1
     pkg-config --version
   '';
 
