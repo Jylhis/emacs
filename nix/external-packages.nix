@@ -46,7 +46,7 @@
 # active upstream exists; the inventory tracks provenance only.  Data
 # files (publicsuffix list, Unicode UCD, test fixtures, ...) are not
 # Emacs-ified and so are safe to fetch live.
-{ pkgs }:
+_:
 # Phase 5+ entries reference `pkgs.fetchurl`, `pkgs.fetchzip`, etc.
 # directly at the point of use; no `inherit` here keeps the lint
 # clean while no fetchers are wired.
@@ -300,7 +300,12 @@
     sync = "upstream-to-emacs";
     elpa = "gnu";
     license = null;
-    notes = "In-tree file is a stub; full package lives on GNU ELPA.";
+    notes = ''
+      In-tree file is a documented stub of the Compatibility Library;
+      the full package lives on GNU ELPA.  Replacing the stub would
+      require evaluating the runtime resolution policy and is out of
+      scope.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -345,6 +350,12 @@
     sync = "upstream-to-emacs";
     elpa = "gnu";
     license = null;
+    notes = ''
+      In-tree v1.1.2 carries the Emacs-ified license header
+      ("GNU Emacs is free software ...") so does not match the
+      upstream tarball verbatim; see "Drift policy" in the file
+      header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -356,6 +367,12 @@
     sync = "upstream-to-emacs";
     elpa = null;
     license = null;
+    notes = ''
+      Upstream releases as a date-stamped version (currently
+      2026.01.18.088738971); in-tree carries the Emacs-ified license
+      header.  See "Drift policy" in the file header.  No src
+      fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -367,6 +384,11 @@
     sync = "upstream-to-emacs";
     elpa = null;
     license = null;
+    notes = ''
+      Upstream ships as a per-release tarball at the ETH project
+      page; in-tree carries the Emacs-ified license header.  See
+      "Drift policy" in the file header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -413,7 +435,11 @@
     sync = "upstream-to-emacs";
     elpa = null;
     license = null;
-    notes = "Maintained by the AUCTeX team (auctex-devel@gnu.org).";
+    notes = ''
+      Maintained by the AUCTeX team (auctex-devel@gnu.org).
+      In-tree files carry the Emacs-ified license header.  See
+      "Drift policy" in the file header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -425,7 +451,11 @@
     sync = "upstream-to-emacs";
     elpa = null;
     license = null;
-    notes = "Bundled with ERC but originally an external contribution.";
+    notes = ''
+      Bundled with ERC but originally an external contribution.
+      In-tree carries the Emacs-ified license header.  See
+      "Drift policy" in the file header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
