@@ -49,6 +49,8 @@
   src ? lib.cleanSource ../.,
   version ? "31.0.50",
 
+  externalSources ? null,
+
   withNativeCompilation ? stdenv.buildPlatform.canExecute stdenv.hostPlatform,
   withTreeSitter ? true,
   withSqlite3 ? true,
@@ -195,9 +197,14 @@ stdenv.mkDerivation (_finalAttrs: {
 
   enableParallelBuilding = true;
 
-  postPatch = optionalString (siteStart != null) ''
-    install -m0644 ${siteStart} lisp/site-start.el
-  '';
+  postPatch =
+    optionalString (externalSources != null) ''
+      cp -rfL ${externalSources}/. .
+      chmod -R u+w .
+    ''
+    + optionalString (siteStart != null) ''
+      install -m0644 ${siteStart} lisp/site-start.el
+    '';
 
   postInstall =
     optionalString (stdenv.isLinux && !noGui) ''
