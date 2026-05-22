@@ -7,12 +7,15 @@
 }:
 
 let
-  lib = pkgs.lib;
-  src = import ./nix/src-filter.nix { inherit lib; root = ./.; };
+  inherit (pkgs) lib;
+  src = import ./nix/src-filter.nix {
+    inherit lib;
+    root = ./.;
+  };
   args = lib.filterAttrs (_: v: v != null) {
     inherit src withPgtk noGui;
-    withNativeCompilation = withNativeCompilation;
-    withGTK3 = withGTK3;
+    inherit withNativeCompilation;
+    inherit withGTK3;
   };
 in
 pkgs.callPackage ./nix/package.nix args

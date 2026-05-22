@@ -62,25 +62,28 @@ in
     # libgccjit for native compilation.  On macOS the NS/Cocoa build
     # supplies the GUI stack from the Apple SDK, and `acl` transitively
     # pulls `attr` which fails to build against macOS xattr headers.
-    ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
-      acl
-      dbus
-      libgccjit
-      gtk3
-      xorg.libX11
-      xorg.libXfixes
-      xorg.libXrender
-      xorg.libXrandr
-      xorg.libXcomposite
-      xorg.libXinerama
-      xorg.libXi
-      xorg.libXext
-      xorg.libXtst
-      xorg.libXft
-      libxt
-      xorg.libSM
-      xorg.libICE
-    ]);
+    ++ lib.optionals pkgs.stdenv.isLinux (
+      with pkgs;
+      [
+        acl
+        dbus
+        libgccjit
+        gtk3
+        xorg.libX11
+        xorg.libXfixes
+        xorg.libXrender
+        xorg.libXrandr
+        xorg.libXcomposite
+        xorg.libXinerama
+        xorg.libXi
+        xorg.libXext
+        xorg.libXtst
+        xorg.libXft
+        xorg.libXt
+        xorg.libSM
+        xorg.libICE
+      ]
+    );
 
   # https://devenv.sh/languages/
   languages = {
