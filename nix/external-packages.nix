@@ -46,10 +46,13 @@
 # active upstream exists; the inventory tracks provenance only.  Data
 # files (publicsuffix list, Unicode UCD, test fixtures, ...) are not
 # Emacs-ified and so are safe to fetch live.
-_:
-# Phase 5+ entries reference `pkgs.fetchurl`, `pkgs.fetchzip`, etc.
-# directly at the point of use; no `inherit` here keeps the lint
-# clean while no fetchers are wired.
+{ pkgs }:
+let
+  inherit (pkgs)
+    fetchurl
+    fetchzip
+    ;
+in
 {
   ## =====================================================================
   ## Lisp packages listed in admin/MAINTAINERS section 3 (externally
@@ -661,18 +664,100 @@ _:
 
   unicode-character-database = {
     kind = "vendored-data";
-    upstream = "https://www.unicode.org/Public/UNIDATA/";
+    upstream = "https://www.unicode.org/Public/17.0.0/ucd/UCD.zip";
     paths = [ "admin/unidata/" ];
     sync = "upstream-to-emacs";
     elpa = null;
     license = "Unicode-TOU";
     notes = ''
-      Source files for character properties, normalization, emoji,
-      bidi, IVD, IDNA mapping, and confusables tables.  See
-      admin/unidata/README and admin/unidata/copyright.html.
+      UCD source files for character properties, normalization,
+      bidi, and emoji-variation tables.  Pinned to Unicode 17.0.0.
+      See admin/unidata/README and admin/unidata/copyright.html.
+
+      The full set of files under admin/unidata/ is split across
+      several inventory entries here -- this one ships the
+      byte-identical files distributed in UCD.zip.  The three
+      emoji-* files that live under Public/<version>/emoji/ each
+      have their own entry below.  IdnaMappingTable.txt,
+      IVD_Sequences.txt, and confusables.txt have no canonical
+      Unicode URL discoverable from www.unicode.org/Public/ and
+      stay in tree without a fetcher.  PropertyValueAliases.txt and
+      emoji-data.txt have small (<10-line) Emacs-side adjustments
+      and also stay in tree.
+
+      In-tree scripts (blocks.awk, emoji-zwj.awk, unidata-gen.el,
+      uvs.el) and the README/copyright.html are Emacs-local and not
+      fetched.
     '';
-    src = null;
-    destination = null;
+    src = fetchzip {
+      url = "https://www.unicode.org/Public/17.0.0/ucd/UCD.zip";
+      hash = "sha256-k2OFy8xPvn+Bboyr1EsmZNeVDOglvk2kSZ+H17YaX60=";
+    };
+    destination = "admin/unidata";
+    files = [
+      "UnicodeData.txt"
+      "BidiBrackets.txt"
+      "BidiMirroring.txt"
+      "Blocks.txt"
+      "Scripts.txt"
+      "ScriptExtensions.txt"
+      "SpecialCasing.txt"
+      "NormalizationTest.txt"
+      "emoji/emoji-variation-sequences.txt"
+    ];
+  };
+
+  unicode-emoji-test = {
+    kind = "vendored-data";
+    upstream = "https://www.unicode.org/Public/17.0.0/emoji/emoji-test.txt";
+    paths = [ "admin/unidata/emoji-test.txt" ];
+    sync = "upstream-to-emacs";
+    elpa = null;
+    license = "Unicode-TOU";
+    notes = ''
+      The emoji-test/-sequences/-zwj-sequences files are distributed
+      under Public/<version>/emoji/ rather than inside UCD.zip.
+      Pinned to Unicode 17.0.0; in-tree is byte-identical.
+    '';
+    src = fetchurl {
+      url = "https://www.unicode.org/Public/17.0.0/emoji/emoji-test.txt";
+      hash = "sha256-HYqUT4jXlS9+98UWf+88Z5lbyuJFQ5SXECMbA6IBrNo=";
+    };
+    destination = "admin/unidata/emoji-test.txt";
+  };
+
+  unicode-emoji-sequences = {
+    kind = "vendored-data";
+    upstream = "https://www.unicode.org/Public/17.0.0/emoji/emoji-sequences.txt";
+    paths = [ "admin/unidata/emoji-sequences.txt" ];
+    sync = "upstream-to-emacs";
+    elpa = null;
+    license = "Unicode-TOU";
+    notes = ''
+      Pinned to Unicode 17.0.0; in-tree is byte-identical.
+    '';
+    src = fetchurl {
+      url = "https://www.unicode.org/Public/17.0.0/emoji/emoji-sequences.txt";
+      hash = "sha256-EsyCZ9wzy9Ee0yvPb8XcKtnHp3uuG9+6L0GxubPq2N0=";
+    };
+    destination = "admin/unidata/emoji-sequences.txt";
+  };
+
+  unicode-emoji-zwj-sequences = {
+    kind = "vendored-data";
+    upstream = "https://www.unicode.org/Public/17.0.0/emoji/emoji-zwj-sequences.txt";
+    paths = [ "admin/unidata/emoji-zwj-sequences.txt" ];
+    sync = "upstream-to-emacs";
+    elpa = null;
+    license = "Unicode-TOU";
+    notes = ''
+      Pinned to Unicode 17.0.0; in-tree is byte-identical.
+    '';
+    src = fetchurl {
+      url = "https://www.unicode.org/Public/17.0.0/emoji/emoji-zwj-sequences.txt";
+      hash = "sha256-WyVEHa7SMisGjF5wzaUilGpPAnTfhkRFoZZakuX8XK0=";
+    };
+    destination = "admin/unidata/emoji-zwj-sequences.txt";
   };
 
   publicsuffix-list = {
@@ -682,9 +767,18 @@ _:
     sync = "upstream-to-emacs";
     elpa = null;
     license = "MPL-2.0";
-    notes = "Consumed by lisp/url/url-domsuf.el.";
-    src = null;
-    destination = null;
+    notes = ''
+      Consumed by lisp/url/url-domsuf.el.  Pinned to the upstream
+      commit recorded in the in-tree file's `// COMMIT:` header so
+      the staged file is byte-identical to the in-tree snapshot (the
+      `// VERSION:` and `// COMMIT:` decorations that the in-tree
+      ingestion script prepends are not preserved by the overlay).
+    '';
+    src = fetchurl {
+      url = "https://raw.githubusercontent.com/publicsuffix/list/9e89e8b8a64027217dc22dda2e7c9dacd3d6ee6c/public_suffix_list.dat";
+      hash = "sha256-v0eUjOObvvjdsWuidUM2yMKrwTAopDVNNWo6Lf+Ua7Q=";
+    };
+    destination = "etc/publicsuffix.txt";
   };
 
   x11-rgb = {
@@ -695,8 +789,11 @@ _:
     elpa = null;
     license = "X11";
     notes = ''
-      X11R6 X Consortium rgb.txt; supports color-name lookup on
-      Windows.  File header states it is not a part of GNU Emacs.
+      X11R6 X Consortium rgb.txt from 1994; supports color-name
+      lookup on Windows.  File header states it is not a part of
+      GNU Emacs.  Upstream is the X11R6 distribution, which is no
+      longer maintained -- the file is frozen at its 1994 content.
+      No src fetcher.
     '';
     src = null;
     destination = null;
@@ -717,7 +814,8 @@ _:
       iana.org, Adobe, SourceForge kanji-database, and Wikipedia.
       See admin/charsets/mapfiles/README for per-file provenance.
       Files under etc/charsets/ are generated from these by
-      admin/charsets/ scripts.
+      admin/charsets/ scripts.  Splitting this entry into one per
+      upstream is deferred; no src fetcher today.
     '';
     src = null;
     destination = null;
