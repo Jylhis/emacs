@@ -659,12 +659,133 @@ in
     notes = ''
       GNU portability library, imported via gnulib-tool.  Module
       license varies (LGPL-2.1-or-later or GPL-3.0-or-later); see
-      lib/COPYING and per-module headers.  After Phase 7 of the
-      removal plan the module list moves here as `modules = [ ... ]`.
+      lib/COPYING and per-module headers.  Modules list is
+      extracted from the `gnulib-tool --import` invocation
+      recorded near the top of lib/gnulib.mk.in and stays in sync
+      with that file -- regenerate via:
+
+        grep -A 250 'Reproduce by' lib/gnulib.mk.in \
+          | grep -E '^#  [a-z][a-zA-Z0-9_/-]+ \\$' \
+          | sed 's/^#  //; s/ \\$//' | sort -u
+
+      Swapping the in-tree lib/ tree for a fetched gnulib checkout
+      remains future work; for now `src` stays null and the entry
+      documents what we import.
     '';
     src = null;
     destination = null;
-    modules = [ ];
+    modules = [
+      "alignasof"
+      "alloca-opt"
+      "attribute"
+      "binary-io"
+      "bool"
+      "boot-time"
+      "builtin-expect"
+      "byteswap"
+      "c-ctype"
+      "c-strcase"
+      "canonicalize-lgpl"
+      "careadlinkat"
+      "close-stream"
+      "copy-file-range"
+      "crypto/md5"
+      "crypto/md5-buffer"
+      "crypto/sha1-buffer"
+      "crypto/sha256-buffer"
+      "crypto/sha3-buffer"
+      "crypto/sha512-buffer"
+      "d-type"
+      "diffseq"
+      "double-slash-root"
+      "dtoastr"
+      "dtotimespec"
+      "dup2"
+      "environ"
+      "execinfo"
+      "faccessat"
+      "fchmodat"
+      "fcntl"
+      "fcntl-h"
+      "fdopendir"
+      "file-has-acl"
+      "filemode"
+      "filename"
+      "filevercmp"
+      "flexmember"
+      "fpieee"
+      "free-posix"
+      "fstatat"
+      "fsusage"
+      "fsync"
+      "futimens"
+      "getline"
+      "getloadavg"
+      "getopt-gnu"
+      "getrandom"
+      "gettime"
+      "gettimeofday"
+      "gitlog-to-changelog"
+      "ieee754-h"
+      "ignore-value"
+      "intprops"
+      "largefile"
+      "libgmp"
+      "lstat"
+      "malloc-gnu"
+      "manywarnings"
+      "memeq"
+      "memmem-simple"
+      "mempcpy"
+      "memrchr"
+      "memset_explicit"
+      "minmax"
+      "mkostemp"
+      "mktime"
+      "nanosleep"
+      "nproc"
+      "nstrftime-limited"
+      "pathmax"
+      "pipe2"
+      "pselect"
+      "pthread_sigmask"
+      "qcopy-acl"
+      "readlink"
+      "readlinkat"
+      "realloc-posix"
+      "regex"
+      "sig2str"
+      "sigdescr_np"
+      "socklen"
+      "stat-time"
+      "std-gnu23"
+      "stdc_bit_width"
+      "stdc_count_ones"
+      "stdc_trailing_zeros"
+      "stdckdint-h"
+      "stddef-h"
+      "stdio-h"
+      "stdio-windows"
+      "stpcpy"
+      "streq"
+      "strnlen"
+      "strtoimax"
+      "symlink"
+      "sys_stat-h"
+      "sys_time-h"
+      "tempname"
+      "time-h"
+      "time_r"
+      "time_rz"
+      "timegm"
+      "timer-time"
+      "timespec-add"
+      "timespec-sub"
+      "unlocked-io"
+      "update-copyright"
+      "utimensat"
+      "warnings"
+    ];
   };
 
   unicode-character-database = {
