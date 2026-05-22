@@ -625,7 +625,7 @@ static_assert (MALLOC_IS_LISP_ALIGNED);
       malloc_probe (size);			\
   } while (0)
 
-/* Like malloc but check for no memory and block interrupt input.  */
+/* Like malloc but check for no memory, and profile allocations.  */
 
 void *
 xmalloc (size_t size)
@@ -649,7 +649,7 @@ xzalloc (size_t size)
   return val;
 }
 
-/* Like realloc but check for no memory and block interrupt input.  */
+/* Like realloc but check for no memory, and profile allocations.  */
 
 void *
 xrealloc (void *block, size_t size)
@@ -662,7 +662,7 @@ xrealloc (void *block, size_t size)
 }
 
 
-/* Like free but block interrupt input.  */
+/* Like free but do not free pdumper objects.  */
 
 void
 xfree (void *block)
@@ -684,7 +684,7 @@ static_assert (INT_MAX <= PTRDIFF_MAX);
 
 
 /* Allocate an array of NITEMS items, each of size ITEM_SIZE.
-   Signal an error on memory exhaustion, and block interrupt input.  */
+   Signal an error on memory exhaustion, and profile allocations.  */
 
 void *
 xnmalloc (ptrdiff_t nitems, ptrdiff_t item_size)
@@ -698,7 +698,7 @@ xnmalloc (ptrdiff_t nitems, ptrdiff_t item_size)
 
 
 /* Reallocate an array PA to make it of NITEMS items, each of size ITEM_SIZE.
-   Signal an error on memory exhaustion, and block interrupt input.  */
+   Signal an error on memory exhaustion, and profile allocations.  */
 
 void *
 xnrealloc (void *pa, ptrdiff_t nitems, ptrdiff_t item_size)
@@ -724,7 +724,7 @@ xnrealloc (void *pa, ptrdiff_t nitems, ptrdiff_t item_size)
    If PA is null, then allocate a new array instead of reallocating
    the old one.
 
-   Block interrupt input as needed.  If memory exhaustion occurs, set
+   Profile memory allocations.  If memory exhaustion occurs, set
    *NITEMS to zero if PA is null, and signal an error (i.e., do not
    return).
 
