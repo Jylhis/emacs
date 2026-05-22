@@ -829,10 +829,21 @@ in
     elpa = null;
     license = null;
     notes = ''
-      RELAX-NG schemas for DocBook, XHTML, XSLT, RDF/XML, OASIS
-      OpenDocument, and Microsoft .NET project files.  Provenance
-      per-file in etc/schema/README.  Likely split into one entry
-      per upstream during Phase 5.
+      RELAX-NG (.rnc) schemas for DocBook, XHTML, XSLT, RDF/XML,
+      OASIS OpenDocument, and Microsoft .NET project files; see
+      etc/schema/README for per-format license and provenance.
+
+      None of the upstreams ship .rnc directly: the DocBook,
+      XHTML, XSLT, RDF/XML, and OpenDocument schemas exist
+      upstream only as DTDs or XSDs and were converted to
+      RELAX-NG compact form for nXML-mode consumption.  The .NET
+      schemas are hand-authored from Microsoft documentation
+      ("derived/inferred from files from numerous .NET projects",
+      per the README).  Per-file fetching is therefore not
+      meaningful; these files are Emacs-side derivative artifacts.
+      No src fetcher; the directory stays in tree.
+
+      In-tree Emacs files: locate.rnc, relaxng.rnc, schemas.xml.
     '';
     src = null;
     destination = null;
