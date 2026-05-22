@@ -64,7 +64,11 @@ _:
     elpa = null;
     license = null;
     maintainer = "Alan Mackenzie";
-    notes = "admin/MAINTAINERS section 3.  Bug reports: bug-cc-mode@gnu.org.";
+    notes = ''
+      admin/MAINTAINERS section 3.  Bug reports: bug-cc-mode@gnu.org.
+      In-tree v5.35.2 carries the Emacs-ified license header.
+      See "Drift policy" in the file header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -117,6 +121,10 @@ _:
       admin/MAINTAINERS section 3.  Periodically merged from the
       separate project at https://orgmode.org/.
       Bug reports: M-x org-submit-bug-report.
+      In-tree v9.8.3 carries the Emacs-ified license header; the
+      upstream tree is multi-file (~130 .el under lisp/org) and the
+      merge process applies systematic edits.  See "Drift policy"
+      in the file header.  No src fetcher.
     '';
     src = null;
     destination = null;
@@ -138,6 +146,10 @@ _:
       admin/MAINTAINERS section 3.  Released as a GNU ELPA package with
       its own release cycle; see lisp/net/trampver.el for backward-
       compatibility requirements.  Bug reports: M-x tramp-bug.
+      In-tree files (lisp/net/tramp*.el, doc/misc/tramp*.texi,
+      test/lisp/net/tramp*-tests.el) carry the Emacs-ified license
+      header.  See "Drift policy" in the file header.  No src
+      fetcher.
     '';
     src = null;
     destination = null;
@@ -154,7 +166,11 @@ _:
     elpa = null;
     license = null;
     maintainer = "Jonas Bernoulli";
-    notes = "admin/MAINTAINERS section 3.";
+    notes = ''
+      admin/MAINTAINERS section 3.  In-tree v0.13.3 carries the
+      Emacs-ified license header.  See "Drift policy" in the file
+      header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
