@@ -19,7 +19,7 @@
 { pkgs }:
 let
   inherit (pkgs) lib;
-  inventory = import ./external-packages.nix;
+  inventory = import ./external-packages.nix { inherit pkgs; };
   selected = lib.filterAttrs (
     _name: e: (e.src or null) != null && (e.destination or null) != null
   ) inventory;

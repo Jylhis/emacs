@@ -33,9 +33,23 @@
 #   modules      gnulib-only: list of gnulib module names imported
 #                via gnulib-tool
 #
-# Plain attrset: fetcher derivations are wired in by consumers (e.g.
-# nix/external-sources.nix) once :src is filled in per package.
-
+# Function form: consumers pass `pkgs` so `src` slots can use
+# `pkgs.fetchFromGitHub`, `pkgs.fetchurl`, etc.
+#
+# Drift policy.  When an external Lisp package is merged into the Emacs
+# tree, the Emacs maintainers "Emacs-ify" it -- the file's license
+# header is rewritten ("This file is part of GNU Emacs"), copyright is
+# reassigned to the FSF, Package-Requires entries are normalised
+# against in-tree library versions, and assorted small textual edits
+# are applied.  Re-fetching upstream verbatim would silently undo all
+# of that.  Therefore `src` stays null for Lisp packages even where an
+# active upstream exists; the inventory tracks provenance only.  Data
+# files (publicsuffix list, Unicode UCD, test fixtures, ...) are not
+# Emacs-ified and so are safe to fetch live.
+{ pkgs }:
+# Phase 5+ entries reference `pkgs.fetchurl`, `pkgs.fetchzip`, etc.
+# directly at the point of use; no `inherit` here keeps the lint
+# clean while no fetchers are wired.
 {
   ## =====================================================================
   ## Lisp packages listed in admin/MAINTAINERS section 3 (externally
@@ -74,7 +88,13 @@
     elpa = null;
     license = null;
     maintainer = "Protesilaos Stavrou";
-    notes = "admin/MAINTAINERS section 3.";
+    notes = ''
+      admin/MAINTAINERS section 3.  In-tree matches upstream 5.2.0
+      modulo Emacs-side edits (copyright reassignment, a typo fix,
+      and a comment-block rewrite around `completion-preview' face
+      inheritance).  See "Drift policy" in the file header --
+      no src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -148,9 +168,18 @@
     kind = "elpa-core";
     upstream = "https://github.com/joaotavora/eglot";
     paths = [ "lisp/progmodes/eglot.el" ];
-    sync = "upstream-to-emacs";
+    # GitHub repo declares ;; Version: 1.21 on master while the in-tree
+    # copy is ahead at ;; Version: 1.23; emacs.git is now upstream and
+    # ELPA mirrors from here.  Leave src = null permanently.
+    sync = "emacs-to-elpa";
     elpa = "core";
     license = null;
+    notes = ''
+      Header URL points to the historical upstream
+      (github.com/joaotavora/eglot) but emacs.git has been the
+      effective upstream since at least the 1.22 bump; that repo's
+      master branch trails the in-tree file.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -169,9 +198,16 @@
       "lisp/use-package/use-package-jump.el"
       "lisp/use-package/use-package-lint.el"
     ];
-    sync = "upstream-to-emacs";
+    # github.com/jwiegley/use-package was archived 2025-08-23 at
+    # ;; Version: 2.4.4; in-tree is 2.4.6, maintained in emacs.git.
+    sync = "emacs-to-elpa";
     elpa = "core";
     license = null;
+    notes = ''
+      Upstream repo jwiegley/use-package was archived 2025-08-23.
+      Header URL kept for historical attribution; emacs.git is the
+      effective upstream.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -180,10 +216,14 @@
     kind = "elpa-core";
     upstream = "https://github.com/jwiegley/use-package";
     paths = [ "lisp/bind-key.el" ];
-    sync = "upstream-to-emacs";
+    sync = "emacs-to-elpa";
     elpa = "core";
     license = null;
-    notes = "Part of the use-package project upstream.";
+    notes = ''
+      Shipped with the use-package project upstream, which was
+      archived 2025-08-23.  emacs.git is the effective upstream.
+      No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -195,20 +235,31 @@
       "lisp/net/soap-client.el"
       "lisp/net/soap-inspect.el"
     ];
-    sync = "upstream-to-emacs";
+    # alex-hhh/emacs-soap-client was archived 2018-06-17 at
+    # ;; Version: 3.1.4; in-tree is 3.2.3, maintained in emacs.git.
+    sync = "emacs-to-elpa";
     elpa = "core";
     license = null;
+    notes = ''
+      Upstream repo alex-hhh/emacs-soap-client was archived
+      2018-06-17.  emacs.git is the effective upstream.  No src
+      fetcher.
+    '';
     src = null;
     destination = null;
   };
 
   window-tool-bar = {
     kind = "elpa-core";
-    upstream = "http://github.com/chaosemer/window-tool-bar";
+    upstream = "https://github.com/chaosemer/window-tool-bar";
     paths = [ "lisp/window-tool-bar.el" ];
     sync = "upstream-to-emacs";
     elpa = "core";
     license = null;
+    notes = ''
+      In-tree matches upstream v0.3 modulo Emacs-side edits; see
+      "Drift policy" in the file header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -232,6 +283,12 @@
     sync = "upstream-to-emacs";
     elpa = "gnu";
     license = null;
+    notes = ''
+      In-tree matches upstream v0.11.0 modulo Emacs-ification (license
+      header rewrite, FSF copyright assignment, Package-Requires
+      adjustments).  See "Drift policy" in the file header.  No src
+      fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -255,6 +312,10 @@
     sync = "upstream-to-emacs";
     elpa = "gnu";
     license = null;
+    notes = ''
+      In-tree matches upstream v2.1.6 modulo Emacs-ification; see
+      "Drift policy" in the file header.  No src fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -266,6 +327,13 @@
     sync = "upstream-to-emacs";
     elpa = "gnu";
     license = null;
+    notes = ''
+      Upstream is dormant (last commit 2017-09-25 on master, tagged
+      version 0.0.5).  In-tree version is 0.0.6 with an Emacs-ified
+      license header and dropped cl require -- Emacs.git has been
+      the de facto upstream since the original ingestion.  No src
+      fetcher.
+    '';
     src = null;
     destination = null;
   };
@@ -310,9 +378,18 @@
       "lisp/net/newsticker.el"
       "lisp/net/newst-*.el"
     ];
-    sync = "upstream-to-emacs";
+    # The www.nongnu.org/newsticker page is the historical project
+    # home; there is no separate maintained git tree distinct from
+    # emacs.git, and the in-tree file declares "This file is part of
+    # GNU Emacs".  Treat as emacs-upstream.
+    sync = "emacs-to-elpa";
     elpa = "nongnu";
     license = null;
+    notes = ''
+      The nongnu.org URL is a project page; there is no separate
+      upstream repository.  emacs.git is the effective upstream.
+      No src fetcher.
+    '';
     src = null;
     destination = null;
   };
