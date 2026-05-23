@@ -136,7 +136,6 @@ foreach pair : [
   ['octave-mode',   'octave-mode'],
   ['org',           'org'],            # generated from .org
   ['pcl-cvs',       'pcl-cvs'],
-  ['pgg',           'pgg'],
   ['rcirc',         'rcirc'],
   ['reftex',        'reftex'],
   ['remember',      'remember'],

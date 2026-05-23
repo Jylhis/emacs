@@ -98,25 +98,6 @@ At EOF:
     (ccl-dump prog-pgg-code)
     (should (equal (buffer-string) prog-pgg-dump))))
 
-(defvar pgg-parse-crc24)
-(declare-function pgg-parse-crc24-string "pgg-parse" (string))
-
-(ert-deftest pgg-parse-crc24 ()
-  ;; Compiler
-  (require 'pgg)
-  (should (equal pgg-parse-crc24 prog-pgg-code))
-  ;; Interpreter
-  (should (equal (pgg-parse-crc24-string "foo") (concat [#x4f #xc2 #x55])))
-  (should (equal (pgg-parse-crc24-string "bar") (concat [#x51 #xd9 #x53])))
-  (should (equal (pgg-parse-crc24-string "baz") (concat [#xf0 #x58 #x6a]))))
-
-(ert-deftest pgg-parse-crc24-dump ()
-  ;; Disassembler
-  (require 'pgg)
-  (with-temp-buffer
-    (ccl-dump pgg-parse-crc24)
-    (should (equal (buffer-string) prog-pgg-dump))))
-
 ;;----------------------------------------------------------------------------
 ;; Program from 'midikbd-decoder in midi-kbd-0.2.el GNU ELPA package
 (defconst prog-midi-source
