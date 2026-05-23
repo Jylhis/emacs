@@ -168,7 +168,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { arch: x86_64, runs-on: macos-13 }
+          - { arch: x86_64, runs-on: macos-15-intel }
           - { arch: arm64,  runs-on: macos-14 }
     steps:
       - name: Checkout
@@ -284,7 +284,7 @@ jobs:
         include:
           - { system: x86_64-linux,   runs-on: ubuntu-24.04,     pkgs: 'emacs-jylhis emacs-jylhis-nox emacs-jylhis-pgtk emacs-jylhis-gtk3' }
           - { system: aarch64-linux,  runs-on: ubuntu-24.04-arm, pkgs: 'emacs-jylhis emacs-jylhis-nox emacs-jylhis-pgtk emacs-jylhis-gtk3' }
-          - { system: x86_64-darwin,  runs-on: macos-13,         pkgs: 'emacs-jylhis emacs-jylhis-nox' }
+          - { system: x86_64-darwin,  runs-on: macos-15-intel,   pkgs: 'emacs-jylhis emacs-jylhis-nox' }
           - { system: aarch64-darwin, runs-on: macos-14,         pkgs: 'emacs-jylhis emacs-jylhis-nox' }
     steps:
       - name: Checkout
