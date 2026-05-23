@@ -651,22 +651,39 @@ jobs:
           verbose: 1
           install: 'no'
 
-      - name: meson setup (terminal-only)
+      - name: meson setup (terminal-only, jotain profile)
         run: |
+          # Mirrors jotain/emacs-jylhis.nix mesonFlags exactly so this
+          # job catches install / runtime regressions against the
+          # downstream Nix packager configuration.  Eager defaults are
+          # intentional: features the packager cannot satisfy must be
+          # opted out explicitly here, not auto-disabled.
           case "$CC"  in *ccache*) ;; *) export CC="ccache $CC"   ;; esac
           case "$CXX" in *ccache*) ;; *) export CXX="ccache $CXX" ;; esac
           meson setup build \
             -Dtoolkit=none \
+            -Dpgtk=disabled \
+            -Dns=disabled \
             -Dnative-compilation=no \
+            -Dtree-sitter=enabled \
+            -Dsqlite3=enabled \
+            -Dwebp=enabled \
+            -Dimagemagick=disabled \
+            -Dcairo=disabled \
             -Dxft=disabled \
             -Dxpm=disabled \
             -Dxinput2=disabled \
             -Dxdbe=disabled \
-            -Dgpm=disabled \
-            -Dselinux=disabled \
+            -Dtoolkit-scroll-bars=disabled \
             -Dlibotf=disabled \
             -Dm17n-flt=disabled \
-            -Dgsettings=disabled
+            -Ddbus=disabled \
+            -Dlibsystemd=disabled \
+            -Dgsettings=disabled \
+            -Dgpm=disabled \
+            -Dselinux=disabled \
+            -Dmailutils=disabled \
+            -Dcompress-install=true
 
       - name: meson compile
         run: meson compile -C build --verbose 2>&1 | tee build/compile.log
