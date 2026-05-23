@@ -95,7 +95,7 @@ int popup_activated_flag;
 
 
 
-#if defined USE_GTK || defined USE_MOTIF
+#ifdef USE_GTK
 
 /* Set menu_items_inuse so no other popup menu or dialog is created.  */
 
@@ -1296,23 +1296,6 @@ pop_down_menu (int id)
   popup_activated_flag = 0;
 }
 
-#if defined HAVE_XINPUT2 && defined USE_MOTIF
-static Bool
-server_timestamp_predicate (Display *display,
-			    XEvent *xevent,
-			    XPointer arg)
-{
-  XID *args = (XID *) arg;
-
-  if (xevent->type == PropertyNotify
-      && xevent->xproperty.window == args[0]
-      && xevent->xproperty.atom == args[1])
-    return True;
-
-  return False;
-}
-#endif
-
 /* Pop up the menu for frame F defined by FIRST_WV at X/Y and loop until the
    menu pops down.
    menu_item_selection will be set to the selection.  */
@@ -1327,10 +1310,6 @@ create_and_show_popup_menu (struct frame *f, widget_value *first_wv,
   XButtonPressedEvent *event = &(dummy.xbutton);
   LWLIB_ID menu_id;
   Widget menu;
-#if defined HAVE_XINPUT2 && defined USE_MOTIF
-  XEvent property_dummy;
-  Atom property_atom;
-#endif
 
   eassert (FRAME_X_P (f));
 
