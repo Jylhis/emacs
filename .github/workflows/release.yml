@@ -1,0 +1,496 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Free Software Foundation, Inc.
+#
+# Multi-platform release pipeline for the Jotain Emacs fork.
+#
+# Triggered by pushing a tag matching `v*` (production), or manually
+# via workflow_dispatch with dry_run=true (build the matrix but skip
+# publication).  Produces:
+#
+#   * Linux x86_64 + aarch64 tarballs in three GUI variants:
+#       - gtk3 (X11)        - pgtk (Wayland, GTK 3 under the hood)
+#       - nox  (terminal-only)
+#   * macOS universal .dmg  (x86_64 + arm64 lipo'd into one Emacs.app,
+#                            ad-hoc signed)
+#   * Nix flake outputs for every (system, variant) combination
+#     defined in flake.nix  (best-effort, doesn't gate the release)
+#   * Android: stubbed (Java/NDK glue not yet ported to Meson;
+#              see .claude/notes/build-system.md "Parked / unsupported")
+#
+# Release process is documented at admin/jylhis-release-process.md.
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build matrix without publishing a GitHub Release'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Don't cancel an in-progress release: once a tag is being processed we
+# want it to finish even if a follow-up push arrives.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ================================================================
+  # Resolve the version + tag once, share via job outputs.
+  # ================================================================
+  resolve:
+    name: resolve version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
+      is_tag: ${{ steps.v.outputs.is_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+      - name: Compute version + tag
+        id: v
+        run: |
+          set -euo pipefail
+          # Project version comes from meson.build's project() call --
+          # the first `version : '<digits>...'` line.  Excludes lines
+          # like `version : '>= 2.40.4'` from dependency() calls.
+          version=$(awk -F"'" \
+            '/^[[:space:]]*version[[:space:]]*:[[:space:]]*'\''[0-9]/ { print $2; exit }' \
+            meson.build)
+          if [ -z "$version" ]; then
+            echo "::error::failed to parse version from meson.build"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
+            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "is_tag=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=dry-run-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+            echo "is_tag=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved version=$version is_tag=${GITHUB_REF_TYPE:-}"
+
+  # ================================================================
+  # Linux tarball matrix: {x86_64, aarch64} x {gtk3, pgtk, nox}
+  # ================================================================
+  linux-tarball:
+    name: linux ${{ matrix.arch }} ${{ matrix.variant }}
+    needs: [resolve]
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64,  runs-on: ubuntu-24.04,     variant: gtk3, setup_args: '-Dtoolkit=gtk3 -Dnative-compilation=aot' }
+          - { arch: x86_64,  runs-on: ubuntu-24.04,     variant: pgtk, setup_args: '-Dtoolkit=pgtk -Dnative-compilation=aot' }
+          - { arch: x86_64,  runs-on: ubuntu-24.04,     variant: nox,  setup_args: '-Dtoolkit=none -Dnative-compilation=aot -Dxft=disabled -Dxpm=disabled -Drsvg=disabled' }
+          - { arch: aarch64, runs-on: ubuntu-24.04-arm, variant: gtk3, setup_args: '-Dtoolkit=gtk3 -Dnative-compilation=aot' }
+          - { arch: aarch64, runs-on: ubuntu-24.04-arm, variant: pgtk, setup_args: '-Dtoolkit=pgtk -Dnative-compilation=aot' }
+          - { arch: aarch64, runs-on: ubuntu-24.04-arm, variant: nox,  setup_args: '-Dtoolkit=none -Dnative-compilation=aot -Dxft=disabled -Dxpm=disabled -Drsvg=disabled' }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
+
+      - name: meson setup
+        env:
+          SETUP_ARGS: ${{ matrix.setup_args }}
+        run: |
+          # shellcheck disable=SC2086
+          meson setup build --prefix=/usr $SETUP_ARGS
+
+      - name: meson compile
+        run: meson compile -C build --verbose 2>&1 | tee build/compile.log
+
+      - name: Dump build diagnostics on failure
+        if: failure()
+        run: |
+          tail -200 build/compile.log || true
+          tail -200 build/meson-logs/meson-log.txt || true
+
+      - name: meson install (staged)
+        run: meson install -C build --destdir="$PWD/stage"
+
+      - name: Check install parity
+        run: |
+          bash .github/scripts/check-install-parity.sh \
+            stage/usr ${{ needs.resolve.outputs.version }} \
+            ${{ matrix.arch }}-linux-gnu
+
+      - name: Tarball
+        env:
+          VER: ${{ needs.resolve.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          set -euo pipefail
+          out="emacs-${VER}-linux-${ARCH}-${VARIANT}.tar.xz"
+          tar -C stage/usr \
+            --transform "s,^,emacs-${VER}/," \
+            --owner=0 --group=0 --numeric-owner \
+            --sort=name \
+            -cJf "$out" .
+          sha256sum "$out" > "$out.sha256"
+          ls -lh "$out" "$out.sha256"
+
+      - name: Upload tarball artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: linux-${{ matrix.arch }}-${{ matrix.variant }}
+          path: |
+            emacs-*.tar.xz
+            emacs-*.tar.xz.sha256
+          retention-days: 14
+          if-no-files-found: error
+
+  # ================================================================
+  # Darwin per-arch builds + universal merge
+  # ================================================================
+  darwin-build:
+    name: darwin ${{ matrix.arch }}
+    needs: [resolve]
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x86_64, runs-on: macos-13 }
+          - { arch: arm64,  runs-on: macos-14 }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
+
+      - name: meson setup (NS + self-contained)
+        run: |
+          meson setup build \
+            -Dtoolkit=none \
+            -Dns=enabled \
+            -Dns-self-contained=enabled \
+            -Dnative-compilation=aot \
+            -Dpdumper=yes
+
+      - name: meson compile (builds Emacs.app)
+        run: meson compile -C build --verbose 2>&1 | tee build/compile.log
+
+      - name: Dump build diagnostics on failure
+        if: failure()
+        run: |
+          tail -200 build/compile.log || true
+          tail -200 build/meson-logs/meson-log.txt || true
+
+      - name: Verify Emacs.app
+        run: |
+          test -d build/nextstep/Emacs.app
+          file build/nextstep/Emacs.app/Contents/MacOS/Emacs
+
+      # Plain upload-artifact loses Mach-O exec bits and extended
+      # attributes on .app trees -- tar first.
+      - name: Tar Emacs.app
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: tar -C build/nextstep -cf "Emacs-${ARCH}.app.tar" Emacs.app
+
+      - name: Upload Emacs.app tar
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: darwin-app-${{ matrix.arch }}
+          path: Emacs-${{ matrix.arch }}.app.tar
+          retention-days: 14
+          if-no-files-found: error
+
+  darwin-universal:
+    name: darwin universal .dmg
+    needs: [resolve, darwin-build]
+    runs-on: macos-14
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Download per-arch Emacs.app artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v6.0.0
+        with:
+          pattern: darwin-app-*
+          path: per-arch
+          merge-multiple: false
+
+      - name: Untar per-arch bundles
+        run: |
+          set -euo pipefail
+          mkdir -p amd64 arm64
+          tar -C amd64 -xf per-arch/darwin-app-x86_64/Emacs-x86_64.app.tar
+          tar -C arm64 -xf per-arch/darwin-app-arm64/Emacs-arm64.app.tar
+          test -d amd64/Emacs.app
+          test -d arm64/Emacs.app
+
+      - name: Build universal Emacs.app
+        run: bash admin/build-darwin-universal.sh amd64/Emacs.app arm64/Emacs.app Emacs.app
+
+      - name: Ad-hoc codesign
+        run: |
+          codesign --force --deep --sign - --options runtime Emacs.app
+          codesign --verify --deep --strict --verbose=2 Emacs.app
+
+      - name: Build .dmg
+        env:
+          VER: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          out="Emacs-${VER}-universal.dmg"
+          hdiutil create -volname "Emacs ${VER}" \
+            -srcfolder Emacs.app -ov -format UDZO "$out"
+          shasum -a 256 "$out" > "$out.sha256"
+          ls -lh "$out" "$out.sha256"
+
+      - name: Upload .dmg
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: darwin-universal
+          path: |
+            Emacs-*.dmg
+            Emacs-*.dmg.sha256
+          retention-days: 14
+          if-no-files-found: error
+
+  # ================================================================
+  # Nix flake outputs (best-effort -- doesn't gate the release).
+  # ================================================================
+  nix-flake:
+    name: nix flake ${{ matrix.system }}
+    needs: [resolve]
+    runs-on: ${{ matrix.runs-on }}
+    continue-on-error: true
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { system: x86_64-linux,   runs-on: ubuntu-24.04,     pkgs: 'emacs-jylhis emacs-jylhis-nox emacs-jylhis-pgtk emacs-jylhis-gtk3' }
+          - { system: aarch64-linux,  runs-on: ubuntu-24.04-arm, pkgs: 'emacs-jylhis emacs-jylhis-nox emacs-jylhis-pgtk emacs-jylhis-gtk3' }
+          - { system: x86_64-darwin,  runs-on: macos-13,         pkgs: 'emacs-jylhis emacs-jylhis-nox' }
+          - { system: aarch64-darwin, runs-on: macos-14,         pkgs: 'emacs-jylhis emacs-jylhis-nox' }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            accept-flake-config = true
+            experimental-features = nix-command flakes
+
+      - name: Set up Cachix (pull jylhis)
+        uses: cachix/cachix-action@v16
+        with:
+          name: jylhis
+          extraPullNames: devenv
+
+      - name: nix flake check
+        run: nix flake check --no-build
+
+      - name: nix build (each variant)
+        env:
+          PKGS: ${{ matrix.pkgs }}
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          set -euo pipefail
+          out_json="nix-outputs-${SYSTEM}.json"
+          {
+            echo "{"
+            echo "  \"system\": \"${SYSTEM}\","
+            echo "  \"packages\": {"
+            first=1
+            for pkg in $PKGS; do
+              echo "::group::nix build .#${pkg}" >&2
+              path=$(nix build --print-out-paths --no-link ".#${pkg}")
+              if [ $first -eq 0 ]; then echo ","; fi
+              printf '    "%s": "%s"' "$pkg" "$path"
+              first=0
+              echo "::endgroup::" >&2
+            done
+            echo ""
+            echo "  }"
+            echo "}"
+          } > "$out_json"
+          cat "$out_json"
+
+      - name: Upload nix-outputs manifest
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: nix-outputs-${{ matrix.system }}
+          path: nix-outputs-*.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ================================================================
+  # Android: parked.  Emit a placeholder document.
+  # ================================================================
+  android-stub:
+    name: android (parked)
+    needs: [resolve]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Write ANDROID_STATUS.md
+        run: |
+          cat > ANDROID_STATUS.md <<'EOF'
+          ## Android
+
+          No APK is built in this release.
+
+          The Android Java/NDK build glue (`subdir('java')`,
+          `subdir('cross/ndk-build')`, `subdir('exec')`) is commented
+          out in `meson.build` pending a port from the removed
+          autotools build system.  The native C port (`src/android*.c`,
+          `src/sfntfont-android.c`, etc.) is still in-tree and intact;
+          only the build wiring is missing.
+
+          See `.claude/notes/build-system.md` "Parked / unsupported"
+          for the migration status.
+          EOF
+      - name: Upload status doc
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: android-status
+          path: ANDROID_STATUS.md
+          retention-days: 14
+
+  # ================================================================
+  # Publish: only on real tag pushes.  Creates a draft release.
+  # ================================================================
+  publish:
+    name: publish github release
+    needs:
+      - resolve
+      - linux-tarball
+      - darwin-universal
+      - nix-flake
+      - android-stub
+    if: needs.resolve.outputs.is_tag == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (full history for log)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v6.0.0
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Inventory artifacts
+        run: |
+          set -euo pipefail
+          ls -lR dist
+          # Sanity: at least one of each artifact class must exist.
+          ls dist/emacs-*.tar.xz >/dev/null
+          ls dist/Emacs-*.dmg    >/dev/null
+          ls dist/ANDROID_STATUS.md >/dev/null
+
+      - name: Compose release notes
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+          VER: ${{ needs.resolve.outputs.version }}
+        run: |
+          set -euo pipefail
+          notes=release-notes.md
+          # 1) Optional human-authored notes win if present.
+          if [ -f "admin/release-notes/${TAG}.md" ]; then
+            cp "admin/release-notes/${TAG}.md" "$notes"
+          else
+            prev=$(git tag --sort=-creatordate | grep -E '^v' \
+                   | grep -vFx "${TAG}" | head -1 || true)
+            {
+              echo "# ${TAG}"
+              echo
+              echo "GNU Emacs ${VER} -- Jotain fork release."
+              echo
+              echo "## Changes"
+              if [ -n "$prev" ]; then
+                echo
+                git log --pretty='* %s (%h)' "${prev}..${TAG}"
+              else
+                echo
+                echo "* First tagged release; see git history."
+              fi
+            } > "$notes"
+          fi
+          # 2) Always append the install footer + Android status.
+          cat >> "$notes" <<'EOF'
+
+          ## Install
+
+          ### Linux
+
+          ```sh
+          tar xJf emacs-VERSION-linux-ARCH-VARIANT.tar.xz
+          ./emacs-VERSION/bin/emacs
+          ```
+
+          Variants: `gtk3` (X11), `pgtk` (Wayland), `nox` (terminal-only).
+
+          ### macOS (universal: Intel + Apple Silicon)
+
+          Mount `Emacs-VERSION-universal.dmg`, drag `Emacs.app` to
+          `/Applications`.  Because the bundle is ad-hoc signed (no
+          Apple Developer ID yet), the first launch needs:
+
+          ```sh
+          xattr -dr com.apple.quarantine /Applications/Emacs.app
+          ```
+
+          ...or right-click the bundle in Finder and pick **Open**.
+
+          ### Nix
+
+          ```sh
+          nix run github:Jylhis/emacs/TAG#emacs-jylhis-pgtk
+          ```
+
+          See `nix-outputs-*.json` artifacts for store paths.
+
+          EOF
+          # Substitute placeholders.
+          sed -i -e "s/VERSION/${VER}/g" -e "s/TAG/${TAG}/g" "$notes"
+          # Append the Android status verbatim.
+          echo "" >> "$notes"
+          cat dist/ANDROID_STATUS.md >> "$notes"
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8  # v2.3.2
+        with:
+          tag_name: ${{ needs.resolve.outputs.tag }}
+          name: ${{ needs.resolve.outputs.tag }}
+          body_path: release-notes.md
+          draft: true
+          prerelease: false
+          files: |
+            dist/emacs-*.tar.xz
+            dist/emacs-*.tar.xz.sha256
+            dist/Emacs-*.dmg
+            dist/Emacs-*.dmg.sha256
+            dist/nix-outputs-*.json
+            dist/ANDROID_STATUS.md

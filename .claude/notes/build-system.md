@@ -158,3 +158,23 @@ Inspect with `ccache --show-stats`.  Bypass with
 `CCACHE_DISABLE=1 meson compile -C build`.  ccache does NOT cache
 `.eln` native-comp artefacts or link steps -- the `build/`
 actions/cache entry handles link outputs across runs.
+
+## Release pipeline
+
+Tag-driven multi-platform releases run from
+`.github/workflows/release.yml`.  The full process (tag scheme, what
+ships, how to cut a release, how to verify) is documented in
+`admin/jylhis-release-process.md`.
+
+Targets, as of the first cut:
+
+- Linux x86_64 + aarch64, three GUI variants each (`gtk3` for X11,
+  `pgtk` for Wayland, `nox` for terminal-only) -- shipped as
+  `tar.xz` of the `meson install --destdir` tree.
+- macOS universal `.dmg`: x86_64 + arm64 `Emacs.app` bundles merged
+  with `lipo` via `admin/build-darwin-universal.sh`, then ad-hoc
+  signed (no Apple Developer ID yet).
+- Nix flake outputs for every system/variant declared in `flake.nix`
+  (best-effort -- doesn't gate the release).
+- Android: parked (see table above).  The workflow emits a
+  placeholder `ANDROID_STATUS.md` in the release notes.
