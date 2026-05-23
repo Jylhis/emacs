@@ -91,8 +91,8 @@ endif
 # engine.  lib-src/etags.c uses the GNU regex API (re_compile_pattern,
 # re_search, re_match).  On glibc these are provided by the system;
 # on other systems (macOS, musl) we need gnulib's implementation.
-# The autotools build probes via m4/regex.m4; here we check for the
-# GNU extension re_compile_pattern which etags requires.
+# The autotools build probed via gnulib's regex.m4 upstream; here we
+# check for the GNU extension re_compile_pattern which etags requires.
 use_included_regex = not cc.has_function('re_compile_pattern',
   prefix : '#include <regex.h>')
 if use_included_regex
@@ -249,7 +249,7 @@ getopt_cdefs_overrides = {
   'HAVE_SYS_CDEFS_H': cc.has_header('sys/cdefs.h') ? '1' : '0',
 }
 
-# ---- getopt.h: gnulib getopt wrapper (m4/getopt.m4).  ----
+# ---- getopt.h: gnulib getopt wrapper (gnulib's getopt.m4 upstream).
 # With __GETOPT_PREFIX=rpl_ in config.h, gnulib renames getopt_long
 # to rpl_getopt_long etc., avoiding type clashes with macOS SDK.
 getopt_overrides = {
@@ -292,8 +292,8 @@ time_overrides = {
 # default-zero @GNULIB_*@ / @REPLACE_*@ values on Linux glibc and
 # macOS.  The remaining gnulib *.in.h files (stdio.in.h,
 # signal.in.h, sys_stat.in.h, time.in.h, unistd.in.h, fcntl.in.h,
-# dirent.in.h) need per-function feature detection (gl_FUNC_FOO
-# calls in m4/) that isn't ported yet.
+# dirent.in.h) need per-function feature detection (the gl_FUNC_FOO
+# autoconf macros from gnulib upstream) that isn't ported yet.
 gnulib_in_h_specs = [
   ['stdckdint',    stdckdint_overrides],
   ['assert',       assert_overrides],

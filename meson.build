@@ -231,9 +231,9 @@ if cc.has_header_symbol('string.h', 'strmode')
   conf_data.set('HAVE_DECL_STRMODE', 1)
 endif
 
-# Linux xattr support drives file_has_acl (m4/acl.m4).  Probed here
-# rather than in lib/meson.build because the result conditions other
-# detection.
+# Linux xattr support drives file_has_acl (gnulib's acl.m4 upstream).
+# Probed here rather than in lib/meson.build because the result
+# conditions other detection.
 have_linux_xattr_h = cc.has_header('linux/xattr.h')
 have_listxattr = cc.has_function('listxattr',
                                   prefix : '#include <sys/xattr.h>')
@@ -952,8 +952,8 @@ conf_data.set('ALIGNOF_EMACS_INT', emacs_int_align)
 sizeof_emacs_int = cc.sizeof('long')   # matches the 64-bit Linux choice
 conf_data.set('SIZEOF_EMACS_INT', sizeof_emacs_int)
 
-# C99 flexible array member support (m4/flexmember.m4).  If the
-# compiler accepts `char name[];` as a flexible array, define
+# C99 flexible array member support (gnulib's flexmember.m4 upstream).
+# If the compiler accepts `char name[];` as a flexible array, define
 # FLEXIBLE_ARRAY_MEMBER to nothing; otherwise to 1 (the struct hack).
 flexmember_test = '''
 #include <stdlib.h>

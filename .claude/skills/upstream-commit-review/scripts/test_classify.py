@@ -40,7 +40,6 @@ class ClassifyTests(unittest.TestCase):
         for files in [
             ["configure.ac"],
             ["src/Makefile.in"],
-            ["m4/foo.m4"],
             ["GNUmakefile"],
             ["autogen.sh"],
         ]:

@@ -216,7 +216,6 @@ Po Lu
 	    java/org/gnu/emacs/EmacsWindowAttachmentManager.java
 	    java/org/gnu/emacs/EmacsWindow.java
 	    java/org/gnu/emacs/R.java
-	    m4/ndk-build.m4
 	    cross
 
 	Android battery support in lisp/battery.el
@@ -327,7 +326,6 @@ Paul Eggert
 	configure.ac
 	lib/*
 	lib-src/* (except for files others want to maintain)
-	m4/*
 	make-dist
 	src/* (except for *.m, *w32*, bitmaps, files others want to maintain)
 

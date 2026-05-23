@@ -147,13 +147,7 @@ rm -- "$src"lib/calendar-ethiopian.h \
       "$src"lib/calendar-thai.h \
       "$src"lib/calendars.h \
       "$src"lib/gl_openssl.h \
-      "$src"lib/stdio-read.c "$src"lib/stdio-write.c \
-      "$src"m4/fcntl-o.m4 \
-      "$src"m4/gl-openssl.m4 \
-      "$src"m4/gnulib-cache.m4 "$src"m4/gnulib-tool.m4 \
-      "$src"m4/manywarnings-c++.m4 \
-      "$src"m4/off64_t.m4 \
-      "$src"m4/warn-on-use.m4 "$src"m4/wint_t.m4 &&
+      "$src"lib/stdio-read.c "$src"lib/stdio-write.c &&
 cp -- "$gnulib_srcdir"/build-aux/texinfo.tex "$src"doc/misc &&
 cp -- "$gnulib_srcdir"/build-aux/config.guess \
       "$gnulib_srcdir"/build-aux/config.sub \
@@ -163,8 +157,6 @@ cp -- "$gnulib_srcdir"/build-aux/config.guess \
 cp -- "$gnulib_srcdir"/lib/af_alg.h \
       "$gnulib_srcdir"/lib/save-cwd.h \
    "$src"lib &&
-cp -- "$gnulib_srcdir"/m4/codeset.m4 \
-   "$src"m4 &&
 autogen &&
 new_modules=$(get_module_list) || exit
 

@@ -190,7 +190,9 @@ jobs:
       # regex.c contains a full POSIX regex engine that on glibc
       # conflicts with the system regex, causing SIGSEGV at bootstrap.
       # It must only be compiled when the system lacks re_compile_pattern
-      # (see lib/meson.build conditional and m4/regex.m4).
+      # (see lib/meson.build conditional; the matching gnulib upstream
+      # autoconf probe lived in m4/regex.m4 before the m4/ tree was
+      # removed).
       - name: Check for unconditional gnulib regex in Meson build
         if: needs.classify.outputs.meson_guard == 'true'
         run: |

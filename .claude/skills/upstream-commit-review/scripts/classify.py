@@ -35,7 +35,6 @@ from typing import Iterable
 AUTOTOOLS_RX = re.compile(
     r"^(configure\.ac|autogen\.sh|make-dist|GNUmakefile)$"
     r"|Makefile\.in$"
-    r"|^m4/"
 )
 ADMIN_RX = re.compile(r"^admin/|^ChangeLog(\.[0-9]+)?$|^etc/MAINTAINERS$")
 MERGE_SUBJECT_RX = re.compile(r"^(; *)?Merge \b|gitmerge", re.IGNORECASE)

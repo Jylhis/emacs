@@ -82,13 +82,13 @@ else
     esac
 
     case "$path" in
-      .github/workflows/meson.yml|.github/actions/setup-devenv/**|.github/scripts/check-install-parity.sh|meson.build|meson.options|*/meson.build|meson/**|src/**|lib/**|lib-src/**|lisp/**|test/**|admin/**|m4/gnulib-common.m4|m4/extern-inline.m4|devenv.nix|devenv.yaml|devenv.lock)
+      .github/workflows/meson.yml|.github/actions/setup-devenv/**|.github/scripts/check-install-parity.sh|meson.build|meson.options|*/meson.build|meson/**|src/**|lib/**|lib-src/**|lisp/**|test/**|admin/**|devenv.nix|devenv.yaml|devenv.lock)
         linux_meson=true
         ;;
     esac
 
     case "$path" in
-      .github/workflows/sonarcloud.yml|.github/actions/setup-devenv/**|sonar-project.properties|meson.build|meson.options|*/meson.build|meson/**|src/**|lib/**|lib-src/**|m4/gnulib-common.m4|m4/extern-inline.m4|*.c|*.h|*.cc|*.cpp|*.cxx|*.hpp|*.m|*.mm|devenv.nix|devenv.yaml|devenv.lock)
+      .github/workflows/sonarcloud.yml|.github/actions/setup-devenv/**|sonar-project.properties|meson.build|meson.options|*/meson.build|meson/**|src/**|lib/**|lib-src/**|*.c|*.h|*.cc|*.cpp|*.cxx|*.hpp|*.m|*.mm|devenv.nix|devenv.yaml|devenv.lock)
         sonar=true
         ;;
     esac
