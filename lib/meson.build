@@ -2,7 +2,7 @@
 #
 # Exposes a thin libgnu covering the symbols make-docfile /
 # make-fingerprint and the rest of src reach for at link time.  The
-# remaining gnulib detection (m4/* feature probes, *.in.h header
+# remaining gnulib detection (feature probes, *.in.h header
 # substitutions) lands incrementally as more emacs sources rely on
 # each piece.
 
@@ -392,10 +392,11 @@ endforeach
 
 libgnu = static_library(
   'gnu',
-  # The generated gnulib-common.h and *.in.h substitutes are listed as
-  # sources so the dependency graph picks them up; they're headers,
-  # not TUs, so the compiler skips them.
-  sources : [libgnu_sources, gnulib_common_h, gnulib_substituted_headers],
+  # The generated *.in.h substitutes are listed as sources so the
+  # dependency graph picks them up; they're headers, not TUs, so the
+  # compiler skips them.  gnulib-common.h is a checked-in static
+  # header (lib/gnulib-common.h) and needs no build-graph entry.
+  sources : [libgnu_sources, gnulib_substituted_headers],
   include_directories : [top_inc, include_directories('.', '../src')],
   install : false,
   # NEED_MKTIME_INTERNAL exports mktime_internal from mktime.c so
@@ -406,5 +407,5 @@ libgnu = static_library(
 libgnu_dep = declare_dependency(
   link_with : libgnu,
   include_directories : [top_inc, include_directories('.')],
-  sources : [gnulib_common_h, gnulib_substituted_headers],
+  sources : [gnulib_substituted_headers],
 )

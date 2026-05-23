@@ -19,29 +19,6 @@ cc = meson.get_compiler('c')
 py = import('python').find_installation('python3')
 
 # ----------------------------------------------------------------------
-# Generate lib/gnulib-common.h from m4/gnulib-common.m4.  This header
-# contains the _GL_ATTRIBUTE_* / _Noreturn / _GL_GNUC_PREREQ macro
-# block that gnulib-common.m4 contributed to config.h via AH_VERBATIM
-# in the autotools build.
-# ----------------------------------------------------------------------
-extract_ah = files('meson/extract_ah_verbatim.py')
-
-# Source m4 files contributing AH_VERBATIM blocks that gnulib headers
-# rely on at compile time.  Order matters because some macros depend on
-# others; gnulib-common.m4 must come first.
-gnulib_verbatim_inputs = files(
-  'm4/gnulib-common.m4',
-  'm4/extern-inline.m4',
-)
-
-gnulib_common_h = custom_target(
-  'gnulib-common.h',
-  input : gnulib_verbatim_inputs,
-  output : 'gnulib-common.h',
-  command : [py, extract_ah, '--output', '@OUTPUT@', '@INPUT@'],
-)
-
-# ----------------------------------------------------------------------
 # Compiler probes used to populate src/config.h.
 # ----------------------------------------------------------------------
 
@@ -115,10 +92,7 @@ file_notify = get_option('file-notification')
 if file_notify == 'auto' or file_notify == 'yes'
   if is_linux and cc.has_header('sys/inotify.h')
     file_notify = 'inotify'
-  elif (is_darwin or host_machine.system() == 'freebsd'
-        or host_machine.system() == 'dragonfly'
-        or host_machine.system() == 'netbsd'
-        or host_machine.system() == 'openbsd')
+  elif is_darwin
     file_notify = 'kqueue'
   else
     file_notify = 'no'
@@ -880,9 +854,7 @@ endif
 # ----------------------------------------------------------------------
 toolkit_scroll_bars_opt = get_option('toolkit-scroll-bars').disable_auto_if(_no_all)
 _have_toolkit_for_scrollbars = (gtk3_dep.found()
-                                or conf_data.has('HAVE_NS')
-                                or conf_data.has('HAVE_NTGUI')
-                                or conf_data.has('HAVE_BE_APP'))
+                                or conf_data.has('HAVE_NS'))
 if toolkit_scroll_bars_opt.allowed() and _have_toolkit_for_scrollbars
   conf_data.set('USE_TOOLKIT_SCROLL_BARS', 1)
 elif toolkit_scroll_bars_opt.enabled() and not _have_toolkit_for_scrollbars
