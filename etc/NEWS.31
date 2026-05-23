@@ -4077,6 +4077,17 @@ cc-compat.el, info-edit.el, meese.el, otodo-mode.el, rcompile.el,
 sup-mouse.el, terminal.el, vi.el, vip.el, ws-mode.el, and yow.el.
 
 +++
+** Further long-obsolete libraries have been removed.
+The following libraries, all obsolete for ten or more years, are no
+longer shipped: cl-compat.el (use cl-lib; obsolete since 23.3); the
+PGG suite -- pgg.el, pgg-def.el, pgg-gpg.el, pgg-parse.el,
+pgg-pgp.el, pgg-pgp5.el (use EPG; obsolete since 24.1); bruce.el
+(24.3); longlines.el (use 'visual-line-mode'; obsolete since 24.4);
+crisp.el, tpu-edt.el, tpu-extras.el, tpu-mapper.el (24.5); and
+vc-arch.el, landmark.el, eudcb-ph.el, gulp.el (25.1).  The pgg
+manual has been removed as well.
+
++++
 ** 'if-let' and 'when-let' are now obsolete.
 Use 'if-let*', 'when-let*' and 'and-let*' instead.
 
