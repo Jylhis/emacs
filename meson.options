@@ -20,12 +20,6 @@ option('pop',           type : 'feature', value : 'auto',
   description : 'Support POP3 in movemail.')
 option('mailhost',      type : 'string',  value : '',
   description : 'Default POP mail host.')
-option('kerberos',      type : 'feature', value : 'disabled',
-  description : 'Support Kerberos-authenticated POP.')
-option('kerberos5',     type : 'feature', value : 'disabled',
-  description : 'Support Kerberos v5 authenticated POP.')
-option('hesiod',        type : 'feature', value : 'disabled',
-  description : 'Support Hesiod to get the POP server host.')
 option('mail-unlink',   type : 'boolean', value : false,
   description : 'Unlink, rather than empty, mail spool after reading.')
 
@@ -79,12 +73,8 @@ option('rsvg',          type : 'feature', value : 'auto',
   description : 'SVG image support via librsvg.')
 option('webp',          type : 'feature', value : 'auto',
   description : 'WebP image support.')
-option('imagemagick',   type : 'feature', value : 'disabled',
-  description : 'ImageMagick image support.')
 option('cairo',         type : 'feature', value : 'auto',
   description : 'Cairo drawing.')
-option('cairo-xcb',     type : 'feature', value : 'disabled',
-  description : 'Use XCB surfaces for Cairo support.')
 
 # ----------------------------------------------------------------------
 # Fonts and text shaping (configure.ac:554-562).
@@ -102,15 +92,13 @@ option('m17n-flt',  type : 'feature', value : 'auto',
 # X11 features (configure.ac:559-591).
 # ----------------------------------------------------------------------
 option('toolkit-scroll-bars', type : 'feature', value : 'auto',
-  description : 'Use Motif/Xaw3d/GTK toolkit scroll bars.')
+  description : 'Use GTK toolkit scroll bars.')
 option('xim',     type : 'feature', value : 'auto',
   description : 'Default X11 XIM at runtime.')
 option('xdbe',    type : 'feature', value : 'auto',
   description : 'X11 double buffering support.')
 option('xinput2', type : 'feature', value : 'auto',
   description : 'Use version 2 of the X Input Extension.')
-option('xaw3d',   type : 'feature', value : 'disabled',
-  description : 'Use Xaw3d (legacy).')
 
 # ----------------------------------------------------------------------
 # Other libraries / features (configure.ac:544-591).
@@ -129,8 +117,6 @@ option('gpm',         type : 'feature', value : 'auto',
   description : 'GPM mouse support on GNU/Linux console.')
 option('dbus',        type : 'feature', value : 'auto',
   description : 'D-Bus IPC support.')
-option('gconf',       type : 'feature', value : 'disabled',
-  description : 'GConf settings support.')
 option('gsettings',   type : 'feature', value : 'auto',
   description : 'GSettings support.')
 option('selinux',     type : 'feature', value : 'auto',
@@ -254,8 +240,20 @@ option('small-ja-dic', type : 'boolean', value : false,
   description : 'Generate a smaller Japanese dictionary.'
 )
 
-# Android-only configure.ac knobs that are not yet surfaced by the Meson
-# port remain intentionally undeclared so users cannot pass inert options.
-# See .claude/notes/build-system.md "Parked / unsupported".
+# ----------------------------------------------------------------------
+# Parked options.  Haiku (be-app, be-cairo) and Cygwin
+# (cygwin32-native-compilation) configure.ac knobs from anchor
+# 08a22b8965ec gate platform backends that this fork has not
+# committed to maintaining.  They are intentionally undeclared here
+# so users cannot pass inert options; see
+# .claude/notes/build-system.md "Parked / unsupported".
 #
-# - shared-user-id               (configure.ac AC_ARG_WITH)
+# The Android (java/, exec/, cross/ndk-build/, src/android*),
+# Windows (nt/, lib-src/ntlib*), Lucid/Motif/Xaw3d, Ghostscript,
+# ImageMagick, GConf, and Kerberos/Hesiod option stubs have all
+# been deleted along with their gated source code; resurrect from
+# git history if needed.
+#
+# - be-app                       (configure.ac OPTION_DEFAULT_OFF)
+# - be-cairo                     (configure.ac OPTION_DEFAULT_OFF)
+# - cygwin32-native-compilation  (configure.ac OPTION_DEFAULT_OFF)
