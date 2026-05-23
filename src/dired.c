@@ -104,14 +104,8 @@ open_directory (Lisp_Object dirname, Lisp_Object encoded_dirname, int *fdp)
   emacs_dir *d;
   int fd, opendir_errno;
 
-#if defined DOS_NT || (defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
-  /* On DOS_NT, directories cannot be opened.  The emulation assumes
-     that any file descriptor other than AT_FDCWD corresponds to the
-     most recently opened directory.  This hack is good enough for
-     Emacs.
-
-     This code is also used on Android for a different reason: a
-     special `assets' directory outside the normal file system is used
+#if defined HAVE_ANDROID && !defined ANDROID_STUBIFY
+  /* On Android, a special `assets' directory outside the normal file system is used
      to open assets inside the Android application package, and must
      be listed using the opendir-like interface provided in
      android.h.  */
@@ -971,8 +965,7 @@ file_attributes (int fd, char const *name,
 
   int err = EINVAL;
 
-#if defined O_PATH && !defined HAVE_CYGWIN_O_PATH_BUG	\
-  && !(defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
+#if defined O_PATH && !(defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
   int namefd = emacs_openat (fd, name, O_PATH | O_CLOEXEC | O_NOFOLLOW, 0);
   if (namefd < 0)
     err = errno;

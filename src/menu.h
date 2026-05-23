@@ -92,7 +92,7 @@ extern widget_value *make_widget_value (const char *, char *, bool, Lisp_Object)
 extern widget_value *digest_single_submenu (int, int, bool);
 #endif
 
-#if defined (HAVE_X_WINDOWS) || defined (MSDOS)
+#ifdef HAVE_X_WINDOWS
 extern Lisp_Object x_menu_show (struct frame *, int, int, int,
 				Lisp_Object, const char **);
 extern void x_activate_menubar (struct frame *);

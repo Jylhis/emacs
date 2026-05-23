@@ -24,10 +24,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "lisp.h"
 #ifdef HAVE_X_WINDOWS
 #include "xterm.h"
-#elif HAVE_HAIKU
-#include "haikuterm.h"
-#include "haiku_support.h"
-#include "termchar.h"
 #else
 #include "pgtkterm.h"
 #endif
@@ -41,11 +37,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "xsettings.h"
 #endif
 
-#ifdef USE_BE_CAIRO
-#define RED_FROM_ULONG(color)	(((color) >> 16) & 0xff)
-#define GREEN_FROM_ULONG(color)	(((color) >> 8) & 0xff)
-#define BLUE_FROM_ULONG(color)	((color) & 0xff)
-#endif
 
 #define METRICS_NCOLS_PER_ROW	(128)
 
@@ -176,10 +167,6 @@ ftcrfont_open (struct frame *f, Lisp_Object entity, int pixel_size)
   cairo_font_options_t *options = xsettings_get_font_options ();
 #else
   cairo_font_options_t *options = cairo_font_options_create ();
-#endif
-#ifdef USE_BE_CAIRO
-  if (be_use_subpixel_antialiasing ())
-    cairo_font_options_set_antialias (options, CAIRO_ANTIALIAS_SUBPIXEL);
 #endif
   cairo_scaled_font_t *scaled_font
     = cairo_scaled_font_create (font_face, &font_matrix, &ctm, options);
@@ -545,56 +532,22 @@ ftcrfont_draw (struct glyph_string *s,
   cairo_glyph_t *glyphs;
   int len = to - from;
   int i;
-#ifdef USE_BE_CAIRO
-  unsigned long be_foreground, be_background;
-
-  if (s->hl != DRAW_CURSOR)
-    {
-      be_foreground = s->face->foreground;
-      be_background = s->face->background;
-    }
-  else
-    haiku_merge_cursor_foreground (s, &be_foreground,
-				   &be_background);
-#endif
 
   block_input ();
 
-#ifndef USE_BE_CAIRO
 #ifdef HAVE_X_WINDOWS
   cr = x_begin_cr_clip (f, s->gc);
 #else
   cr = pgtk_begin_cr_clip (f);
 #endif
-#else
-  /* Presumably the draw lock is already held by
-     haiku_draw_glyph_string.  */
-  EmacsWindow_begin_cr_critical_section (FRAME_HAIKU_WINDOW (f));
-  cr = haiku_begin_cr_clip (f, s);
-  if (!cr)
-    {
-      EmacsWindow_end_cr_critical_section (FRAME_HAIKU_WINDOW (f));
-      unblock_input ();
-      return 0;
-    }
-  BView_cr_dump_clipping (FRAME_HAIKU_DRAWABLE (f), cr);
-#endif
 
   if (with_background)
     {
-#ifndef USE_BE_CAIRO
 #ifdef HAVE_X_WINDOWS
       x_set_cr_source_with_gc_background (f, s->gc, s->hl != DRAW_CURSOR);
 #else
       pgtk_set_cr_source_with_color (f, s->xgcv.background,
 				     s->hl != DRAW_CURSOR);
-#endif
-#else
-      uint32_t col = be_background;
-
-      cairo_set_source_rgb (cr, RED_FROM_ULONG (col) / 255.0,
-			    GREEN_FROM_ULONG (col) / 255.0,
-			    BLUE_FROM_ULONG (col) / 255.0);
 #endif
       cairo_rectangle (cr, x, y - FONT_BASE (s->font),
 		       s->width, FONT_HEIGHT (s->font));
@@ -611,30 +564,17 @@ ftcrfont_draw (struct glyph_string *s,
                                                        glyphs[i].index,
                                                        NULL));
     }
-#ifndef USE_BE_CAIRO
 #ifdef HAVE_X_WINDOWS
   x_set_cr_source_with_gc_foreground (f, s->gc, false);
 #else
   pgtk_set_cr_source_with_color (f, s->xgcv.foreground, false);
 #endif
-#else
-  uint32_t col = be_foreground;
-
-  cairo_set_source_rgb (cr, RED_FROM_ULONG (col) / 255.0,
-			GREEN_FROM_ULONG (col) / 255.0,
-			BLUE_FROM_ULONG (col) / 255.0);
-#endif
   cairo_set_scaled_font (cr, ftcrfont_info->cr_scaled_font);
   cairo_show_glyphs (cr, glyphs, len);
-#ifndef USE_BE_CAIRO
 #ifdef HAVE_X_WINDOWS
   x_end_cr_clip (f);
 #else
   pgtk_end_cr_clip (f);
-#endif
-#else
-  haiku_end_cr_clip (cr);
-  EmacsWindow_end_cr_critical_section (FRAME_HAIKU_WINDOW (f));
 #endif
   unblock_input ();
 

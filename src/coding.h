@@ -713,12 +713,9 @@ extern void encode_coding_object (struct coding_system *,
 /* Defined in this file.  */
 INLINE int surrogates_to_codepoint (int, int);
 
-#if defined (WINDOWSNT) || defined (CYGWIN) || defined HAVE_ANDROID
+#ifdef HAVE_ANDROID
 
-/* These functions use Lisp string objects to store the UTF-16LE
-   strings that modern versions of Windows expect.  These strings are
-   not particularly useful to Lisp, and all Lisp strings should be
-   native Emacs multibyte.  */
+/* These functions use Lisp string objects to store UTF-16LE strings.  */
 
 /* Access the wide-character string stored in a Lisp string object.  */
 #define WCSDATA(x) ((wchar_t *) SDATA (x))
@@ -736,7 +733,7 @@ extern Lisp_Object from_unicode (Lisp_Object str);
 /* Convert WSTR to an Emacs string.  */
 extern Lisp_Object from_unicode_buffer (const wchar_t *wstr);
 
-#endif /* WINDOWSNT || CYGWIN || HAVE_ANDROID */
+#endif /* HAVE_ANDROID */
 
 /* Macros for backward compatibility.  */
 

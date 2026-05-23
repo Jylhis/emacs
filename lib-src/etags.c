@@ -87,23 +87,6 @@ University of California, as described above. */
 
 #include <config.h>
 
-#ifdef MSDOS
-# undef MSDOS
-# define MSDOS true
-# include <sys/param.h>
-#else
-# define MSDOS false
-#endif /* MSDOS */
-
-#ifdef WINDOWSNT
-# include <direct.h>
-# undef HAVE_NTGUI
-# undef  DOS_NT
-# define DOS_NT
-/* The WINDOWSNT build doesn't use Gnulib's fcntl.h.  */
-# define O_CLOEXEC O_NOINHERIT
-#endif /* WINDOWSNT */
-
 #include <attribute.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -390,9 +373,7 @@ static void invalidate_nodes (fdesc *, node **);
 static void put_entries (node *);
 static void cleanup_tags_file (char const * const, char const * const);
 
-#if !MSDOS && !defined (DOS_NT)
 static char *escape_shell_arg_string (char *);
-#endif
 static void do_move_file (const char *, const char *);
 static char *concat (const char *, const char *, const char *);
 static char *skip_spaces (char *);
@@ -1460,15 +1441,6 @@ main (int argc, char **argv)
 	   setenv ("LC_COLLATE", "C", 1);
 	   setenv ("LC_ALL", "C", 1); */
 	char *cmd = xmalloc (8 * strlen (tagfile) + sizeof "sort -u -o '' ''");
-#if defined WINDOWSNT || MSDOS
-	/* Quote "like this".  No need to escape the quotes in the file name,
-	   since it is not allowed in file names on these systems.  */
-	char *z = stpcpy (cmd, "sort -u -o \"");
-	z = stpcpy (z, tagfile);
-	z = stpcpy (z, "\" \"");
-	z = stpcpy (z, tagfile);
-	stpcpy (z, "\"");
-#else
 	/* Quote 'like this', and escape the apostrophe in the file name.  */
 	char *z = stpcpy (cmd, "sort -u -o '");
 	char *escaped_tagfile = z;
@@ -1479,7 +1451,6 @@ main (int argc, char **argv)
 	z = stpcpy (z, "' '");
 	z = mempcpy (z, escaped_tagfile, escaped_tagfile_len);
 	strcpy (z, "'");
-#endif
 	return system (cmd);
       }
   return EXIT_SUCCESS;
@@ -1544,8 +1515,7 @@ get_compressor_from_suffix (char *file, char **extptr)
   compressor *compr;
   char *slash, *suffix;
 
-  /* File has been processed by canonicalize_filename,
-     so we don't need to consider backslashes on DOS_NT.  */
+  /* File has been processed by canonicalize_filename.  */
   slash = strrchr (file, '/');
   suffix = strrchr (file, '.');
   if (suffix == NULL || suffix < slash)
@@ -1553,19 +1523,9 @@ get_compressor_from_suffix (char *file, char **extptr)
   if (extptr != NULL)
     *extptr = suffix;
   suffix += 1;
-  /* Let those poor souls who live with DOS 8+3 file name limits get
-     some solace by treating foo.cgz as if it were foo.c.gz, etc.
-     Only the first do loop is run if not MSDOS */
-  do
-    {
-      for (compr = compressors; compr->suffix != NULL; compr++)
-	if (streq (compr->suffix, suffix))
-	  return compr;
-      if (!MSDOS)
-	break;			/* do it only once: not really a loop */
-      if (extptr != NULL)
-	*extptr = ++suffix;
-    } while (*suffix != '\0');
+  for (compr = compressors; compr->suffix != NULL; compr++)
+    if (streq (compr->suffix, suffix))
+      return compr;
   return NULL;
 }
 
@@ -1629,10 +1589,6 @@ get_language_from_filename (char *file, bool case_sensitive)
   slash = strrchr (file, '/');
   if (slash != NULL)
     file = slash + 1;
-#ifdef DOS_NT
-  else if (file[0] && file[1] == ':')
-    file += 2;
-#endif
   for (lang = lang_names; lang->name != NULL; lang++)
     if (lang->filenames != NULL)
       for (name = lang->filenames; *name != NULL; name++)
@@ -1722,23 +1678,6 @@ process_file_name (char *file, language *lang)
 		  real_name = compressed_name;
 		  break;
 		}
-	      if (MSDOS)
-		{
-		  char *suf = compressed_name + strlen (file);
-		  size_t suflen = strlen (compr->suffix) + 1;
-		  for ( ; suf[1]; suf++, suflen--)
-		    {
-		      memmove (suf, suf + 1, suflen);
-		      inf = fopen (compressed_name, "r" FOPEN_BINARY);
-		      if (inf)
-			{
-			  real_name = compressed_name;
-			  break;
-			}
-		    }
-		  if (inf)
-		    break;
-		}
 	      free (compressed_name);
 	      compressed_name = NULL;
 	    }
@@ -1759,15 +1698,6 @@ process_file_name (char *file, language *lang)
 	inf = NULL;
       else
 	{
-#if MSDOS || defined (DOS_NT)
-	  int buf_len =
-	    strlen (compr->command)
-	    + strlen (" \"\" > \"\"") + strlen (real_name)
-	    + strlen (tmp_name) + 1;
-	  char *cmd = xmalloc (buf_len);
-	  snprintf (cmd, buf_len, "%s \"%s\" > \"%s\"",
-		    compr->command, real_name, tmp_name);
-#else
 	  char *new_real_name = escape_shell_arg_string (real_name);
 	  char *new_tmp_name = escape_shell_arg_string (tmp_name);
 	  int buf_len =
@@ -1778,7 +1708,6 @@ process_file_name (char *file, language *lang)
 		    compr->command, new_real_name, new_tmp_name);
 	  free (new_real_name);
 	  free (new_tmp_name);
-#endif
 	  inf = (system (cmd) == -1
 		 ? NULL
 		 : fopen (tmp_name, "r" FOPEN_BINARY));
@@ -7885,22 +7814,10 @@ etags_mktmp (void)
   const char *tmpdir = getenv ("TMPDIR");
   const char *slash = "/";
 
-#if MSDOS || defined (DOS_NT)
-  if (!tmpdir)
-    tmpdir = getenv ("TEMP");
-  if (!tmpdir)
-    tmpdir = getenv ("TMP");
-  if (!tmpdir)
-    tmpdir = ".";
-  if (tmpdir[strlen (tmpdir) - 1] == '/'
-      || tmpdir[strlen (tmpdir) - 1] == '\\')
-    slash = "";
-#else
   if (!tmpdir)
     tmpdir = "/tmp";
   if (tmpdir[strlen (tmpdir) - 1] == '/')
     slash = "";
-#endif
 
   char *templt = concat (tmpdir, slash, "etXXXXXX");
   int fd = mkostemp (templt, O_CLOEXEC);
@@ -7909,22 +7826,10 @@ etags_mktmp (void)
       free (templt);
       templt = NULL;
     }
-#if defined (DOS_NT)
-  else
-    {
-      /* The file name will be used in shell redirection, so it needs to have
-	 DOS-style backslashes, or else the Windows shell will barf.  */
-      char *p;
-      for (p = templt; *p; p++)
-	if (*p == '/')
-	  *p = '\\';
-    }
-#endif
 
   return templt;
 }
 
-#if !MSDOS && !defined (DOS_NT)
 /*
  * Add single quotes around a string, and escape any single quotes.
  * Return a newly-allocated string.
@@ -7973,7 +7878,6 @@ escape_shell_arg_string (char *str)
   new_str[need_space] = '\0';
   return new_str;
 }
-#endif
 
 static void
 do_move_file (const char *src_file, const char *dst_file)
@@ -8031,10 +7935,6 @@ relative_filename (char *file, char *dir)
   while (*fp++ == *dp++)
     if (dp[-1] == '/')
       dir_last_slash = dp - 1;
-#ifdef DOS_NT
-  if (fp - 1 == afn && afn[0] != '/')
-    return afn; /* Cannot build a relative name.  */
-#endif
   fp -= dp - dir_last_slash;
   dp = dir_last_slash;
 
@@ -8063,12 +7963,6 @@ absolute_filename (char *file, char *dir)
 
   if (filename_is_absolute (file))
     res = savestr (file);
-#ifdef DOS_NT
-  /* We don't support non-absolute file names with a drive
-     letter, like `d:NAME' (it's too much hassle).  */
-  else if (file[1] == ':')
-    fatal ("%s: relative file names with drive letters not supported", file);
-#endif
   else
     res = concat (dir, file, "");
 
@@ -8087,13 +7981,6 @@ absolute_filename (char *file, char *dir)
 	      while (cp >= res && !filename_is_absolute (cp));
 	      if (cp < res)
 		cp = slashp;	/* the absolute name begins with "/.." */
-#ifdef DOS_NT
-	      /* Under MSDOS and NT we get `d:/NAME' as absolute
-		 file name, so the luser could say `d:/../NAME'.
-		 We silently treat this as `d:/NAME'.  */
-	      else if (cp[0] != '/')
-		cp = slashp;
-#endif
               memmove (cp, slashp + 3, strlen (slashp + 2));
 	      slashp = cp;
 	      continue;
@@ -8143,9 +8030,6 @@ static bool
 filename_is_absolute (char *fn)
 {
   return (fn[0] == '/'
-#ifdef DOS_NT
-	  || (c_isalpha (fn[0]) && fn[1] == ':' && fn[2] == '/')
-#endif
 	  );
 }
 
@@ -8156,24 +8040,6 @@ canonicalize_filename (register char *fn)
 {
   register char* cp;
 
-#ifdef DOS_NT
-  /* Canonicalize drive letter case.  */
-  if (c_isupper (fn[0]) && fn[1] == ':')
-    fn[0] = c_tolower (fn[0]);
-
-  /* Collapse multiple forward- and back-slashes into a single forward
-     slash. */
-  for (cp = fn; *cp != '\0'; cp++, fn++)
-    if (*cp == '/' || *cp == '\\')
-      {
-	*fn = '/';
-	while (cp[1] == '/' || cp[1] == '\\')
-	  cp++;
-      }
-    else
-      *fn = *cp;
-
-#else  /* !DOS_NT */
 
   /* Collapse multiple slashes into a single slash. */
   for (cp = fn; *cp != '\0'; cp++, fn++)
@@ -8186,7 +8052,6 @@ canonicalize_filename (register char *fn)
     else
       *fn = *cp;
 
-#endif	/* !DOS_NT */
 
   *fn = '\0';
 }

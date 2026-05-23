@@ -1092,12 +1092,9 @@ init_sys_modes (struct tty_display_info *tty_out)
   /* This code added to insure that, if flow-control is not to be used,
      we have an unlocked terminal at the start. */
 
-#ifndef HAIKU /* On Haiku, TCXONC is a no-op and causes spurious
-		 compiler warnings. */
 #ifdef TCXONC
   if (!tty_out->flow_control) ioctl (fileno (tty_out->input), TCXONC, 1);
 #endif
-#endif /* HAIKU */
 #ifdef TIOCSTART
   if (!tty_out->flow_control) ioctl (fileno (tty_out->input), TIOCSTART, 0);
 #endif
@@ -1226,22 +1223,6 @@ get_tty_size (int fd, int *widthp, int *heightp)
       *widthp = size.ts_cols;
       *heightp = size.ts_lines;
     }
-
-#elif defined WINDOWSNT
-
-  CONSOLE_SCREEN_BUFFER_INFO info;
-  if (GetConsoleScreenBufferInfo (GetStdHandle (STD_OUTPUT_HANDLE), &info))
-    {
-      *widthp = info.srWindow.Right - info.srWindow.Left + 1;
-      *heightp = info.srWindow.Bottom - info.srWindow.Top + 1;
-    }
-  else
-    *widthp = *heightp = 0;
-
-#elif defined MSDOS
-
-  *widthp = ScreenCols ();
-  *heightp = ScreenRows ();
 
 #else /* system doesn't know size */
 
@@ -1645,7 +1626,7 @@ init_sigbus (void)
 
 #endif
 
-#if defined HAVE_STACK_OVERFLOW_HANDLING && !defined WINDOWSNT
+#ifdef HAVE_STACK_OVERFLOW_HANDLING
 
 /* Alternate stack used by SIGSEGV handler below.  */
 
@@ -1766,7 +1747,7 @@ init_sigsegv (void)
   return 1;
 }
 
-#else /* not HAVE_STACK_OVERFLOW_HANDLING or WINDOWSNT */
+#else /* !HAVE_STACK_OVERFLOW_HANDLING */
 
 static bool
 init_sigsegv (void)
@@ -1774,7 +1755,7 @@ init_sigsegv (void)
   return 0;
 }
 
-#endif /* HAVE_STACK_OVERFLOW_HANDLING && !WINDOWSNT */
+#endif /* HAVE_STACK_OVERFLOW_HANDLING */
 
 static void
 deliver_arith_signal (int sig)
@@ -2187,8 +2168,7 @@ renameat_noreplace (int srcfd, char const *src, int dstfd, char const *dst)
 #endif
 }
 
-#if !defined HAVE_NTGUI && !(defined HAVE_ANDROID		\
-			     && !defined ANDROID_STUBIFY)
+#if !(defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
 void
 emacs_abort (void)
 {
@@ -3162,10 +3142,7 @@ list_system_processes (void)
   return  proclist;
 }
 
-/* The WINDOWSNT implementation is in w32.c.
-   The MSDOS implementation is in dosfns.c.
-   The Haiku implementation is in haiku.c.  */
-#elif !defined (WINDOWSNT) && !defined (MSDOS) && !defined (HAIKU)
+#else
 
 Lisp_Object
 list_system_processes (void)
@@ -3173,7 +3150,7 @@ list_system_processes (void)
   return Qnil;
 }
 
-#endif /* !defined (WINDOWSNT) */
+#endif
 
 #if (HAVE_GETRUSAGE \
      || defined __FreeBSD__ || defined DARWIN_OS || defined __OpenBSD__)
@@ -3200,7 +3177,7 @@ make_lisp_timeval (struct timeval t)
 
 #endif
 
-#if defined (GNU_LINUX) || defined (CYGWIN) || defined __ANDROID__
+#if defined (GNU_LINUX) || defined __ANDROID__
 
 static Lisp_Object
 time_from_jiffies (unsigned long long ticks, Lisp_Object hz, Lisp_Object form)
@@ -4213,10 +4190,7 @@ system_process_attributes (Lisp_Object pid)
   return attrs;
 }
 
-/* The WINDOWSNT implementation is in w32.c.
-   The MSDOS implementation is in dosfns.c.
-   The HAIKU implementation is in haiku.c.  */
-#elif !defined (WINDOWSNT) && !defined (MSDOS) && !defined (HAIKU)
+#else
 
 Lisp_Object
 system_process_attributes (Lisp_Object pid)
@@ -4224,7 +4198,7 @@ system_process_attributes (Lisp_Object pid)
   return Qnil;
 }
 
-#endif	/* !defined (WINDOWSNT) */
+#endif
 
 DEFUN ("get-internal-run-time", Fget_internal_run_time, Sget_internal_run_time,
        0, 0, 0,

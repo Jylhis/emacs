@@ -886,13 +886,13 @@ The selected font will be the default on both the existing and future frames."
     (define-key menu [customize]
       '(menu-item "Customize" menu-bar-window-divider-customize
                   :help "Customize window dividers"
-                  :visible (memq (window-system) '(x w32))))
+                  :visible (eq (window-system) 'x)))
 
     (define-key menu [bottom-and-right]
       '(menu-item "Bottom and Right"
                   menu-bar-bottom-and-right-window-divider
                   :help "Display window divider on the bottom and right of each window"
-                  :visible (memq (window-system) '(x w32))
+                  :visible (eq (window-system) 'x)
                   :button (:radio
 			   . (and (window-divider-width-valid-p
 				   (cdr (assq 'bottom-divider-width
@@ -904,7 +904,7 @@ The selected font will be the default on both the existing and future frames."
       '(menu-item "Right Only"
                   menu-bar-right-window-divider
                   :help "Display window divider on the right of each window only"
-                  :visible (memq (window-system) '(x w32))
+                  :visible (eq (window-system) 'x)
                   :button (:radio
 			   . (and (not (window-divider-width-valid-p
 					(cdr (assq 'bottom-divider-width
@@ -916,7 +916,7 @@ The selected font will be the default on both the existing and future frames."
       '(menu-item "Bottom Only"
                   menu-bar-bottom-window-divider
                   :help "Display window divider on the bottom of each window only"
-                  :visible (memq (window-system) '(x w32))
+                  :visible (eq (window-system) 'x)
                   :button (:radio
 			   . (and (window-divider-width-valid-p
 				   (cdr (assq 'bottom-divider-width
@@ -928,7 +928,7 @@ The selected font will be the default on both the existing and future frames."
       '(menu-item "None"
                   menu-bar-no-window-divider
                   :help "Do not display window dividers"
-                  :visible (memq (window-system) '(x w32))
+                  :visible (eq (window-system) 'x)
                   :button (:radio
 			   . (and (not (window-divider-width-valid-p
 					(cdr (assq 'bottom-divider-width
@@ -1369,7 +1369,7 @@ mail status in mode line"))
 
     (define-key menu [showhide-window-divider]
       `(menu-item "Window Divider" ,menu-bar-showhide-window-divider-menu
-                  :visible (memq (window-system) '(x w32))))
+                  :visible (eq (window-system) 'x)))
 
     (define-key menu [showhide-fringe]
       `(menu-item "Fringe" ,menu-bar-showhide-fringe-menu
@@ -2673,9 +2673,7 @@ See `menu-bar-mode' for more information."
     (menu-bar-mode arg)))
 
 (declare-function x-menu-bar-open "term/x-win" (&optional frame))
-(declare-function w32-menu-bar-open "term/w32-win" (&optional frame))
 (declare-function pgtk-menu-bar-open "term/pgtk-win" (&optional frame))
-(declare-function haiku-menu-bar-open "haikumenu.c" (&optional frame))
 
 (defun lookup-key-ignore-too-long (map key)
   "Call `lookup-key' and convert numeric values to nil."
@@ -2831,10 +2829,9 @@ first TTY menu-bar menu to be dropped down.  Interactively,
 this is the numeric argument to the command.
 This function decides which method to use to access the menu
 depending on FRAME's terminal device.  On X displays, it calls
-`x-menu-bar-open'; on Windows, `w32-menu-bar-open'; on Haiku,
-`haiku-menu-bar-open'; otherwise it calls either `popup-menu'
-or `tmm-menubar' depending on whether `tty-menu-open-use-tmm'
-is nil or not.
+`x-menu-bar-open'; otherwise it calls either `popup-menu' or
+`tmm-menubar' depending on whether `tty-menu-open-use-tmm' is nil
+or not.
 
 If FRAME is nil or not given, use the selected frame."
   (interactive
@@ -2855,8 +2852,6 @@ If FRAME is nil or not given, use the selected frame."
 		  frame)))
     (cond
      ((eq type 'x) (x-menu-bar-open frame))
-     ((eq type 'w32) (w32-menu-bar-open frame))
-     ((eq type 'haiku) (haiku-menu-bar-open frame))
      ((eq type 'pgtk) (pgtk-menu-bar-open frame))
      ((and (null tty-menu-open-use-tmm)
 	   (not (zerop (or (frame-parameter frame 'menu-bar-lines) 0))))

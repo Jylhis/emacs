@@ -78,33 +78,8 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "pop.h"
 #endif
 
-#ifdef MSDOS
-#undef access
-#endif /* MSDOS */
 
-#ifdef WINDOWSNT
-#include "ntlib.h"
-#undef access
-#undef unlink
-#define fork() 0
-#define waitpid(child, var, flags) (*(var) = 0)
-/* Unfortunately, Samba doesn't seem to properly lock Unix files even
-   though the locking call succeeds (and indeed blocks local access from
-   other NT programs).  If you have direct file access using an NFS
-   client or something other than Samba, the locking call might work
-   properly - make sure it does before you enable this!
 
-   [18-Feb-97 andrewi] I now believe my comment above to be incorrect,
-   since it was based on a misunderstanding of how locking calls are
-   implemented and used on Unix.  */
-/* #define DISABLE_DIRECT_ACCESS */
-
-#include <fcntl.h>
-#endif /* WINDOWSNT */
-
-#ifdef WINDOWSNT
-#include <sys/locking.h>
-#endif
 
 /* If your system uses the `flock' or `lockf' system call for mail locking,
    define MAIL_USE_SYSTEM_LOCK.  If your system type should always define
@@ -386,11 +361,7 @@ main (int argc, char **argv)
 #ifdef MAIL_USE_LOCKF
 	  status = lockf (indesc, F_LOCK, 0);
 #else /* not MAIL_USE_LOCKF */
-#ifdef WINDOWSNT
-	  status = locking (indesc, LK_RLCK, -1L);
-#else
 	  status = flock (indesc, LOCK_EX);
-#endif
 #endif /* not MAIL_USE_LOCKF */
 #endif /* MAIL_USE_SYSTEM_LOCK */
 	}
@@ -587,14 +558,9 @@ pfatal_and_delete (char *name)
 
 #ifdef MAIL_USE_POP
 
-#ifndef WINDOWSNT
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#else
-#undef _WINSOCKAPI_
-#include <winsock.h>
-#endif
 #include <pwd.h>
 #include <string.h>
 
@@ -799,50 +765,6 @@ mbx_write (char *line, int len, FILE *mbf)
   return fwrite (line, 1, len, mbf) == len && 0 <= fputc ('\n', mbf);
 }
 
-#ifdef WINDOWSNT
-/* Work around MS-Windows lack of support for %e or %T with a
-   special-purpose strftime that assumes the exact format that
-   movemail uses.  */
-static size_t
-movemail_strftime (char *s, size_t size, char const *format,
-		   struct tm const *tm)
-{
-  char fmt[size + 6], *q;
-  const char *p;
-
-  for (p = format, q = &fmt[0]; *p; )
-    {
-      if (*p == '%' && p[1] == 'e')
-	{
-	  memcpy (q, "%d", 2);
-	  q += 2;
-	  p += 2;
-	}
-      else if (*p == '%' && p[1] == 'T')
-	{
-	  memcpy (q, "%H:%M:%S", 8);
-	  q += 8;
-	  p += 2;
-	}
-      else if (*p == '%' && p[1] == '%')
-	{
-	  memcpy (q, p, 2);
-	  q += 2;
-	  p += 2;
-	}
-      else
-	*q++ = *p++;
-    }
-
-  size_t n = strftime (s, size, fmt, tm);
-  char *mday = s + sizeof "From movemail Sun Jan " - 1;
-  if (*mday == '0')
-    *mday = ' ';
-  return n;
-}
-# undef strftime
-# define strftime movemail_strftime
-#endif
 
 static bool
 mbx_delimit_begin (FILE *mbf)

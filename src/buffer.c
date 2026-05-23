@@ -4230,8 +4230,7 @@ call_overlay_mod_hooks (Lisp_Object list, Lisp_Object overlay, bool after,
 			 Allocation with mmap
  ***********************************************************************/
 
-/* Note: WINDOWSNT implements this stuff on w32heap.c.  */
-#if defined USE_MMAP_FOR_BUFFERS && !defined WINDOWSNT
+#ifdef USE_MMAP_FOR_BUFFERS
 
 #include <sys/mman.h>
 

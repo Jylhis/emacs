@@ -7116,30 +7116,10 @@ respective remote host.  */)
 		 (uintmax_t) si.freeram * units / 1024,
 		 (uintmax_t) si.totalswap * units / 1024,
 		 (uintmax_t) si.freeswap * units / 1024);
-#elif defined WINDOWSNT
-  unsigned long long totalram, freeram, totalswap, freeswap;
-
-  if (w32_memory_info (&totalram, &freeram, &totalswap, &freeswap) == 0)
-    return list4i ((uintmax_t) totalram / 1024,
-		   (uintmax_t) freeram / 1024,
-		   (uintmax_t) totalswap / 1024,
-		   (uintmax_t) freeswap / 1024);
-  else
-    return Qnil;
-#elif defined MSDOS
-  unsigned long totalram, freeram, totalswap, freeswap;
-
-  if (dos_memory_info (&totalram, &freeram, &totalswap, &freeswap) == 0)
-    return list4i ((uintmax_t) totalram / 1024,
-		   (uintmax_t) freeram / 1024,
-		   (uintmax_t) totalswap / 1024,
-		   (uintmax_t) freeswap / 1024);
-  else
-    return Qnil;
-#else /* not HAVE_LINUX_SYSINFO, not WINDOWSNT, not MSDOS */
+#else /* !HAVE_LINUX_SYSINFO */
   /* FIXME: add more systems.  */
   return Qnil;
-#endif /* HAVE_LINUX_SYSINFO, not WINDOWSNT, not MSDOS */
+#endif /* HAVE_LINUX_SYSINFO */
 }
 
 /* Debugging aids.  */
@@ -7542,8 +7522,6 @@ enum defined_HAVE_PGTK { defined_HAVE_PGTK = true };
 enum defined_HAVE_PGTK { defined_HAVE_PGTK = false };
 #endif
 
-enum defined_WINDOWSNT { defined_WINDOWSNT = false };
-
 /* When compiled with GCC, GDB might say "No enum type named
    pvec_type" if we don't have at least one symbol with that type, and
    then xbacktrace could fail.  Similarly for the other enums and
@@ -7564,7 +7542,6 @@ extern union enums_for_gdb
   enum pvec_type pvec_type;
   enum defined_HAVE_X_WINDOWS defined_HAVE_X_WINDOWS;
   enum defined_HAVE_PGTK defined_HAVE_PGTK;
-  enum defined_WINDOWSNT defined_WINDOWSNT;
 } const gdb_make_enums_visible;
 union enums_for_gdb const EXTERNALLY_VISIBLE gdb_make_enums_visible = {0};
 #endif	/* __GNUC__ */

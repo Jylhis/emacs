@@ -50,12 +50,9 @@
 (declare-function org-link-heading-search-string "ol" (&optional string))
 (declare-function org-link-make-string "ol" (link &optional description))
 (declare-function org-table-goto-line "org-table" (n))
-(declare-function w32-notification-notify "w32fns.c" (&rest params))
-(declare-function w32-notification-close "w32fns.c" (&rest params))
 (declare-function dbus-list-activatable-names "dbus" (&optional bus))
 (declare-function dbus-call-method "dbus" (bus service path interface method &rest args))
 (declare-function dbus-get-property "dbus" (bus service path interface property))
-(declare-function haiku-notifications-notify "haikuselect.c")
 (declare-function android-notifications-notify "androidselect.c")
 
 (defvar org-frame-title-format-backup nil)
@@ -291,8 +288,8 @@ also using the face `org-mode-line-clock-overrun'."
 (defcustom org-show-notification-timeout 3
   "Number of seconds to wait before closing Org notifications.
 This is applied to notifications sent with `notifications-notify'
-and `w32-notification-notify' only, not other mechanisms possibly
-set through `org-show-notification-handler'."
+only, not other mechanisms possibly set through
+`org-show-notification-handler'."
   :group 'org-clock
   :package-version '(Org . "9.4")
   :type 'integer)
@@ -934,27 +931,13 @@ use libnotify if available, or fall back on a message."
 	((stringp org-show-notification-handler)
 	 (start-process "emacs-timer-notification" nil
 			org-show-notification-handler notification))
-        ((fboundp 'haiku-notifications-notify)
-         ;; N.B. timeouts are not available under Haiku.
-         (haiku-notifications-notify :title "Org mode message"
-                                     :body notification
-                                     :urgency 'low))
         ((fboundp 'android-notifications-notify)
-         ;; N.B. timeouts are not available under Haiku or Android.
+         ;; N.B. timeouts are not available under Android.
          (android-notifications-notify :title "Org mode message"
                                        :body notification
                                        ;; Low urgency notifications
                                        ;; are by default hidden.
                                        :urgency 'normal))
-	((fboundp 'w32-notification-notify)
-	 (let ((id (w32-notification-notify
-		    :title "Org mode message"
-		    :body notification
-		    :urgency 'low)))
-	   (run-with-timer
-	    org-show-notification-timeout
-	    nil
-	    (lambda () (w32-notification-close id)))))
         ((fboundp 'ns-do-applescript)
          (ns-do-applescript
           (format "display notification \"%s\" with title \"Org mode notification\""
@@ -1291,10 +1274,8 @@ If `only-dangling-p' is non-nil, only ask to resolve dangling
   (string-to-number (shell-command-to-string "ioreg -c IOHIDSystem | perl -ane 'if (/Idle/) {$idle=(pop @F)/1000000000; print $idle; last}'")))
 
 (defvar org-x11idle-exists-p
-  ;; Check that x11idle exists.  But don't do that on DOS/Windows,
-  ;; since the command definitely does NOT exist there.
-  (and (null (memq system-type '(windows-nt ms-dos)))
-       (executable-find org-clock-x11idle-program-name)
+  ;; Check that x11idle exists.
+  (and (executable-find org-clock-x11idle-program-name)
        ;; Check that x11idle can retrieve the idle time
        (eq 0 (call-process org-clock-x11idle-program-name))))
 
@@ -1331,8 +1312,6 @@ This routine returns a floating point number."
     (org-mac-idle-seconds))
    ((and (eq window-system 'x) org-x11idle-exists-p)
     (org-x11-idle-seconds))
-   ((fboundp 'w32-system-idle-time)
-    (/ (w32-system-idle-time) 1000.0))
    ((and
      org-logind-dbus-session-path
      (dbus-get-property

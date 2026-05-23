@@ -510,8 +510,8 @@ x_free_gc (struct frame *f, GC gc)
 #endif /* HAVE_X_WINDOWS */
 
 
-#if defined (HAVE_NS) || defined (HAVE_HAIKU)
-/* NS and Haiku emulation of GCs */
+#ifdef HAVE_NS
+/* NS emulation of GCs */
 
 static Emacs_GC *
 x_create_gc (struct frame *f,
@@ -4386,10 +4386,7 @@ is given, return the font name used by FACE for CHARACTER on FRAME.  */)
 	      ? fface->font->props[FONT_NAME_INDEX]
 	      : Qnil);
 #else  /* !HAVE_WINDOW_SYSTEM */
-      return build_string (FRAME_MSDOS_P (f)
-			   ? "ms-dos"
-			   : FRAME_W32_P (f) ? "w32term"
-			   :"tty");
+      return build_string ("tty");
 #endif
     }
 }
@@ -6599,10 +6596,6 @@ realize_tty_face (struct face_cache *cache,
 
   /* Allocate a new realized face.  */
   face = make_realized_face (attrs);
-#if false
-  face->font_name = FRAME_MSDOS_P (cache->f) ? "ms-dos" : "tty";
-#endif
-
   /* Map face attributes to TTY appearances.  */
   weight = FONT_WEIGHT_NAME_NUMERIC (attrs[LFACE_WEIGHT_INDEX]);
   slant = FONT_SLANT_NAME_NUMERIC (attrs[LFACE_SLANT_INDEX]);

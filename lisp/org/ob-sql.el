@@ -79,7 +79,6 @@
 (declare-function org-table-import "org-table" (file arg))
 (declare-function orgtbl-to-csv "org-table" (table params))
 (declare-function org-table-to-lisp "org-table" (&optional txt))
-(declare-function cygwin-convert-file-name-to-windows "cygw32.c" (file &optional absolute-p))
 (declare-function sql-set-product "sql" (product))
 
 (defvar sql-connection-alist)
@@ -216,13 +215,8 @@ Pass nil to omit that arg."
 
 (defun org-babel-sql-convert-standard-filename (file)
   "Convert FILE to OS standard file name.
-If in Cygwin environment, uses Cygwin specific function to
-convert the file name.  In a Windows-NT environment, do nothing.
-Otherwise, use Emacs's standard conversion function."
-  (cond ((fboundp 'cygwin-convert-file-name-to-windows)
-	 (format "%S" (cygwin-convert-file-name-to-windows file)))
-	((string= "windows-nt" system-type) file)
-	(t (format "%S" (convert-standard-filename file)))))
+Use Emacs's standard conversion function."
+  (format "%S" (convert-standard-filename file)))
 
 (defun org-babel-find-db-connection-param (params name)
   "Return database connection parameter NAME.

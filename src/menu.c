@@ -44,8 +44,8 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 static bool
 have_boxes (void)
 {
-#if defined (USE_X_TOOLKIT) || defined (USE_GTK) || defined (HAVE_NTGUI) || defined (HAVE_NS) \
-  || defined (HAVE_HAIKU) || defined (HAVE_ANDROID)
+#if defined (USE_X_TOOLKIT) || defined (USE_GTK) || defined (HAVE_NS) \
+  || defined (HAVE_ANDROID)
   if (FRAME_WINDOW_P (XFRAME (Vmenu_updating_frame)))
     return 1;
 #endif
@@ -417,8 +417,7 @@ single_menu_item (Lisp_Object key, Lisp_Object item, Lisp_Object dummy, void *sk
 		  AREF (item_properties, ITEM_PROPERTY_HELP));
 
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK) || defined (HAVE_NS)	\
-  || defined (HAVE_NTGUI) || defined (HAVE_HAIKU) || defined (HAVE_PGTK) \
-  || defined (HAVE_ANDROID)
+  || defined (HAVE_PGTK) || defined (HAVE_ANDROID)
   /* Display a submenu using the toolkit.  */
   if (FRAME_WINDOW_P (XFRAME (Vmenu_updating_frame))
       && ! (NILP (map) || NILP (enabled)))
@@ -560,7 +559,7 @@ parse_single_submenu (Lisp_Object item_key, Lisp_Object item_name,
 }
 
 
-#if defined (USE_X_TOOLKIT) || defined (USE_GTK) || defined (HAVE_NS) || defined (HAVE_NTGUI)
+#if defined (USE_X_TOOLKIT) || defined (USE_GTK) || defined (HAVE_NS)
 
 /* Allocate and basically initialize widget_value, blocking input.  */
 
@@ -671,18 +670,7 @@ digest_single_submenu (int start, int end, bool top_level_items)
 	     will encode the strings as appropriate.  */
 	  if (!FRAME_TERMCAP_P (f))
 	    {
-#ifdef HAVE_NTGUI
-	      if (STRINGP (pane_name))
-		{
-		  if (unicode_append_menu)
-		    /* Encode as UTF-8 for now.  */
-		    pane_name = ENCODE_UTF_8 (pane_name);
-		  else if (STRING_MULTIBYTE (pane_name))
-		    pane_name = ENCODE_SYSTEM (pane_name);
-
-		  ASET (menu_items, i + MENU_ITEMS_PANE_NAME, pane_name);
-		}
-#elif defined (USE_LUCID) && (defined USE_CAIRO || defined HAVE_XFT)
+#if   defined (USE_LUCID) && (defined USE_CAIRO || defined HAVE_XFT)
 	      if (STRINGP (pane_name))
 		{
 		  pane_name = ENCODE_UTF_8 (pane_name);
@@ -747,23 +735,7 @@ digest_single_submenu (int start, int end, bool top_level_items)
 	     tty_write_glyphs.  */
 	  if (!FRAME_TERMCAP_P (f))
 	    {
-#ifdef HAVE_NTGUI
-	      if (STRINGP (item_name))
-		{
-		  if (unicode_append_menu)
-		    item_name = ENCODE_UTF_8 (item_name);
-		  else if (STRING_MULTIBYTE (item_name))
-		    item_name = ENCODE_SYSTEM (item_name);
-
-		  ASET (menu_items, i + MENU_ITEMS_ITEM_NAME, item_name);
-		}
-
-	      if (STRINGP (descrip) && STRING_MULTIBYTE (descrip))
-		{
-		  descrip = ENCODE_SYSTEM (descrip);
-		  ASET (menu_items, i + MENU_ITEMS_ITEM_EQUIV_KEY, descrip);
-		}
-#elif USE_LUCID
+#if   USE_LUCID
 	      if (STRINGP (item_name))
 		{
 		  item_name = ENCODE_UTF_8 (item_name);
@@ -868,9 +840,9 @@ update_submenu_strings (widget_value *first_wv)
     }
 }
 
-#endif /* USE_X_TOOLKIT || USE_GTK || HAVE_NS || HAVE_NTGUI */
+#endif /* USE_X_TOOLKIT || USE_GTK || HAVE_NS */
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK) || defined (HAVE_NS) \
-  || defined (HAVE_NTGUI) || defined (HAVE_HAIKU)
+  || defined (HAVE_PGTK)
 
 /* Find the menu selection and store it in the keyboard buffer.
    F is the frame the menu is on.
@@ -959,7 +931,7 @@ find_and_call_menu_selection (struct frame *f, int menu_bar_items_used,
   SAFE_FREE ();
 }
 
-#endif /* USE_X_TOOLKIT || USE_GTK || HAVE_NS || HAVE_NTGUI || HAVE_HAIKU */
+#endif /* USE_X_TOOLKIT || USE_GTK || HAVE_NS || HAVE_PGTK */
 
 #ifdef HAVE_NS
 /* As above, but return the menu selection instead of storing in kb buffer.

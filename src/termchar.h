@@ -240,8 +240,7 @@ extern struct tty_display_info *tty_list;
 
 
 #define FRAME_TTY(f)                            \
-  (((f)->output_method == output_termcap	\
-    || (f)->output_method == output_msdos_raw)	\
+  ((f)->output_method == output_termcap		\
    ? (f)->terminal->display_info.tty            \
    : (emacs_abort (), (struct tty_display_info *) 0))
 

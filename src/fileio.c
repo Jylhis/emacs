@@ -1271,10 +1271,7 @@ the root directory.  */)
 	  }
 	else if (p[1] == '.' && p[2] == '.'
 		 /* `/../' is the "superroot" on certain file systems.
-		    Turned off on DOS_NT systems because they have no
-		    "superroot" and because this causes us to produce
-		    file names like "d:/../foo" which fail file-related
-		    functions of the underlying OS.  (To reproduce, try a
+		    (To reproduce, try a
 		    long series of "../../" in default_directory, longer
 		    than the number of levels from the root.)  */
 		 && o != target
@@ -1911,28 +1908,6 @@ If file has multiple names, it continues to exist with the other names. */)
   return Qnil;
 }
 
-#if defined HAVE_NATIVE_COMP && defined WINDOWSNT
-
-static Lisp_Object
-internal_delete_file_1 (Lisp_Object ignore)
-{
-  return Qt;
-}
-
-/* Delete file FILENAME, returning true if successful.
-   This ignores `delete-by-moving-to-trash'.  */
-
-bool
-internal_delete_file (Lisp_Object filename)
-{
-  Lisp_Object tem;
-
-  tem = internal_condition_case_1 (Fdelete_file_internal, filename,
-				   Qt, internal_delete_file_1);
-  return NILP (tem);
-}
-
-#endif
 
 /* Return -1 if FILE is a case-insensitive file name, 0 if not,
    and 1 if the result cannot be determined.  */
@@ -5784,8 +5759,7 @@ The return value is only relevant for a call to `read-file-name' that happens
 before any other event (mouse or keypress) is handled.  */)
   (void)
 {
-#if (defined USE_GTK || defined USE_MOTIF \
-     || defined HAVE_NS || defined HAVE_NTGUI || defined HAVE_HAIKU)
+#if (defined USE_GTK || defined USE_MOTIF || defined HAVE_NS)
   if ((NILP (last_nonmenu_event) || CONSP (last_nonmenu_event))
       && use_dialog_box
       && use_file_dialog

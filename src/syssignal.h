@@ -41,9 +41,6 @@ extern void unblock_tty_out_signal (sigset_t const *);
 
 /* On Cygwin as of 2015-06-22 SIGEV_SIGNAL is defined as an enum
    constant but not as a macro. */
-#if defined CYGWIN && !defined SIGEV_SIGNAL
-#define SIGEV_SIGNAL SIGEV_SIGNAL
-#endif
 
 #if defined HAVE_TIMER_SETTIME && defined SIGEV_SIGNAL
 # define HAVE_ITIMERSPEC

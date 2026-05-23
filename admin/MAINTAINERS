@@ -31,19 +31,6 @@ Eli Zaretskii
 	test/biditest.el
 	test/redisplay-testsuite.el
 
-	The MS-DOS (a.k.a. DJGPP) port:
-	    config.bat
-	    msdos/*
-	    src/msdos.[ch]
-	    src/dosfns.[ch]
-	    src/w16select.c
-	    lisp/term/internal.el
-	    lisp/term/pc-win.el
-	    lisp/dos-fns.el
-	    lisp/dos-w32.el
-	    lisp/dos-vars.el
-	    doc/emacs/msdos.texi
-
 Kenichi Handa
 	Mule
 
@@ -138,26 +125,6 @@ Stefan Kangas
 	admin/update_autogen
 
 Po Lu
-	The Haiku port:
-	    src/haikuterm.c
-	    src/haikufns.c
-	    src/haikuimage.c
-	    src/haikuselect.c
-	    src/haiku_io.c
-	    src/haiku.c
-	    src/haiku_select.cc
-	    src/haiku_support.cc
-	    src/haiku_font_support.cc
-	    src/haiku_draw_support.cc
-	    src/haikugui.h
-	    src/haikuterm.h
-	    src/haikuselect.h
-	    src/haiku_support.h
-	    lisp/term/haiku-win.el
-	    doc/emacs/haiku.texi
-
-	Haiku battery support in lisp/battery.el
-
 	The Android port:
 	    src/android-asset.h
 	    src/android.c

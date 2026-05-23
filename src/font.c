@@ -5574,9 +5574,6 @@ match.  */);
 #ifdef HAVE_BDFFONT
   syms_of_bdffont ();
 #endif	/* HAVE_BDFFONT */
-#ifdef USE_BE_CAIRO
-  syms_of_ftcrfont ();
-#endif
 #endif	/* HAVE_WINDOW_SYSTEM */
 }
 

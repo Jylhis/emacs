@@ -1081,8 +1081,7 @@ pgtk_popup_dialog (struct frame *f, Lisp_Object header, Lisp_Object contents)
   return selection;
 }
 
-/* Detect if a dialog or menu has been posted.  MSDOS has its own
-   implementation on msdos.c.  */
+/* Detect if a dialog or menu has been posted.  */
 
 int
 popup_activated (void)

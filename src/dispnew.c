@@ -3134,8 +3134,6 @@ redraw_frame (struct frame *f)
   /* Error if F has no glyphs.  */
   eassert (f->glyphs_initialized_p);
   update_begin (f);
-  if (FRAME_MSDOS_P (f))
-    FRAME_TERMINAL (f)->set_terminal_modes_hook (FRAME_TERMINAL (f));
 
   if (FRAME_WINDOW_P (f))
     /* Garbage the frame now.  Otherwise, platforms that support
@@ -3409,7 +3407,7 @@ tty_raise_lower_frame (struct frame *f, bool raise)
 bool
 is_tty_frame (struct frame *f)
 {
-  return FRAME_TERMCAP_P (f) || FRAME_MSDOS_P (f);
+  return FRAME_TERMCAP_P (f);
 }
 
 /* Return true if frame F is a tty child frame.  */
@@ -4307,28 +4305,6 @@ redraw_overlapping_rows (struct window *w, int yb)
 #endif /* HAVE_WINDOW_SYSTEM */
 
 
-#if defined GLYPH_DEBUG && 0
-
-/* Check that no row in the current matrix of window W is enabled
-   which is below what's displayed in the window.  */
-
-static void
-check_current_matrix_flags (struct window *w)
-{
-  bool last_seen_p = 0;
-  int i, yb = window_text_bottom_y (w);
-
-  for (i = 0; i < w->current_matrix->nrows - 1; ++i)
-    {
-      struct glyph_row *row = MATRIX_ROW (w->current_matrix, i);
-      if (!last_seen_p && MATRIX_ROW_BOTTOM_Y (row) >= yb)
-	last_seen_p = 1;
-      else if (last_seen_p && row->enabled_p)
-	emacs_abort ();
-    }
-}
-
-#endif /* GLYPH_DEBUG */
 
 
 /* Update display of window W.  */
@@ -6652,21 +6628,7 @@ void
 change_frame_size (struct frame *f, int new_width, int new_height,
 		   bool pretend, bool delay, bool safe)
 {
-  Lisp_Object tail, frame;
-
-  if (FRAME_MSDOS_P (f) && !FRAME_PARENT_FRAME (f))
-    {
-      /* On MS-DOS, all frames use the same screen, so a change in
-         size affects all frames.  Termcap now supports multiple
-         ttys. */
-      FOR_EACH_FRAME (tail, frame)
-	if (!FRAME_WINDOW_P (XFRAME (frame))
-	    && !FRAME_PARENT_FRAME (XFRAME (frame)))
-	  change_frame_size_1 (XFRAME (frame), new_width, new_height,
-			       pretend, delay, safe);
-    }
-  else
-    change_frame_size_1 (f, new_width, new_height, pretend, delay, safe);
+  change_frame_size_1 (f, new_width, new_height, pretend, delay, safe);
 }
 
 /* Return non-zero if we delayed size-changes of frame F and haven't
@@ -6734,7 +6696,7 @@ when TERMINAL is nil.  */)
 
   if (t->type == output_initial)
     out = stdout;
-  else if (t->type != output_termcap && t->type != output_msdos_raw)
+  else if (t->type != output_termcap)
     error ("Device %d is not a termcap terminal device", t->id);
   else
     {

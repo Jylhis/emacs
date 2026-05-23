@@ -281,11 +281,8 @@ DEFUN ("framep", Fframep, Sframep, 1, 1, 0,
 Value is:
   t for a termcap frame (a character-only terminal),
  `x' for an Emacs frame that is really an X window,
- `w32' for an Emacs frame that is a window on MS-Windows display,
  `ns' for an Emacs frame on a GNUstep or Macintosh Cocoa display,
- `pc' for a direct-write MS-DOS frame,
  `pgtk' for an Emacs frame running on pure GTK.
- `haiku' for an Emacs frame running in Haiku.
  `android' for an Emacs frame running in Android.
 See also `frame-live-p'.  */)
   (Lisp_Object object)
@@ -299,16 +296,10 @@ See also `frame-live-p'.  */)
       return Qt;
     case output_x_window:
       return Qx;
-    case output_w32:
-      return Qw32;
-    case output_msdos_raw:
-      return Qpc;
     case output_ns:
       return Qns;
     case output_pgtk:
       return Qpgtk;
-    case output_haiku:
-      return Qhaiku;
     case output_android:
       return Qandroid;
     default:
@@ -410,11 +401,8 @@ DEFUN ("window-system", Fwindow_system, Swindow_system, 0, 1, 0,
 The value is a symbol:
  nil for a termcap frame (a character-only terminal),
  `x' for an Emacs frame that is really an X window,
- `w32' for an Emacs frame that is a window on MS-Windows display,
  `ns' for an Emacs frame on a GNUstep or Macintosh Cocoa display,
- `pc' for a direct-write MS-DOS frame.
  `pgtk' for an Emacs frame using pure GTK facilities.
- `haiku' for an Emacs frame running in Haiku.
  `android' for an Emacs frame running in Android.
 
 FRAME defaults to the currently selected frame.
@@ -1022,10 +1010,8 @@ adjust_frame_size (struct frame *f, int new_text_width, int new_text_height,
     {
       resize_frame_windows (f, new_inner_width, true);
 
-      /* MSDOS frames cannot PRETEND, as they change frame size by
-	 manipulating video hardware.  */
       if (is_tty_root_frame (f))
-	if ((FRAME_TERMCAP_P (f) && !pretend) || FRAME_MSDOS_P (f))
+	if (FRAME_TERMCAP_P (f) && !pretend)
 	  FrameCols (FRAME_TTY (f)) = new_text_cols;
 
 #if defined (HAVE_WINDOW_SYSTEM)
@@ -1057,10 +1043,8 @@ adjust_frame_size (struct frame *f, int new_text_width, int new_text_height,
     {
       resize_frame_windows (f, new_inner_height, false);
 
-      /* MSDOS frames cannot PRETEND, as they change frame size by
-	 manipulating video hardware. */
       if (is_tty_root_frame (f))
-	if ((FRAME_TERMCAP_P (f) && !pretend) || FRAME_MSDOS_P (f))
+	if (FRAME_TERMCAP_P (f) && !pretend)
 	  FrameRows (FRAME_TTY (f)) = new_text_lines + FRAME_TOP_MARGIN (f);
     }
   else if (new_text_lines != old_text_lines)
@@ -3751,7 +3735,7 @@ frame_name_fnn_p (char *str, ptrdiff_t len)
   return 0;
 }
 
-/* Set the name of the terminal frame.  Also used by MSDOS frames.
+/* Set the name of the terminal frame.
    Modeled after *_set_name which is used for WINDOW frames.  */
 
 static void
@@ -4043,10 +4027,7 @@ If FRAME is omitted or nil, return information on the currently selected frame. 
 	store_in_alist (&alist, Qbackground_color,
 			tty_color_name (f, FRAME_BACKGROUND_PIXEL (f)));
       store_in_alist (&alist, Qfont,
-		      build_string (FRAME_MSDOS_P (f)
-				    ? "ms-dos"
-				    : FRAME_W32_P (f) ? "w32term"
-				    :"tty"));
+		      build_string ("tty"));
     }
 
   store_in_alist (&alist, Qname, f->name);
@@ -5951,8 +5932,7 @@ gui_set_scroll_bar_height (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 #endif
 }
 
-#if (defined HAVE_PGTK || defined HAVE_NTGUI \
-     || defined HAVE_HAIKU || defined HAVE_NS)
+#if (defined HAVE_PGTK || defined HAVE_NS)
 void
 gui_set_alpha (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
@@ -7163,11 +7143,8 @@ syms_of_frame (void)
 #endif
   DEFSYM (Qparent_id, "parent-id");
   DEFSYM (Qx, "x");
-  DEFSYM (Qw32, "w32");
-  DEFSYM (Qpc, "pc");
   DEFSYM (Qns, "ns");
   DEFSYM (Qpgtk, "pgtk");
-  DEFSYM (Qhaiku, "haiku");
   DEFSYM (Qandroid, "android");
   DEFSYM (Qvisible, "visible");
   DEFSYM (Qbuffer_predicate, "buffer-predicate");
@@ -7363,9 +7340,8 @@ Setting this variable does not affect existing frames, only new ones.  */);
   DEFVAR_LISP ("default-frame-scroll-bars", Vdefault_frame_scroll_bars,
 	       doc: /* Default position of vertical scroll bars on this window-system.  */);
 #if defined HAVE_WINDOW_SYSTEM && !defined HAVE_ANDROID
-#if defined (HAVE_NTGUI) || defined (NS_IMPL_COCOA) || (defined (USE_GTK) && defined (USE_TOOLKIT_SCROLL_BARS))
-  /* MS-Windows, macOS, and GTK have scroll bars on the right by
-     default.  */
+#if defined (NS_IMPL_COCOA) || (defined (USE_GTK) && defined (USE_TOOLKIT_SCROLL_BARS))
+  /* macOS and GTK have scroll bars on the right by default.  */
   Vdefault_frame_scroll_bars = Qright;
 #else
   Vdefault_frame_scroll_bars = Qleft;

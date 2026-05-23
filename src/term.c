@@ -1266,7 +1266,7 @@ struct fkey_table
   const char *cap, *name;
 };
 
-#if !defined DOS_NT && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
   /* Termcap capability names that correspond directly to X keysyms.
      Some of these (marked "terminfo") aren't supplied by old-style
      (Berkeley) termcap entries.  They're listed in X keysym order;
@@ -1494,7 +1494,7 @@ term_get_fkeys_1 (void)
 
   return Qnil;
 }
-#endif /* not DOS_NT */
+#endif /* !HAVE_ANDROID */
 
 
 
@@ -2217,7 +2217,7 @@ TERMINAL does not refer to a text terminal.  */)
   return make_fixnum (t ? t->display_info.tty->TN_max_colors : 0);
 }
 
-#if !defined MSDOS && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
 
 /* Declare here rather than in the function, as in the rest of Emacs,
    to work around an HPUX compiler bug (?). See
@@ -2279,10 +2279,6 @@ tty_setup_colors (struct tty_display_info *tty, int mode)
 #ifdef TERMINFO
 	tty->TS_set_foreground = "\033[3%p1%dm";
 	tty->TS_set_background = "\033[4%p1%dm";
-#elif WINDOWSNT
-	tty->TS_orig_pair = "\x1b[39m\x1b[49m";
-	tty->TS_set_foreground = "\x1b[%lum";
-	tty->TS_set_background = "\x1b[%lum";
 #else
 	tty->TS_set_foreground = "\033[3%dm";
 	tty->TS_set_background = "\033[4%dm";
@@ -2326,7 +2322,7 @@ set_tty_color_mode (struct tty_display_info *tty, struct frame *f)
     }
 }
 
-#endif /* !MSDOS && !HAVE_ANDROID */
+#endif /* !HAVE_ANDROID */
 
 char *
 tty_type_name (Lisp_Object terminal)
@@ -2597,7 +2593,7 @@ A value of zero means TTY uses the system's default value.  */)
 			       Mouse
  ***********************************************************************/
 
-#if !defined DOS_NT && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
 
 /* Implementation of draw_row_with_mouse_face for TTY/GPM and macOS.  */
 
@@ -3036,12 +3032,9 @@ DEFUN ("gpm-mouse-stop", Fgpm_mouse_stop, Sgpm_mouse_stop,
 			       Menus
  ***********************************************************************/
 
-#if !defined (MSDOS) && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
 
-/* TTY menu implementation and main ideas are borrowed from msdos.c.
-
-   However, unlike on MSDOS, where the menu text is drawn directly to
-   the display video memory, on a TTY we use display_string (see
+/* TTY menu implementation uses display_string (see
    display_tty_menu_item in xdisp.c) to put the glyphs produced from
    the menu items into the frame's 'desired_matrix' glyph matrix, and
    then call update_frame_with_menu to deliver the results to the
@@ -3877,7 +3870,6 @@ tty_menu_new_item_coords (struct frame *f, int which, int *x, int *y)
     }
 }
 
-/* WINDOWSNT uses this as menu_show_hook, see w32console.c.  */
 Lisp_Object
 tty_menu_show (struct frame *f, int x, int y, int menuflags,
 	       Lisp_Object title, const char **error_name)
@@ -4139,11 +4131,11 @@ tty_menu_show (struct frame *f, int x, int y, int menuflags,
   return SAFE_FREE_UNBIND_TO (specpdl_count, entry);
 }
 
-#endif	/* !MSDOS && !defined HAVE_ANDROID */
+#endif	/* !HAVE_ANDROID */
 
 
 
-#if !defined MSDOS && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
 
 /***********************************************************************
 			    Initialization
@@ -4174,21 +4166,6 @@ tty_free_frame_resources (struct frame *f)
   free_frame_faces (f);
   xfree (f->output_data.tty);
 
-  /* Deleting a child frame means we have to thoroughly redisplay its
-     root frame to make sure the child disappears from the display.  */
-  if (FRAME_PARENT_FRAME (f))
-    SET_FRAME_GARBAGED (root_frame (f));
-}
-
-#elif defined MSDOS
-
-/* Delete frame F's face cache.  */
-
-static void
-tty_free_frame_resources (struct frame *f)
-{
-  eassert (is_tty_frame (f));
-  free_frame_faces (f);
   /* Deleting a child frame means we have to thoroughly redisplay its
      root frame to make sure the child disappears from the display.  */
   if (FRAME_PARENT_FRAME (f))
@@ -5033,11 +5010,8 @@ tty_display_dimension (Lisp_Object frame, int *width, int *height)
       *height = FrameRows (FRAME_TTY (f));
       break;
     case output_x_window:
-    case output_msdos_raw:
-    case output_w32:
     case output_ns:
     case output_pgtk:
-    case output_haiku:
     case output_android:
     default:
       emacs_abort ();
@@ -5141,11 +5115,11 @@ non-nil to enable this optimization.  */);
   defsubr (&Stty_display_pixel_width);
   defsubr (&Stty_display_pixel_height);
 
-#if !defined MSDOS && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
   default_orig_pair = NULL;
   default_set_foreground = NULL;
   default_set_background = NULL;
-#endif /* !MSDOS && !HAVE_ANDROID */
+#endif /* !HAVE_ANDROID */
 
 #ifndef HAVE_ANDROID
   encode_terminal_src = NULL;

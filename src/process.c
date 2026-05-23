@@ -4373,6 +4373,7 @@ network_interface_list (bool full, unsigned short match)
 #ifdef HAVE_NET_IF_H
 #if defined (SIOCGIFADDR) || defined (SIOCGIFHWADDR) || defined (SIOCGIFFLAGS)
 
+#if defined (SIOCGIFFLAGS) && defined (HAVE_STRUCT_IFREQ_IFR_FLAGS)
 struct ifflag_def {
   int flag_bit;
   const char *flag_sym;
@@ -4449,6 +4450,7 @@ static const struct ifflag_def ifflag_table[] = {
 #endif
   { 0, 0 }
 };
+#endif
 
 static Lisp_Object
 network_interface_info (Lisp_Object ifname)
@@ -4621,7 +4623,7 @@ See also `network-interface-info', which is limited to IPv4 only.
 If the information is not available, return nil.  */)
   (Lisp_Object full, Lisp_Object family)
 {
-#if defined HAVE_GETIFADDRS || defined WINDOWSNT
+#ifdef HAVE_GETIFADDRS
   unsigned short match;
   bool full_info = false;
 
@@ -4655,10 +4657,9 @@ Data that is unavailable is returned as nil.  Only returns IPv4 layer 3
 addresses, for IPv6 use `network-interface-list'.  */)
   (Lisp_Object ifname)
 {
-#if ((defined HAVE_NET_IF_H			       \
-      && (defined SIOCGIFADDR || defined SIOCGIFHWADDR \
-	  || defined SIOCGIFFLAGS))		       \
-     || defined WINDOWSNT)
+#if (defined HAVE_NET_IF_H			       \
+     && (defined SIOCGIFADDR || defined SIOCGIFHWADDR \
+	 || defined SIOCGIFFLAGS))
   return network_interface_info (ifname);
 #else
   return Qnil;
@@ -5734,7 +5735,7 @@ wait_reading_process_output (intmax_t time_limit, int nsecs, int read_kbd,
 	    timeout = make_timespec (0, 0);
 #endif
 
-#if !defined USABLE_SIGIO && !defined WINDOWSNT
+#ifndef USABLE_SIGIO
 	  /* If we're polling for input, don't get stuck in select for
 	     more than 25 msec. */
 	  struct timespec short_timeout = make_timespec (0, 25000000);
@@ -7390,11 +7391,10 @@ process has been transmitted to the serial port.  */)
     send_process (proc, "\004", 1, Qnil);
   else if (EQ (XPROCESS (proc)->type, Qserial))
     {
-#if !defined WINDOWSNT && defined HAVE_TCDRAIN
+#ifdef HAVE_TCDRAIN
       if (tcdrain (XPROCESS (proc)->outfd) != 0)
 	report_file_error ("Failed tcdrain", Qnil);
-#endif /* not WINDOWSNT && not TCDRAIN */
-      /* Do nothing on Windows because writes are blocking.  */
+#endif /* HAVE_TCDRAIN */
     }
   else
     {
@@ -7469,13 +7469,7 @@ process has been transmitted to the serial port.  */)
    occur if SIGCHLD is delivered outside of the 'pselect' call, in
    which case 'pselect' will not be interrupted by the signal, and
    will therefore wait on the process's output descriptor for the
-   output that will never come.
-
-   WINDOWSNT doesn't need this facility because its 'pselect'
-   emulation (see 'sys_select' in w32proc.c) waits on a subprocess
-   handle, which becomes signaled when the process exits, and also
-   because that emulation delays the delivery of the simulated SIGCHLD
-   until all the output from the subprocess has been consumed.  */
+   output that will never come.  */
 
 /* FIXME: On Unix-like systems that have a proper 'pselect'
    (HAVE_PSELECT), we should block SIGCHLD in
@@ -8254,7 +8248,7 @@ remove_slash_colon (Lisp_Object name)
 void
 add_keyboard_wait_descriptor (int desc)
 {
-#ifdef subprocesses /* Actually means "not MSDOS".  */
+#ifdef subprocesses
   eassert (desc >= 0 && desc < FD_SETSIZE);
   fd_callback_info[desc].flags &= ~PROCESS_FD;
   fd_callback_info[desc].flags |= (FOR_READ | KEYBOARD_FD);
@@ -8590,7 +8584,7 @@ init_process_emacs (int sockfd)
 
   inhibit_sentinels = 0;
 
-#if defined HAVE_GLIB && !defined WINDOWSNT
+#ifdef HAVE_GLIB
   /* Tickle Glib's child-handling code.  Ask Glib to install a
      watch source for Emacs itself which will initialize glib's
      private SIGCHLD handler, allowing catch_child_signal to copy

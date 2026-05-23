@@ -295,9 +295,9 @@
   "Test for https://debbugs.gnu.org/27899 ."
   :tags '(:unstable)
   (dired (list (expand-file-name "src" source-directory)
-               "cygw32.c" "alloc.c" "w32xfns.c" "xdisp.c"))
+               "alloc.c" "buffer.c" "dispnew.c" "xdisp.c"))
   (let ((orig dired-hide-details-mode))
-    (dired-goto-file (expand-file-name "cygw32.c"))
+    (dired-goto-file (expand-file-name "alloc.c"))
     (forward-line 0)
     (unwind-protect
         (progn
@@ -360,7 +360,7 @@
 (ert-deftest dired-test-bug59047 ()
   "Test for https://debbugs.gnu.org/59047 ."
   (dired (list (expand-file-name "src" source-directory)
-               "cygw32.c" "alloc.c" "w32xfns.c" "xdisp.c"))
+               "alloc.c" "buffer.c" "dispnew.c" "xdisp.c"))
   (dired-hide-all)
   (dired-hide-all)
   (dired-next-line 1)

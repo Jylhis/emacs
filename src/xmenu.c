@@ -2120,7 +2120,7 @@ x_menu_show (struct frame *f, int x, int y, int menuflags,
   unsigned int dummy_uint;
   specpdl_ref specpdl_count = SPECPDL_INDEX ();
 
-  eassert (FRAME_X_P (f) || FRAME_MSDOS_P (f));
+  eassert (FRAME_X_P (f));
 
   *error_name = 0;
   if (menu_items_n_panes == 0)
@@ -2155,10 +2155,6 @@ x_menu_show (struct frame *f, int x, int y, int menuflags,
 
 #ifdef HAVE_X_WINDOWS
   x_translate_coordinates_to_root (f, x, y, &x, &y);
-#else
-  /* MSDOS without X support.  */
-  x += f->left_pos;
-  y += f->top_pos;
 #endif
 
   /* Create all the necessary panes and their items.  */
@@ -2420,8 +2416,7 @@ x_menu_show (struct frame *f, int x, int y, int menuflags,
 
 #endif /* not USE_X_TOOLKIT && not USE_GTK */
 
-/* Detect if a dialog or menu has been posted.  MSDOS has its own
-   implementation on msdos.c.  */
+/* Detect if a dialog or menu has been posted.  */
 
 int
 popup_activated (void)

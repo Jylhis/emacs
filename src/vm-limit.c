@@ -102,37 +102,6 @@ get_lim_data (void)
        : SIZE_MAX);
 }
 
-#elif defined WINDOWSNT
-
-#include "w32heap.h"
-
-static void
-get_lim_data (void)
-{
-  extern size_t reserved_heap_size;
-  lim_data = reserved_heap_size;
-}
-
-#elif defined MSDOS
-
-void
-get_lim_data (void)
-{
-  unsigned long totalram, freeram, totalswap, freeswap;
-
-  dos_memory_info (&totalram, &freeram, &totalswap, &freeswap);
-  lim_data = freeram;
-  /* Don't believe they will give us more than 0.5 GB.   */
-  if (lim_data > 512U * 1024U * 1024U)
-    lim_data = 512U * 1024U * 1024U;
-}
-
-unsigned long
-ret_lim_data (void)
-{
-  get_lim_data ();
-  return lim_data;
-}
 #else
 # error "get_lim_data not implemented on this machine"
 #endif

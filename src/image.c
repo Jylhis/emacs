@@ -130,9 +130,7 @@ typedef struct ns_bitmap_record Bitmap_Record;
 typedef struct pgtk_bitmap_record Bitmap_Record;
 #endif /* HAVE_PGTK */
 
-#if (defined HAVE_X_WINDOWS \
-     && ! (defined HAVE_NTGUI || defined USE_CAIRO || defined HAVE_NS))
-/* W32_TODO : Color tables on W32.  */
+#if (defined HAVE_X_WINDOWS && ! (defined USE_CAIRO || defined HAVE_NS))
 # define COLOR_TABLE_SUPPORT 1
 #endif
 
@@ -387,11 +385,10 @@ x_bitmap_stipple (struct frame *f, Pixmap pixmap)
 #endif	/* USE_CAIRO */
 #endif
 
-#if defined (HAVE_X_WINDOWS) || defined (HAVE_NTGUI) || defined (HAVE_ANDROID)
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_ANDROID)
 ptrdiff_t
 image_bitmap_pixmap (struct frame *f, ptrdiff_t id)
 {
-  /* HAVE_NTGUI needs the explicit cast here.  */
   return (ptrdiff_t) FRAME_DISPLAY_INFO (f)->bitmaps[id - 1].pixmap;
 }
 #endif
@@ -617,8 +614,7 @@ typedef struct android_fd_or_asset image_fd;
 typedef int image_fd;
 #endif /* defined HAVE_ANDROID && !defined ANDROID_STUBIFY */
 
-#if defined HAVE_HAIKU || defined HAVE_NS || defined HAVE_PGTK	\
-  || defined HAVE_ANDROID || defined HAVE_NTGUI
+#if defined HAVE_NS || defined HAVE_PGTK || defined HAVE_ANDROID
 static char *slurp_file (image_fd, ptrdiff_t *);
 static Lisp_Object image_find_image_fd (Lisp_Object, image_fd *);
 static bool xbm_read_bitmap_data (struct frame *, char *, char *,
@@ -1081,8 +1077,8 @@ struct image_type
 
 #if defined HAVE_RSVG || defined HAVE_PNG || defined HAVE_GIF || \
   defined HAVE_TIFF || defined HAVE_JPEG || defined HAVE_XPM || \
-  defined HAVE_NS || defined HAVE_HAIKU || defined HAVE_PGTK || \
-  defined HAVE_WEBP || defined HAVE_ANDROID
+  defined HAVE_NS || defined HAVE_PGTK || defined HAVE_WEBP || \
+  defined HAVE_ANDROID
 #  define IMAGE_TYPE_INIT(f)
 #endif
 };
@@ -2227,17 +2223,6 @@ image_size_in_bytes (struct image *img)
   if (img->mask)
     size += ns_image_size_in_bytes (img->mask);
 
-#elif defined HAVE_NTGUI
-  if (img->pixmap)
-    size += w32_image_size (img->pixmap);
-  if (img->mask)
-    size += w32_image_size (img->mask);
-
-#elif defined HAVE_HAIKU
-  if (img->pixmap)
-    size += BBitmap_bytes_length (img->pixmap);
-  if (img->mask)
-    size += BBitmap_bytes_length (img->mask);
 #endif
 
   return size;
@@ -2797,8 +2782,8 @@ image_set_transform (struct frame *f, struct image *img)
   /* Determine flipping.  */
   flip = !NILP (image_spec_value (img->spec, QCflip, NULL));
 
-# if defined USE_CAIRO || defined HAVE_XRENDER || defined HAVE_NS || defined HAVE_HAIKU \
-  || defined HAVE_ANDROID || defined HAVE_NTGUI
+# if defined USE_CAIRO || defined HAVE_XRENDER || defined HAVE_NS \
+  || defined HAVE_ANDROID
   /* We want scale up operations to use a nearest neighbor filter to
      show real pixels instead of munging them, but scale down
      operations to use a blended filter, to avoid aliasing and the like.  */
@@ -2821,7 +2806,7 @@ image_set_transform (struct frame *f, struct image *img)
 		  : img->width / (double) width),
 	[1][1] = (!IEEE_FLOATING_POINT && height == 0 ? DBL_MAX
 		  : img->height / (double) height),
-# elif defined HAVE_NTGUI || defined HAVE_NS || defined HAVE_HAIKU
+# elif defined HAVE_NS
 	[0][0] = (!IEEE_FLOATING_POINT && img->width == 0 ? DBL_MAX
 		  : width / (double) img->width),
 	[1][1] = (!IEEE_FLOATING_POINT && img->height == 0 ? DBL_MAX
@@ -2837,17 +2822,12 @@ image_set_transform (struct frame *f, struct image *img)
 
   int rotate_flag = -1;
 
-  /* Haiku needs this, since the transformation is done on the basis
-     of the view, and not the image.  */
-
   if (rotation == 0 && !flip)
     rotate_flag = 0;
   else
     {
 #ifndef HAVE_ANDROID
-# if (defined USE_CAIRO || defined HAVE_XRENDER		\
-      || defined HAVE_NTGUI || defined HAVE_NS		\
-      || defined HAVE_HAIKU)
+# if defined USE_CAIRO || defined HAVE_XRENDER || defined HAVE_NS
       int cos_r, sin_r;
       if (rotation == 0)
 	{
@@ -3072,24 +3052,6 @@ image_set_transform (struct frame *f, struct image *img)
           XRenderSetPictureTransform (FRAME_X_DISPLAY (f), img->mask_picture,
                                       &tmat);
         }
-    }
-# elif defined HAVE_NTGUI
-  /* Store the transform matrix for application at draw time.  */
-  img->xform.eM11 = matrix[0][0];
-  img->xform.eM12 = matrix[0][1];
-  img->xform.eM21 = matrix[1][0];
-  img->xform.eM22 = matrix[1][1];
-  img->xform.eDx  = matrix[2][0];
-  img->xform.eDy  = matrix[2][1];
-# elif defined HAVE_HAIKU
-  /* Store the transform in the struct image for later.  */
-  memcpy (&img->transform, &matrix, sizeof matrix);
-
-  /* Also add the extra translations.   */
-  if (rotate_flag)
-    {
-      img->transform[0][2] = extra_tx;
-      img->transform[1][2] = extra_ty;
     }
 # elif defined HAVE_ANDROID
   /* Create a new image of the right size, then turn it into a pixmap
@@ -3707,7 +3669,7 @@ image_check_image_size (Emacs_Pix_Container ximg, int width, int height)
 #if (defined HAVE_X_WINDOWS || defined HAVE_ANDROID) && !defined USE_CAIRO
   return x_check_image_size (ximg, width, height);
 #else
-  /* FIXME: Implement this check for the HAVE_NS and HAVE_NTGUI cases.
+  /* FIXME: Implement this check for the HAVE_NS case.
      For now, assume that every image size is allowed on these systems.  */
   return 1;
 #endif
@@ -3780,11 +3742,11 @@ image_destroy_x_image (Emacs_Pix_Container pimg)
   eassert (input_blocked_p ());
   if (pimg)
     {
-#if defined USE_CAIRO || defined HAVE_HAIKU || defined HAVE_NS
+#if defined USE_CAIRO || defined HAVE_NS
       /* On these systems, Emacs_Pix_Containers always point to the same
 	 data as pixmaps in `struct image', and therefore must never be
 	 freed separately.  */
-#endif	/* USE_CAIRO || HAVE_HAIKU || HAVE_NS */
+#endif	/* USE_CAIRO || HAVE_NS */
     }
 #endif
 }
@@ -3798,7 +3760,7 @@ static void
 gui_put_x_image (struct frame *f, Emacs_Pix_Container pimg,
                  Emacs_Pixmap pixmap, int width, int height)
 {
-#if defined USE_CAIRO || defined HAVE_HAIKU || defined HAVE_NS
+#if defined USE_CAIRO || defined HAVE_NS
   eassert (pimg == pixmap);
 #elif defined HAVE_X_WINDOWS
   GC gc;
@@ -3888,7 +3850,7 @@ image_sync_to_pixmaps (struct frame *f, struct image *img)
 static Emacs_Pix_Container
 image_get_x_image (struct frame *f, struct image *img, bool mask_p)
 {
-#if defined USE_CAIRO || defined (HAVE_HAIKU)
+#ifdef USE_CAIRO
   return !mask_p ? img->pixmap : img->mask;
 #elif defined HAVE_X_WINDOWS || defined HAVE_ANDROID
   XImage *ximg_in_img = !mask_p ? img->ximg : img->mask_img;
@@ -4466,30 +4428,8 @@ Create_Pixmap_From_Bitmap_Data (struct frame *f, struct image *img, char *data,
 #else
   emacs_abort ();
 #endif
-#elif defined HAVE_NTGUI
-  img->pixmap
-    = w32_create_pixmap_from_bitmap_data (img->width, img->height, data);
-
-  /* If colors were specified, transfer the bitmap to a color one.  */
-  if (non_default_colors)
-    convert_mono_to_color_image (f, img, fg, bg);
 #elif defined HAVE_NS
   img->pixmap = ns_image_from_XBM (data, img->width, img->height, fg, bg);
-#elif defined HAVE_HAIKU
-  img->pixmap = BBitmap_new (img->width, img->height, 0);
-
-  if (img->pixmap)
-    {
-      int bytes_per_line = (img->width + 7) / 8;
-
-      for (int y = 0; y < img->height; y++)
-	{
-	  for (int x = 0; x < img->width; x++)
-	    PUT_PIXEL (img->pixmap, x, y,
-		       (data[x / 8] >> (x % 8)) & 1 ? fg : bg);
-	  data += bytes_per_line;
-	}
-    }
 #endif
 }
 
@@ -4885,7 +4825,7 @@ static bool xpm_load (struct frame *f, struct image *img);
 #endif /* HAVE_XPM */
 
 #if defined HAVE_XPM || defined USE_CAIRO || defined HAVE_NS	\
-  || defined HAVE_HAIKU || defined HAVE_ANDROID
+  || defined HAVE_ANDROID
 
 /* Indices of image specification fields in xpm_format, below.  */
 
@@ -4905,8 +4845,8 @@ enum xpm_keyword_index
   XPM_LAST
 };
 
-#if defined HAVE_XPM || defined HAVE_NS || defined HAVE_HAIKU	\
-  || defined HAVE_PGTK || defined HAVE_ANDROID
+#if defined HAVE_XPM || defined HAVE_NS || defined HAVE_PGTK \
+  || defined HAVE_ANDROID
 /* Vector of image_keyword structures describing the format
    of valid XPM image specifications.  */
 
@@ -4924,7 +4864,7 @@ static const struct image_keyword xpm_format[XPM_LAST] =
   {":color-symbols",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
   {":background",	IMAGE_STRING_OR_NIL_VALUE,		0}
 };
-#endif	/* HAVE_XPM || HAVE_NS || HAVE_HAIKU || HAVE_PGTK */
+#endif	/* HAVE_XPM || HAVE_NS || HAVE_PGTK || HAVE_ANDROID */
 
 #if defined HAVE_X_WINDOWS && !defined USE_CAIRO
 
@@ -5107,8 +5047,8 @@ xpm_free_colors (Display *dpy, Colormap cmap, Pixel *pixels, int npixels, void *
 
 
 
-#if defined HAVE_XPM || defined HAVE_NS || defined HAVE_HAIKU	\
-  || defined HAVE_PGTK || defined HAVE_ANDROID
+#if defined HAVE_XPM || defined HAVE_NS || defined HAVE_PGTK \
+  || defined HAVE_ANDROID
 /* Value is true if COLOR_SYMBOLS is a valid color symbols list
    for XPM images.  Such a list must consist of conses whose car and
    cdr are strings.  */
@@ -5144,9 +5084,9 @@ xpm_image_p (Lisp_Object object)
 	  && (! fmt[XPM_COLOR_SYMBOLS].count
 	      || xpm_valid_color_symbols_p (fmt[XPM_COLOR_SYMBOLS].value)));
 }
-#endif	/* HAVE_XPM || HAVE_NS || HAVE_HAIKU || HAVE_PGTK || HAVE_ANDROID */
+#endif	/* HAVE_XPM || HAVE_NS || HAVE_PGTK || HAVE_ANDROID */
 
-#endif /* HAVE_XPM || USE_CAIRO || HAVE_NS || HAVE_HAIKU || HAVE_ANDROID */
+#endif /* HAVE_XPM || USE_CAIRO || HAVE_NS || HAVE_ANDROID */
 
 #if defined HAVE_XPM && defined HAVE_X_WINDOWS && !defined USE_GTK
 ptrdiff_t
@@ -5452,11 +5392,10 @@ xpm_load (struct frame *f, struct image *img)
 
 #if (defined USE_CAIRO && defined HAVE_XPM)	\
   || (defined HAVE_NS && !defined HAVE_XPM)	\
-  || (defined HAVE_HAIKU && !defined HAVE_XPM)  \
   || (defined HAVE_PGTK && !defined HAVE_XPM)	\
   || (defined HAVE_ANDROID && !defined HAVE_XPM)
 
-/* XPM support functions for NS, Haiku and Android where libxpm is not
+/* XPM support functions for NS and Android where libxpm is not
    available, and for Cairo.  Only XPM version 3 (without any
    extensions) is supported.  */
 
@@ -6212,10 +6151,7 @@ colors_in_color_table (int *n)
 static unsigned long
 lookup_rgb_color (struct frame *f, int r, int g, int b)
 {
-#ifdef HAVE_NTGUI
-  return PALETTERGB (r >> 8, g >> 8, b >> 8);
-#elif defined USE_CAIRO || defined HAVE_NS || defined HAVE_HAIKU	\
-  || defined HAVE_ANDROID
+#if defined USE_CAIRO || defined HAVE_NS || defined HAVE_ANDROID
   return RGB_TO_ULONG (r >> 8, g >> 8, b >> 8);
 #else
   xsignal1 (Qfile_error,
@@ -6285,7 +6221,7 @@ image_to_emacs_colors (struct frame *f, struct image *img, bool rgb_p)
   p = colors;
   for (y = 0; y < img->height; ++y)
     {
-#if !defined USE_CAIRO && !defined HAVE_NS && !defined HAVE_HAIKU	\
+#if !defined USE_CAIRO && !defined HAVE_NS \
   && !defined HAVE_ANDROID
       Emacs_Color *row = p;
       for (x = 0; x < img->width; ++x, ++p)
@@ -6294,7 +6230,7 @@ image_to_emacs_colors (struct frame *f, struct image *img, bool rgb_p)
         {
           FRAME_TERMINAL (f)->query_colors (f, row, img->width);
         }
-#else  /* USE_CAIRO || HAVE_NS || HAVE_HAIKU || HAVE_ANDROID */
+#else  /* USE_CAIRO || HAVE_NS || HAVE_ANDROID */
       for (x = 0; x < img->width; ++x, ++p)
 	{
 	  p->pixel = GET_PIXEL (ximg, x, y);
@@ -6491,7 +6427,7 @@ image_edge_detection (struct frame *f, struct image *img,
 }
 
 
-#if defined HAVE_X_WINDOWS || defined USE_CAIRO || defined HAVE_HAIKU	\
+#if defined HAVE_X_WINDOWS || defined USE_CAIRO \
   || defined HAVE_ANDROID
 
 static void
@@ -6527,8 +6463,6 @@ image_pixmap_draw_cross (struct frame *f, Emacs_Pixmap pixmap,
   XDrawLine (dpy, pixmap, gc, x, y, x + width - 1, y + height - 1);
   XDrawLine (dpy, pixmap, gc, x, y + height - 1, x + width - 1, y);
   XFreeGC (dpy, gc);
-#elif HAVE_HAIKU
-  be_draw_cross_on_pixmap (pixmap, x, y, width, height, color);
 #elif HAVE_ANDROID
 #ifndef ANDROID_STUBIFY
   struct android_gc *gc;
@@ -6544,7 +6478,7 @@ image_pixmap_draw_cross (struct frame *f, Emacs_Pixmap pixmap,
 #endif
 }
 
-#endif	/* HAVE_X_WINDOWS || USE_CAIRO || HAVE_HAIKU */
+#endif	/* HAVE_X_WINDOWS || USE_CAIRO || HAVE_ANDROID */
 
 /* Transform image IMG on frame F so that it looks disabled.  */
 
@@ -6582,17 +6516,17 @@ image_disable_image (struct frame *f, struct image *img)
     {
 #ifndef HAVE_NS  /* TODO: NS support, however this not needed for toolbars */
 
-#if !defined USE_CAIRO && !defined HAVE_HAIKU && !defined HAVE_ANDROID
+#if !defined USE_CAIRO && !defined HAVE_ANDROID
 #define CrossForeground(f) BLACK_PIX_DEFAULT (f)
 #define MaskForeground(f)  WHITE_PIX_DEFAULT (f)
-#else  /* USE_CAIRO || HAVE_HAIKU */
+#else  /* USE_CAIRO || HAVE_ANDROID */
 #define CrossForeground(f) 0
 #define MaskForeground(f)  PIX_MASK_DRAW
-#endif	/* USE_CAIRO || HAVE_HAIKU */
+#endif	/* USE_CAIRO || HAVE_ANDROID */
 
-#if !defined USE_CAIRO && !defined HAVE_HAIKU
+#ifndef USE_CAIRO
       image_sync_to_pixmaps (f, img);
-#endif	/* !USE_CAIRO && !HAVE_HAIKU */
+#endif	/* !USE_CAIRO */
       image_pixmap_draw_cross (f, img->pixmap, 0, 0, img->width, img->height,
 			       CrossForeground (f));
       if (img->mask)
@@ -6615,11 +6549,7 @@ image_build_heuristic_mask (struct frame *f, struct image *img,
                             Lisp_Object how)
 {
   Emacs_Pix_Context ximg;
-#ifdef HAVE_NTGUI
-  HGDIOBJ prev;
-  char *mask_img;
-  int row_width;
-#elif !defined HAVE_NS
+#if   !defined HAVE_NS
   Emacs_Pix_Container mask_img;
 #endif
   int x, y;
@@ -7080,12 +7010,8 @@ pbm_load (struct frame *f, struct image *img)
 static bool
 image_can_use_native_api (Lisp_Object type)
 {
-# ifdef HAVE_NTGUI
-  return w32_can_use_native_image_api (type);
-# elif defined HAVE_NS
+# if   defined HAVE_NS
   return ns_can_use_native_image_api (type);
-# elif defined HAVE_HAIKU
-  return haiku_can_use_native_image_api (type);
 # else
   return false;
 # endif
@@ -7153,15 +7079,9 @@ native_image_load (struct frame *f, struct image *img)
   if (STRINGP (image_file))
     image_file = image_find_image_file (image_file);
 
-# ifdef HAVE_NTGUI
-  return w32_load_image (f, img, image_file,
-                         image_spec_value (img->spec, QCdata, NULL));
-# elif defined HAVE_NS
+# if   defined HAVE_NS
   return ns_load_image (f, img, image_file,
                         image_spec_value (img->spec, QCdata, NULL));
-# elif defined HAVE_HAIKU
-  return haiku_load_image (f, img, image_file,
-			   image_spec_value (img->spec, QCdata, NULL));
 # else
   return 0;
 # endif
@@ -7767,11 +7687,6 @@ jpeg_image_p (Lisp_Object object)
 #  undef HAVE_STDLIB_H
 # endif
 
-# if defined (HAVE_NTGUI) && !defined (__WIN32__)
-/* In older releases of the jpeg library, jpeglib.h will define boolean
-   differently depending on __WIN32__, so make sure it is defined.  */
-#  define __WIN32__ 1
-# endif
 
 /* rpcndr.h (via windows.h) and jpeglib.h both define boolean types.
    Some versions of jpeglib try to detect whether rpcndr.h is loaded,
@@ -8370,11 +8285,7 @@ tiff_size_of_memory (thandle_t data)
    compiler error compiling tiff_handler, see Bugzilla bug #17406
    (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=17406).  Declaring
    this function as external works around that problem.  */
-# if defined (__MINGW32__) && __GNUC__ == 3
-#  define MINGW_STATIC
-# else
 #  define MINGW_STATIC static
-# endif
 
 MINGW_STATIC void
 tiff_handler (const char *, const char *, const char *, va_list)
@@ -10246,7 +10157,7 @@ imagemagick_load_image (struct frame *f, struct image *img,
 
 #if (defined (HAVE_MAGICKEXPORTIMAGEPIXELS)	     \
      || HAVE_DECL_MAGICKEXPORTIMAGEPIXELS)	     \
-  && ! defined (HAVE_NS) && ! defined (HAVE_HAIKU)
+  && ! defined (HAVE_NS)
   if (imagemagick_render_type != 0)
     {
       /* Magicexportimage is normally faster than pixelpushing.  This
@@ -11410,15 +11321,11 @@ The list of capabilities can include one or more of the following:
     {
 #ifdef HAVE_NATIVE_TRANSFORMS
 # if defined HAVE_IMAGEMAGICK || defined (USE_CAIRO) || defined (HAVE_NS) \
-  || defined (HAVE_HAIKU) || defined HAVE_ANDROID
+  || defined HAVE_ANDROID
       return list2 (Qscale, Qrotate90);
 # elif defined (HAVE_X_WINDOWS) && defined (HAVE_XRENDER)
       if (FRAME_DISPLAY_INFO (f)->xrender_supported_p)
 	return list2 (Qscale, Qrotate90);
-# elif defined (HAVE_NTGUI)
-      return (w32_image_rotations_p ()
-	      ? list2 (Qscale, Qrotate90)
-	      : list1 (Qscale));
 # endif
 #endif
     }
@@ -11499,8 +11406,8 @@ static struct image_type const image_types[] =
  { SYMBOL_INDEX (Qjpeg), jpeg_image_p, jpeg_load, image_clear_image,
    IMAGE_TYPE_INIT (init_jpeg_functions) },
 #endif
-#if defined HAVE_XPM || defined HAVE_NS || defined HAVE_HAIKU	\
-  || defined HAVE_PGTK || defined HAVE_ANDROID
+#if defined HAVE_XPM || defined HAVE_NS || defined HAVE_PGTK \
+  || defined HAVE_ANDROID
  { SYMBOL_INDEX (Qxpm), xpm_image_p, xpm_load, image_clear_image,
    IMAGE_TYPE_INIT (init_xpm_functions) },
 #endif
@@ -11634,8 +11541,7 @@ non-numeric, there is no explicit limit on the size of images.  */);
   DEFSYM (Qxbm, "xbm");
   add_image_type (Qxbm);
 
-#if defined (HAVE_XPM) || defined (HAVE_NS) \
-  || defined (HAVE_HAIKU) || defined (HAVE_PGTK) \
+#if defined (HAVE_XPM) || defined (HAVE_NS) || defined (HAVE_PGTK) \
   || defined (HAVE_ANDROID)
   DEFSYM (Qxpm, "xpm");
   add_image_type (Qxpm);
@@ -11662,8 +11568,7 @@ non-numeric, there is no explicit limit on the size of images.  */);
 #endif
 
 #if defined (HAVE_WEBP)						\
-  || (defined (HAVE_NATIVE_IMAGE_API)				\
-      && (defined (HAVE_NS) || defined (HAVE_HAIKU)))
+  || (defined (HAVE_NATIVE_IMAGE_API) && defined (HAVE_NS))
   DEFSYM (Qwebp, "webp");
   DEFSYM (Qwebpdemux, "webpdemux");
 #if !defined (NS_IMPL_GNUSTEP) || defined (HAVE_WEBP)
@@ -11687,12 +11592,11 @@ non-numeric, there is no explicit limit on the size of images.  */);
   DEFSYM (QCbase_uri, ":base-uri");
   DEFSYM (QCcss, ":css");
   add_image_type (Qsvg);
-#elif defined HAVE_NATIVE_IMAGE_API			\
-  && (defined HAVE_NS || defined HAVE_HAIKU)
+#elif defined HAVE_NATIVE_IMAGE_API && defined HAVE_NS
   DEFSYM (Qsvg, "svg");
 
-  /* On Haiku, the SVG translator may not be installed.  On GNUstep, SVG
-     support is provided by ImageMagick so not guaranteed.  Furthermore,
+  /* On GNUstep, SVG support is provided by ImageMagick so not guaranteed.
+     Furthermore,
      some distros (e.g., Debian) ship ImageMagick's SVG module in a
      separate binary package which may not be installed.  */
   if (image_can_use_native_api (Qsvg))

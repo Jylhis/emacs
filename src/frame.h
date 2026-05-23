@@ -643,10 +643,8 @@ struct frame
   {
     struct tty_output *tty;		/* From termchar.h.  */
     struct x_output *x;			/* From xterm.h.  */
-    struct w32_output *w32;		/* From w32term.h.  */
     struct ns_output *ns;		/* From nsterm.h.  */
     struct pgtk_output *pgtk;		/* From pgtkterm.h. */
-    struct haiku_output *haiku;		/* From haikuterm.h. */
     struct android_output *android;	/* From androidterm.h.  */
   }
   output_data;
@@ -921,8 +919,6 @@ default_pixels_per_inch_y (void)
 #define FRAME_INITIAL_P(f) ((f)->output_method == output_initial)
 #define FRAME_TERMCAP_P(f) ((f)->output_method == output_termcap)
 #define FRAME_X_P(f) ((f)->output_method == output_x_window)
-#define FRAME_W32_P(f) false
-#define FRAME_MSDOS_P(f) false
 #ifndef HAVE_NS
 #define FRAME_NS_P(f) false
 #else
@@ -1463,7 +1459,7 @@ INLINE bool
 window_system_available (struct frame *f)
 {
 #ifdef HAVE_WINDOW_SYSTEM
-  return f ? FRAME_WINDOW_P (f) || FRAME_MSDOS_P (f) : display_available ();
+  return f ? FRAME_WINDOW_P (f) : display_available ();
 #else
   return false;
 #endif

@@ -130,7 +130,6 @@ typedef Emacs_Pix_Container Emacs_Pix_Context;
 
 #ifdef HAVE_NS
 #include "nsgui.h"
-/* Following typedef needed to accommodate the MSDOS port, believe it or not.  */
 typedef struct ns_display_info Display_Info;
 typedef Emacs_Pixmap Emacs_Pix_Container;
 typedef Emacs_Pixmap Emacs_Pix_Context;
@@ -138,7 +137,6 @@ typedef Emacs_Pixmap Emacs_Pix_Context;
 
 #ifdef HAVE_PGTK
 #include "pgtkgui.h"
-/* Following typedef needed to accommodate the MSDOS port, believe it or not.  */
 typedef struct pgtk_display_info Display_Info;
 typedef Emacs_Pixmap XImagePtr;
 typedef XImagePtr XImagePtr_or_DC;
@@ -3168,8 +3166,7 @@ struct redisplay_interface
 #ifdef HAVE_WINDOW_SYSTEM
 
 # if (defined USE_CAIRO || defined HAVE_XRENDER				\
-      || defined HAVE_NS || defined HAVE_NTGUI || defined HAVE_HAIKU	\
-      || defined HAVE_ANDROID)
+      || defined HAVE_NS || defined HAVE_ANDROID)
 #  define HAVE_NATIVE_TRANSFORMS
 # endif
 
@@ -3697,7 +3694,7 @@ ptrdiff_t lookup_image (struct frame *, Lisp_Object, int);
 Lisp_Object image_spec_value (Lisp_Object, Lisp_Object, bool *);
 
 #if defined HAVE_X_WINDOWS || defined USE_CAIRO || defined HAVE_NS \
-  || defined HAVE_HAIKU || defined HAVE_ANDROID
+  || defined HAVE_ANDROID
 #define RGB_PIXEL_COLOR unsigned long
 #endif
 

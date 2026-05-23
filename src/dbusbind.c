@@ -30,7 +30,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "process.h"
 
 #ifndef O_RDONLY
-/* WINDOWSNT.  */
 #include <fcntl.h>
 #endif
 

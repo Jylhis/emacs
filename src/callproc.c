@@ -1779,7 +1779,6 @@ init_callproc (void)
       Lisp_Object tem;
       tem = Fexpand_file_name (build_string ("lib-src"),
 			       Vinstallation_directory);
-	  /* MSDOS uses wrapped binaries, so don't do this.  */
       if (NILP (Fmember (tem, Vexec_path)))
 	{
 	  /* Running uninstalled, so default to tem rather than PATH_EXEC.  */

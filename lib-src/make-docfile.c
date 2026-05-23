@@ -49,21 +49,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <min-max.h>
 #include <unlocked-io.h>
 
-#ifdef WINDOWSNT
-/* Defined to be sys_fopen in ms-w32.h, but only #ifdef emacs, so this
-   is really just insurance.  */
-#undef fopen
-#include <direct.h>
-#endif /* WINDOWSNT */
 
-#ifdef DOS_NT
-/* Defined to be sys_chdir in ms-w32.h, but only #ifdef emacs, so this
-   is really just insurance.
-
-   Similarly, msdos defines this as sys_chdir, but we're not linking with the
-   file where that function is defined.  */
-#undef chdir
-#endif /* not DOS_NT */
 
 static void scan_file (char *filename);
 static void scan_c_file (char *filename, const char *mode);

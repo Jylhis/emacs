@@ -159,7 +159,7 @@ bool running_asynch_code;
 bool display_arg;
 #endif
 
-/* To run as a background daemon under Cocoa or Windows,
+/* To run as a background daemon under Cocoa,
    we must do a fork+exec, not a simple fork.
 
    On Cocoa, CoreFoundation lib fails in forked process, see Mac OS X
@@ -167,15 +167,10 @@ bool display_arg;
 
    https://web.archive.org/web/20090225231934/http://developer.apple.com/ReleaseNotes/CoreFoundation/CoreFoundation.html
 
-   On Windows, a Cygwin fork child cannot access the USER subsystem.
-
    We mark being in the exec'd process by a daemon name argument of
    form "--daemon=\nFD0,FD1\nNAME" where FD are the pipe file descriptors,
-   NAME is the original daemon name, if any.
-
-   On Haiku, the table of semaphores used for looper locks doesn't
-   persist across forked processes.  */
-#if defined NS_IMPL_COCOA || defined CYGWIN || defined HAVE_HAIKU
+   NAME is the original daemon name, if any.  */
+#ifdef NS_IMPL_COCOA
 # define DAEMON_MUST_EXEC
 #endif
 
@@ -371,10 +366,7 @@ bool fatal_error_in_progress;
 static bool
 using_utf8 (void)
 {
-  /* We don't want to compile in mbrtowc on WINDOWSNT because that
-     will prevent Emacs from starting on older Windows systems, while
-     the result is known in advance anyway...  */
-#if defined HAVE_WCHAR_H && !defined WINDOWSNT
+#ifdef HAVE_WCHAR_H
   wchar_t wc;
 #ifndef HAVE_ANDROID
   mbstate_t mbs = { 0 };
@@ -682,11 +674,6 @@ default_PATH (void)
 
       path = buf;
 
-#elif defined DOS_NT
-      /* This is not exactly what Windows does when there's no PATH (see
-         documentation of CreateProcessW), but it's a good-enough
-         approximation.  */
-      path = strcpy (staticbuf, ".");
 #endif
     }
 
@@ -943,11 +930,7 @@ load_pdump (int argc, char **argv, char *dump_file)
 
  hardcoded:
 
-#ifdef WINDOWSNT
-  /* On MS-Windows, PATH_EXEC normally starts with a literal
-     "%emacs_dir%", so it will never work without some tweaking.  */
-  path_exec = w32_relocate (path_exec);
-#elif defined (HAVE_NS)
+#if   defined (HAVE_NS)
   path_exec = ns_relocate (path_exec);
 #endif
 
@@ -1393,7 +1376,7 @@ android_emacs_init (int argc, char **argv, char *dump_file)
       emacs_wd = emacs_get_current_dir_name ();
     }
 
-#if defined (HAVE_SETRLIMIT) && defined (RLIMIT_STACK) && !defined (CYGWIN)
+#if defined (HAVE_SETRLIMIT) && defined (RLIMIT_STACK)
   /* Extend the stack space available.  Don't do that if dumping,
      since some systems (e.g. DJGPP) might define a smaller stack
      limit at that time.  And it's not needed on Cygwin, since emacs
@@ -1453,7 +1436,7 @@ android_emacs_init (int argc, char **argv, char *dump_file)
 	= min (lim - extra, min (PTRDIFF_MAX, SIZE_MAX)) / ratio;
       emacs_re_safe_alloca = max (max_failures * min_ratio, MAX_ALLOCA);
     }
-#endif /* HAVE_SETRLIMIT and RLIMIT_STACK and not CYGWIN */
+#endif /* HAVE_SETRLIMIT and RLIMIT_STACK */
 
   clearerr (stdin);
 
@@ -2331,15 +2314,6 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
   safe_run_hooks (Qafter_pdump_load_hook);
 #endif
 
-#if defined HAVE_ANDROID && !defined ANDROID_STUBIFY && 0
-  /* This comes very late in the startup process because it requires
-     most of lisp/international to be loaded.  This approach doesn't
-     work because normal-top-level runs and creates the initial frame
-     before fonts are initialized.  So this is done in
-     normal-top-level instead.  */
-  Vtop_level = list3 (Qprogn, Vtop_level,
-		      list1 (Qandroid_enumerate_fonts));
-#endif
 
   /* Enter editor command loop.  This never returns.  */
   set_initial_minibuffer_mode ();
@@ -2812,7 +2786,7 @@ shut_down_emacs (int sig, Lisp_Object stuff)
   Vinhibit_redisplay = Qt;
 
   /* If we are controlling the terminal, reset terminal modes.  */
-#if !defined DOS_NT && !(defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
+#if !(defined HAVE_ANDROID && !defined ANDROID_STUBIFY)
   pid_t tpgrp = tcgetpgrp (STDIN_FILENO);
   if (tpgrp != -1 && tpgrp == getpgrp ())
     {
