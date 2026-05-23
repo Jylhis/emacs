@@ -112,11 +112,20 @@ in
   env = {
     CC = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc";
     CXX = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/c++";
+    # NS / Cocoa port compiles .m sources on macOS via $OBJC.  On
+    # Linux it stays harmlessly defined.
+    OBJC = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc";
   };
 
   enterShell = ''
     export CC="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc"
     export CXX="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/c++"
+    export OBJC="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc"
+    # Hash compile commands relative to the project root so the
+    # cache survives moving the checkout or building from a
+    # worktree.  Must live in enterShell because $DEVENV_ROOT is
+    # only defined at runtime (the `env` block is static nix).
+    export CCACHE_BASEDIR="$DEVENV_ROOT"
   '';
 
   # https://devenv.sh/binary-caching/

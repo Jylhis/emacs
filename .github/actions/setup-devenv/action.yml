@@ -79,3 +79,28 @@ runs:
         mv /tmp/devenv-env-filtered.sh /tmp/devenv-env.sh
         echo "After filtering: $(wc -l < /tmp/devenv-env.sh) lines"
         echo "BASH_ENV=/tmp/devenv-env.sh" >> "$GITHUB_ENV"
+
+        # Hoist the nix-store bin dirs from the devenv PATH into
+        # GITHUB_PATH so non-bash steps (JS-based GitHub Actions like
+        # hendrikmuhs/ccache-action) can find ccache, meson, etc.
+        # $BASH_ENV only affects bash invocations; Node child
+        # processes use the raw runner PATH.  We only forward
+        # /nix/store/*/bin entries to keep the runner's standard PATH
+        # ordering intact for non-nix tools.
+        devenv_path=$(grep -E '^declare -[arx]+ PATH=' /tmp/devenv-env.sh \
+                        | head -1 \
+                        | sed -E 's/^[^"]*"//; s/"$//' || true)
+        if [ -n "$devenv_path" ]; then
+          nix_dirs=0
+          while IFS= read -r d; do
+            case "$d" in
+              /nix/store/*/bin)
+                echo "$d" >> "$GITHUB_PATH"
+                nix_dirs=$((nix_dirs + 1))
+                ;;
+            esac
+          done < <(printf '%s\n' "$devenv_path" | tr ':' '\n')
+          echo "Added $nix_dirs nix-store bin dirs to GITHUB_PATH"
+        else
+          echo "::warning::could not extract PATH from devenv env dump"
+        fi
