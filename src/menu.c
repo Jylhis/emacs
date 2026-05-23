@@ -670,13 +670,7 @@ digest_single_submenu (int start, int end, bool top_level_items)
 	     will encode the strings as appropriate.  */
 	  if (!FRAME_TERMCAP_P (f))
 	    {
-#if   defined (USE_LUCID) && (defined USE_CAIRO || defined HAVE_XFT)
-	      if (STRINGP (pane_name))
-		{
-		  pane_name = ENCODE_UTF_8 (pane_name);
-		  ASET (menu_items, i + MENU_ITEMS_PANE_NAME, pane_name);
-		}
-#elif !defined (HAVE_MULTILINGUAL_MENU)
+#ifndef HAVE_MULTILINGUAL_MENU
 	      if (STRINGP (pane_name) && STRING_MULTIBYTE (pane_name))
 		{
 		  pane_name = ENCODE_MENU_STRING (pane_name);
@@ -735,19 +729,7 @@ digest_single_submenu (int start, int end, bool top_level_items)
 	     tty_write_glyphs.  */
 	  if (!FRAME_TERMCAP_P (f))
 	    {
-#if   USE_LUCID
-	      if (STRINGP (item_name))
-		{
-		  item_name = ENCODE_UTF_8 (item_name);
-		  ASET (menu_items, i + MENU_ITEMS_ITEM_NAME, item_name);
-		}
-
-	      if (STRINGP (descrip))
-		{
-		  descrip = ENCODE_UTF_8 (descrip);
-		  ASET (menu_items, i + MENU_ITEMS_ITEM_EQUIV_KEY, descrip);
-		}
-#elif !defined (HAVE_MULTILINGUAL_MENU)
+#ifndef HAVE_MULTILINGUAL_MENU
 	      if (STRING_MULTIBYTE (item_name))
 		{
 		  item_name = ENCODE_MENU_STRING (item_name);
