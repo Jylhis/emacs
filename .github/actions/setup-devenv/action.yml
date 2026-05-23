@@ -26,14 +26,14 @@ runs:
   using: composite
   steps:
     - name: Install Nix
-      uses: cachix/install-nix-action@v31
+      uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3  # v31
       with:
         extra_nix_config: |
           accept-flake-config = true
           experimental-features = nix-command flakes
 
     - name: Set up Cachix (pull jylhis + devenv)
-      uses: cachix/cachix-action@v16
+      uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1  # v16
       with:
         name: jylhis
         extraPullNames: devenv
