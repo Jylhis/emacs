@@ -4104,6 +4104,17 @@ such as 'mupdf' or 'pdf-tools' to display PostScript files.
 The HAVE_GHOSTSCRIPT block in src/image.c and the associated
 Ghostview client-message handler in src/xterm.c are gone.
 
+---
+** Lucid, Motif, Xaw3d, and Carbon source branches removed.
+The Meson build has not offered Lucid (Athena), Motif, or Xaw3d
+toolkits since the autotools cutover (only 'gtk3', 'pgtk', 'ns',
+and 'none' are supported); the '#ifdef USE_LUCID', '#ifdef
+USE_MOTIF', '#ifdef HAVE_XAW3D', and '#ifdef HAVE_CARBON' guarded
+code paths in src/ have been stripped.  The Xaw scrollbar
+callbacks in src/xterm.c remain inside '#else /* not USE_GTK */'
+as preprocessor-skipped reference code.  The 'x-toolkit-scroll-bars'
+docstring now lists only 'gtk' and 'xaw'.
+
 +++
 ** 'if-let' and 'when-let' are now obsolete.
 Use 'if-let*', 'when-let*' and 'and-let*' instead.
