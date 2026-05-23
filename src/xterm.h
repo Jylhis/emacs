@@ -584,9 +584,6 @@ struct x_display_info
     Xatom_MULE_BASELINE_OFFSET, Xatom_MULE_RELATIVE_COMPOSE,
     Xatom_MULE_DEFAULT_ASCENT;
 
-  /* More atoms for Ghostscript support.  */
-  Atom Xatom_DONE, Xatom_PAGE;
-
   /* Atoms used in toolkit scroll bar client messages.  */
   Atom Xatom_Scrollbar, Xatom_Horizontal_Scrollbar;
 

@@ -3267,8 +3267,7 @@ lookup_image (struct frame *f, Lisp_Object spec, int face_id)
 
 	  /* Do image transformations and compute masks, unless we
 	     don't have the image yet.  */
-	  if (!EQ (builtin_lisp_symbol (img->type->type), Qpostscript))
-	    postprocess_image (f, img);
+	  postprocess_image (f, img);
 
           /* postprocess_image above may modify the image or the mask,
              relying on the image's real width and height, so
@@ -11020,260 +11019,6 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
 
 
 /***********************************************************************
-				Ghostscript
- ***********************************************************************/
-
-#if defined HAVE_X_WINDOWS && !defined USE_CAIRO
-#define HAVE_GHOSTSCRIPT 1
-#endif /* HAVE_X_WINDOWS && !USE_CAIRO */
-
-#ifdef HAVE_GHOSTSCRIPT
-
-/* Indices of image specification fields in gs_format, below.  */
-
-enum gs_keyword_index
-{
-  GS_TYPE,
-  GS_PT_WIDTH,
-  GS_PT_HEIGHT,
-  GS_FILE,
-  GS_LOADER,
-  GS_BOUNDING_BOX,
-  GS_ASCENT,
-  GS_MARGIN,
-  GS_RELIEF,
-  GS_ALGORITHM,
-  GS_HEURISTIC_MASK,
-  GS_MASK,
-  GS_BACKGROUND,
-  GS_LAST
-};
-
-/* Vector of image_keyword structures describing the format
-   of valid user-defined image specifications.  */
-
-static const struct image_keyword gs_format[GS_LAST] =
-{
-  {":type",		IMAGE_SYMBOL_VALUE,			1},
-  {":pt-width",		IMAGE_POSITIVE_INTEGER_VALUE,		1},
-  {":pt-height",	IMAGE_POSITIVE_INTEGER_VALUE,		1},
-  {":file",		IMAGE_STRING_VALUE,			1},
-  {":loader",		IMAGE_FUNCTION_VALUE,			0},
-  {":bounding-box",	IMAGE_DONT_CHECK_VALUE_TYPE,		1},
-  {":ascent",		IMAGE_ASCENT_VALUE,			0},
-  {":margin",		IMAGE_NON_NEGATIVE_INTEGER_VALUE_OR_PAIR, 0},
-  {":relief",		IMAGE_INTEGER_VALUE,			0},
-  {":conversion",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-  {":heuristic-mask",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-  {":mask",		IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-  {":background",	IMAGE_STRING_OR_NIL_VALUE,		0}
-};
-
-/* Return true if OBJECT is a valid Ghostscript image
-   specification.  */
-
-static bool
-gs_image_p (Lisp_Object object)
-{
-  struct image_keyword fmt[GS_LAST];
-  Lisp_Object tem;
-  int i;
-
-  memcpy (fmt, gs_format, sizeof fmt);
-
-  if (!parse_image_spec (object, fmt, GS_LAST, Qpostscript))
-    return 0;
-
-  /* Bounding box must be a list or vector containing 4 integers.  */
-  tem = fmt[GS_BOUNDING_BOX].value;
-  if (CONSP (tem))
-    {
-      for (i = 0; i < 4; ++i, tem = XCDR (tem))
-	if (!CONSP (tem) || !FIXNUMP (XCAR (tem)))
-	  return 0;
-      if (!NILP (tem))
-	return 0;
-    }
-  else if (VECTORP (tem))
-    {
-      if (ASIZE (tem) != 4)
-	return 0;
-      for (i = 0; i < 4; ++i)
-	if (!FIXNUMP (AREF (tem, i)))
-	  return 0;
-    }
-  else
-    return 0;
-
-  return 1;
-}
-
-
-/* Load Ghostscript image IMG for use on frame F.  Value is true
-   if successful.  */
-
-static bool
-gs_load (struct frame *f, struct image *img)
-{
-  uintmax_t printnum1, printnum2;
-  Lisp_Object window_and_pixmap_id = Qnil, loader, pt_height, pt_width;
-  Lisp_Object frame;
-  double in_width, in_height;
-  Lisp_Object pixel_colors = Qnil;
-
-  /* Compute pixel size of pixmap needed from the given size in the
-     image specification.  Sizes in the specification are in pt.  1 pt
-     = 1/72 in, xdpi and ydpi are stored in the frame's X display
-     info.  */
-  pt_width = image_spec_value (img->spec, QCpt_width, NULL);
-  in_width = FIXNUMP (pt_width) ? XFIXNAT (pt_width) / 72.0 : 0;
-  in_width *= FRAME_RES_X (f);
-  pt_height = image_spec_value (img->spec, QCpt_height, NULL);
-  in_height = FIXNUMP (pt_height) ? XFIXNAT (pt_height) / 72.0 : 0;
-  in_height *= FRAME_RES_Y (f);
-
-  if (! (in_width <= INT_MAX && in_height <= INT_MAX
-	 && check_image_size (f, in_width, in_height)))
-    {
-      image_size_error ();
-      return 0;
-    }
-  img->width = in_width;
-  img->height = in_height;
-
-  /* Create the pixmap.  */
-  eassert (img->pixmap == NO_PIXMAP);
-
-  if (image_check_image_size (0, img->width, img->height))
-    {
-      /* Only W32 version did BLOCK_INPUT here.  ++kfs */
-      block_input ();
-      img->pixmap = XCreatePixmap (FRAME_X_DISPLAY (f), FRAME_X_DRAWABLE (f),
-				   img->width, img->height,
-				   FRAME_DISPLAY_INFO (f)->n_planes);
-      unblock_input ();
-    }
-
-  if (!img->pixmap)
-    {
-      image_error ("Unable to create pixmap for `%s'" , img->spec);
-      return 0;
-    }
-
-  /* Call the loader to fill the pixmap.  It returns a process object
-     if successful.  We do not record_unwind_protect here because
-     other places in redisplay like calling window scroll functions
-     don't either.  Let the Lisp loader use `unwind-protect' instead.  */
-  printnum1 = FRAME_X_DRAWABLE (f);
-  printnum2 = img->pixmap;
-  window_and_pixmap_id
-    = make_formatted_string ("%"PRIuMAX" %"PRIuMAX,
-			     printnum1, printnum2);
-
-  printnum1 = FRAME_FOREGROUND_PIXEL (f);
-  printnum2 = FRAME_BACKGROUND_PIXEL (f);
-  pixel_colors
-    = make_formatted_string ("%"PRIuMAX" %"PRIuMAX,
-			     printnum1, printnum2);
-
-  XSETFRAME (frame, f);
-  loader = image_spec_value (img->spec, QCloader, NULL);
-  if (NILP (loader))
-    loader = Qgs_load_image;
-
-  img->lisp_data = calln (loader, frame, img->spec,
-			  make_fixnum (img->width),
-			  make_fixnum (img->height),
-			  window_and_pixmap_id,
-			  pixel_colors);
-  return PROCESSP (img->lisp_data);
-}
-
-
-/* Kill the Ghostscript process that was started to fill PIXMAP on
-   frame F.  Called from XTread_socket when receiving an event
-   telling Emacs that Ghostscript has finished drawing.  */
-
-void
-x_kill_gs_process (Pixmap pixmap, struct frame *f)
-{
-  struct image_cache *c = FRAME_IMAGE_CACHE (f);
-  ptrdiff_t i;
-  struct image *img;
-
-  /* Find the image containing PIXMAP.  */
-  for (i = 0; i < c->used; ++i)
-    if (c->images[i]->pixmap == pixmap)
-      break;
-
-  /* Should someone in between have cleared the image cache, for
-     instance, give up.  */
-  if (i == c->used)
-    return;
-
-  /* Kill the GS process.  We should have found PIXMAP in the image
-     cache and its image should contain a process object.  */
-  img = c->images[i];
-  eassert (PROCESSP (img->lisp_data));
-  Fkill_process (img->lisp_data, Qnil);
-  img->lisp_data = Qnil;
-
-#if defined (HAVE_X_WINDOWS)
-
-  /* On displays with a mutable colormap, figure out the colors
-     allocated for the image by looking at the pixels of an XImage for
-     img->pixmap.  */
-  if (x_mutable_colormap (FRAME_X_VISUAL_INFO (f)))
-    {
-      XImage *ximg;
-
-      block_input ();
-
-      /* Try to get an XImage for img->pixmep.  */
-      ximg = XGetImage (FRAME_X_DISPLAY (f), img->pixmap,
-			0, 0, img->width, img->height, ~0, ZPixmap);
-      if (ximg)
-	{
-	  /* Initialize the color table.  */
-	  init_color_table ();
-
-	  /* For each pixel of the image, look its color up in the
-	     color table.  After having done so, the color table will
-	     contain an entry for each color used by the image.  */
-#ifdef COLOR_TABLE_SUPPORT
-	  for (int y = 0; y < img->height; ++y)
-	    for (int x = 0; x < img->width; ++x)
-	      {
-		unsigned long pixel = XGetPixel (ximg, x, y);
-
-		lookup_pixel_color (f, pixel);
-	      }
-
-	  /* Record colors in the image.  Free color table and XImage.  */
-	  img->colors = colors_in_color_table (&img->ncolors);
-	  free_color_table ();
-#endif
-	  XDestroyImage (ximg);
-	}
-      else
-	image_error ("Cannot get X image of `%s'; colors will not be freed",
-		     img->spec);
-
-      unblock_input ();
-    }
-#endif /* HAVE_X_WINDOWS */
-
-  /* Now that we have the pixmap, compute mask and transform the
-     image if requested.  */
-  block_input ();
-  postprocess_image (f, img);
-  unblock_input ();
-}
-
-#endif /* HAVE_GHOSTSCRIPT */
-
-
-/***********************************************************************
 				Tests
  ***********************************************************************/
 DEFUN ("imagep", Fimagep, Simagep, 1, 1, 0,
@@ -11379,9 +11124,6 @@ initialize_image_type (struct image_type const *type)
 
 static struct image_type const image_types[] =
 {
-#ifdef HAVE_GHOSTSCRIPT
- { SYMBOL_INDEX (Qpostscript), gs_image_p, gs_load, image_clear_image },
-#endif
 #ifdef HAVE_IMAGEMAGICK
  { SYMBOL_INDEX (Qimagemagick), imagemagick_image_p, imagemagick_load,
    image_clear_image },
@@ -11525,15 +11267,6 @@ non-numeric, there is no explicit limit on the size of images.  */);
   DEFSYM (Qrotate90, "rotate90");
   DEFSYM (Qcrop, "crop");
 #endif
-
-#ifdef HAVE_GHOSTSCRIPT
-  add_image_type (Qpostscript);
-  DEFSYM (QCloader, ":loader");
-  DEFSYM (QCpt_width, ":pt-width");
-  DEFSYM (QCpt_height, ":pt-height");
-  DEFSYM (Qgs_load_image, "gs-load-image");
-#endif /* HAVE_GHOSTSCRIPT */
-
 
   DEFSYM (Qpbm, "pbm");
   add_image_type (Qpbm);
