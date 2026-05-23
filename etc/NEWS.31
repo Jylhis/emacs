@@ -4097,6 +4097,14 @@ metamail.el, nnir.el (use 'gnus-search' via 'nnselect'),
 rfc2368.el (use 'rfc6068'), sb-image.el (28.1).
 
 +++
+** Ghostscript image support removed.
+The 'postscript image type and the lisp/obsolete/gs.el interface,
+obsolete since 26.1, have been removed.  Use external viewers
+such as 'mupdf' or 'pdf-tools' to display PostScript files.
+The HAVE_GHOSTSCRIPT block in src/image.c and the associated
+Ghostview client-message handler in src/xterm.c are gone.
+
++++
 ** 'if-let' and 'when-let' are now obsolete.
 Use 'if-let*', 'when-let*' and 'and-let*' instead.
 
