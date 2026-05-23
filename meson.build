@@ -1,6 +1,6 @@
 project(
   'emacs',
-  ['c', 'objc'],
+  ['c'],
   version : '31.0.50',
   license : 'GPL-3.0-or-later',
   meson_version : '>= 1.3.0',
@@ -14,6 +14,13 @@ project(
 # Meson + Ninja build for GNU Emacs.  Replaces the autotools build
 # (configure.ac, Makefile.in) deleted at the phase-10 cutover; see
 # `.claude/notes/build-system.md` for the post-cutover parity audit.
+
+# Objective-C is only needed for the macOS NS port.  Declare it
+# conditionally so Android / non-Darwin cross-builds don't fail
+# meson setup when the cross-file omits an `objc' binary.
+if host_machine.system() == 'darwin'
+  add_languages('objc', native : false)
+endif
 
 cc = meson.get_compiler('c')
 py = import('python').find_installation('python3')
@@ -260,16 +267,69 @@ endif
 all_features = get_option('all-features')
 _no_all = not all_features
 
+# ----------------------------------------------------------------------
+# Android cross-build switch.  When -Dandroid=enabled is passed together
+# with cross/meson-android.cross, every host-side dependency probe
+# below short-circuits to "not found" -- the first cut of the APK
+# pipeline deliberately drops gtk3/X11/NS/imaging/TLS/tree-sitter
+# (see .claude/plans/investigate-the-android-app-foamy-parnas.md).
+# Flipping _no_all on flows through every .disable_auto_if() call.
+# ----------------------------------------------------------------------
+want_android = (get_option('android').allowed()
+                and host_machine.system() == 'android')
+if want_android
+  _no_all = true
+endif
+if want_android
+  if get_option('android-ndk') == ''
+    error('--Dandroid=enabled requires -Dandroid-ndk=/path/to/ndk')
+  endif
+  if get_option('android-sdk') == ''
+    error('--Dandroid=enabled requires -Dandroid-sdk=/path/to/sdk')
+  endif
+  if get_option('android-host-build') == ''
+    error('--Dandroid=enabled requires -Dandroid-host-build=$PWD/build'
+          + ' (a completed host meson build dir).')
+  endif
+  conf_data.set('HAVE_ANDROID', 1)
+  conf_data.set('HAVE_WINDOW_SYSTEM', 1)
+  conf_data.set('HAVE_TEXT_CONVERSION', 1)
+  conf_data.set_quoted('TERM_HEADER', 'androidterm.h')
+  # Project-level cflags + linker args wiring the NDK sysroot and
+  # Android API level for every src/ object file.  These flow through
+  # to the static_library + shared_library targets in src/meson.build.
+  _android_api = get_option('android-api')
+  _android_ndk = get_option('android-ndk')
+  _android_target = 'aarch64-linux-android' + _android_api.to_string()
+  _android_sysroot = (_android_ndk
+    + '/toolchains/llvm/prebuilt/linux-x86_64/sysroot')
+  add_project_arguments(
+    '--target=' + _android_target,
+    '--sysroot=' + _android_sysroot,
+    '-fPIC',
+    '-DANDROID',
+    '-D__ANDROID_API__=' + _android_api.to_string(),
+    language : 'c',
+  )
+  add_project_link_arguments(
+    '--target=' + _android_target,
+    '--sysroot=' + _android_sysroot,
+    '-llog', '-landroid', '-ljnigraphics',
+    language : 'c',
+  )
+endif
+
 # On macOS, toolkit=auto should NOT require GTK (NS is the native
 # window system).  Only require GTK when explicitly requested.
 # Skip the probe entirely for toolkit=none / pgtk so a developer
 # host with GTK3 installed doesn't silently flip on HAVE_GTK3.
 _toolkit = get_option('toolkit')
 _gtk_required = _toolkit == 'gtk3'
-if _toolkit == 'auto' and not is_darwin
+if _toolkit == 'auto' and not is_darwin and not want_android
   _gtk_required = true
 endif
-if _toolkit == 'gtk3' or (_toolkit == 'auto' and not is_darwin)
+if (not want_android
+    and (_toolkit == 'gtk3' or (_toolkit == 'auto' and not is_darwin)))
   gtk3_dep = dependency('gtk+-3.0', required : _gtk_required)
 else
   gtk3_dep = dependency('', required : false)
@@ -298,7 +358,8 @@ ns_opt = get_option('ns')
 ns_dep = dependency('', required : false)
 if (is_darwin and ns_opt.allowed()
     and not gtk3_dep.found()
-    and _toolkit != 'none')
+    and _toolkit != 'none'
+    and not want_android)
   # nsterm.m + macfont.m + nsfns.m pull in symbols from these
   # frameworks: Cocoa/AppKit (NS classes), QuartzCore (CALayer),
   # IOSurface (offscreen GPU buffers), Carbon (TIS keyboard
@@ -318,33 +379,37 @@ if (is_darwin and ns_opt.allowed()
     conf_data.set_quoted('TERM_HEADER', 'nsterm.h')
   endif
 endif
-cairo_opt = get_option('cairo').disable_auto_if(_no_all)
+cairo_opt = get_option('cairo').disable_auto_if(_no_all).disable_if(want_android)
 cairo_dep     = dependency('cairo',     required : cairo_opt)
 cairo_ft_dep  = dependency('cairo-ft',  required : cairo_opt)
 harfbuzz_dep  = dependency('harfbuzz',
-                            required : get_option('harfbuzz').disable_auto_if(_no_all))
+                            required : get_option('harfbuzz').disable_auto_if(_no_all).disable_if(want_android))
 # freetype/fontconfig must be present whenever a window-system
 # build is selected (src/meson.build always compiles ftfont.c +
 # ftcrfont.c + hbfont.c when gtk3_dep is found).  Forcing them
 # required here turns missing-header link errors at compile time
 # into a clear meson-setup failure.
-_font_required = gtk3_dep.found()
+_font_required = gtk3_dep.found() and not want_android
 freetype_dep  = dependency('freetype2', required : _font_required)
 fontconfig_dep = dependency('fontconfig', required : _font_required)
 xft_dep       = dependency('xft',
-                            required : get_option('xft').disable_auto_if(_no_all))
-gnutls_dep    = dependency('gnutls',    required : get_option('gnutls'))
+                            required : get_option('xft').disable_auto_if(_no_all).disable_if(want_android))
+gnutls_dep    = dependency('gnutls',    required : (want_android ? false : get_option('gnutls')))
 treesit_dep   = dependency('tree-sitter',
-                            required : get_option('tree-sitter').disable_auto_if(_no_all))
+                            required : get_option('tree-sitter').disable_auto_if(_no_all).disable_if(want_android))
 sqlite_dep    = dependency('sqlite3',
-                            required : get_option('sqlite3').disable_auto_if(_no_all))
+                            required : get_option('sqlite3').disable_auto_if(_no_all).disable_if(want_android))
 xml_dep       = dependency('libxml-2.0',
-                            required : get_option('xml2').disable_auto_if(_no_all))
+                            required : get_option('xml2').disable_auto_if(_no_all).disable_if(want_android))
 systemd_dep   = dependency('libsystemd',
-                            required : get_option('libsystemd').disable_auto_if(_no_all))
-gmp_dep       = dependency('gmp',       required : false)
-if not gmp_dep.found()
-  gmp_dep = cc.find_library('gmp', required : true)
+                            required : get_option('libsystemd').disable_auto_if(_no_all).disable_if(want_android))
+if want_android
+  gmp_dep = dependency('', required : false)
+else
+  gmp_dep = dependency('gmp', required : false)
+  if not gmp_dep.found()
+    gmp_dep = cc.find_library('gmp', required : true)
+  endif
 endif
 
 # Native compilation via libgccjit (configure.ac:1588).  No pkg-config
@@ -352,7 +417,7 @@ endif
 # platform-specific GCC include paths first, then fall back to the
 # default include path (covers Nix, Homebrew, MacPorts).
 libgccjit_dep = dependency('', required : false)  # placeholder
-if is_linux
+if is_linux and not want_android
   foreach gcc_ver : ['14', '13', '12', '11']
     inc = '/usr/lib/gcc/x86_64-linux-gnu/' + gcc_ver + '/include'
     if cc.has_header('libgccjit.h', args : ['-I' + inc])
@@ -365,7 +430,7 @@ if is_linux
   endforeach
 endif
 # Fallback: header in the default include path (Nix, Homebrew, etc.).
-if not libgccjit_dep.found() and cc.has_header('libgccjit.h')
+if not libgccjit_dep.found() and not want_android and cc.has_header('libgccjit.h')
   libgccjit_dep = declare_dependency(
     dependencies : cc.find_library('gccjit', required : true),
   )
@@ -946,10 +1011,17 @@ typedef long long int emacs_int_type;
 #endif
 int main(void) { return _Alignof (emacs_int_type); }
 '''
-emacs_int_align = cc.run(emacs_int_probe,
-                          name : 'alignof EMACS_INT').returncode()
+if want_android
+  # aarch64-linux-android: 64-bit LP64, alignof(long long) = 8.
+  # cc.run() can't be used in cross-compile without an exe-wrapper.
+  emacs_int_align = 8
+  sizeof_emacs_int = 8
+else
+  emacs_int_align = cc.run(emacs_int_probe,
+                            name : 'alignof EMACS_INT').returncode()
+  sizeof_emacs_int = cc.sizeof('long')   # matches the 64-bit Linux choice
+endif
 conf_data.set('ALIGNOF_EMACS_INT', emacs_int_align)
-sizeof_emacs_int = cc.sizeof('long')   # matches the 64-bit Linux choice
 conf_data.set('SIZEOF_EMACS_INT', sizeof_emacs_int)
 
 # C99 flexible array member support (gnulib's flexmember.m4 upstream).
@@ -1018,24 +1090,81 @@ emacs_docdir  = emacs_arch / 'etc'           # PATH_DOC -> libexec/.../etc
 # ----------------------------------------------------------------------
 
 subdir('lib')      # gnulib portability subset
-subdir('lib-src')  # helper executables (etags, emacsclient, ...)
-subdir('admin')    # charsets + unidata generators
+if not want_android
+  subdir('lib-src')  # helper executables (etags, emacsclient, ...)
+  subdir('admin')    # charsets + unidata generators
+endif
 subdir('src')      # temacs + bootstrap-emacs + emacs binary + DOC
-subdir('leim')     # quail input-method tables + leim-list.el
-subdir('lisp')     # byte-compile + native-comp + emacs.pdmp
-subdir('test')     # ERT test discovery
-subdir('doc')      # texinfo info manuals
-if is_darwin and get_option('ns').allowed()
+if not want_android
+  subdir('leim')     # quail input-method tables + leim-list.el
+  subdir('lisp')     # byte-compile + native-comp + emacs.pdmp
+  subdir('test')     # ERT test discovery
+  subdir('doc')      # texinfo info manuals
+endif
+if is_darwin and get_option('ns').allowed() and not want_android
   subdir('nextstep')  # macOS Cocoa Emacs.app bundle
 endif
+
+# Android APK pipeline.  See
+# .claude/plans/investigate-the-android-app-foamy-parnas.md for the
+# rationale.  All artefacts are produced from a Python helper rather
+# than chained custom_targets, so the build script stays readable
+# (m4 + aapt2 + javac + d8 + zipalign + apksigner is a lot of glue
+# to express as Meson DSL).
+if want_android
+  android_assets_stamp = custom_target(
+    'android-assets-stamp',
+    output  : 'android-assets.stamp',
+    command : [
+      py, files('meson/stage_android_assets.py'),
+      '--host-build',  get_option('android-host-build'),
+      '--source-root', meson.global_source_root(),
+      '--output',      meson.global_build_root() / 'apk-assets',
+      '--stamp',       '@OUTPUT@',
+    ],
+    build_by_default : false,
+  )
+
+  _keystore = get_option('android-keystore')
+  if _keystore == ''
+    _keystore = meson.global_source_root() / 'java' / 'emacs.keystore'
+  endif
+
+  _abi = 'arm64-v8a'  # matches cross/meson-android.cross's aarch64
+  apk_name = ('emacs-' + meson.project_version() + '-'
+              + get_option('android-api').to_string() + '-aarch64.apk')
+
+  emacs_apk = custom_target(
+    'emacs-apk',
+    output  : apk_name,
+    input   : [android_assets_stamp, libemacs],
+    command : [
+      py, files('meson/build_android_apk.py'),
+      '--source-root',   meson.global_source_root(),
+      '--build-root',    meson.global_build_root(),
+      '--libemacs-so',   libemacs.full_path(),
+      '--assets-stamp',  android_assets_stamp.full_path(),
+      '--assets-dir',    meson.global_build_root() / 'apk-assets',
+      '--ndk',           get_option('android-ndk'),
+      '--sdk',           get_option('android-sdk'),
+      '--api',           get_option('android-api').to_string(),
+      '--abi',           _abi,
+      '--version',       meson.project_version(),
+      '--keystore',      _keystore,
+      '--output',        '@OUTPUT@',
+    ],
+    depends : [libemacs, android_assets_stamp],
+    build_by_default : true,
+  )
+  alias_target('apk', emacs_apk)
+endif
+
 # Parked subdirs -- see .claude/notes/build-system.md "Parked / unsupported".
 # Their autotools recipes live at anchor commit 08a22b8965ec; reviving
 # any of them is a substantial cross-compile or platform-port effort
 # rather than an incremental Meson translation.
-# subdir('java')           # parked: Android cross-build
-# subdir('exec')           # parked: Android cross-build helper
-# subdir('cross')          # parked: Android cross-build host
-# subdir('cross/ndk-build') # parked: Android NDK glue
+# subdir('exec')           # parked: Android exec syscall loaders
+# subdir('cross/ndk-build') # parked: Android NDK module glue (third-party deps)
 # subdir('admin/grammars') # parked: bovine/wisent regen; outputs committed
 
 # ----------------------------------------------------------------------
@@ -1045,6 +1174,13 @@ endif
 # by meson/meson_install.py via add_install_script (runs after the
 # build, when those artefacts exist).  Reference: Makefile.in:552-937.
 # ----------------------------------------------------------------------
+
+# Android skips the desktop / icon / manpage / GSettings install
+# rules below: the APK packs its own assets and `meson install` is
+# never run against the cross build dir.
+if want_android
+  subdir_done()
+endif
 
 # Desktop entries (Makefile.in:756-789).  Installed verbatim.  The
 # autotools build sed-rewrites Exec= and Icon= lines to honour

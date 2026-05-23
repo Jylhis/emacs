@@ -246,6 +246,21 @@ option('android', type : 'feature', value : 'disabled',
 option('android-debug', type : 'boolean', value : true,
   description : 'Build Android package as a debug build.'
 )
+option('android-ndk', type : 'string', value : '',
+  description : 'Path to the Android NDK root (r26+).  Honoured only when -Dandroid=enabled.'
+)
+option('android-sdk', type : 'string', value : '',
+  description : 'Path to the Android SDK root (containing platforms/ and build-tools/).  Honoured only when -Dandroid=enabled.'
+)
+option('android-api', type : 'integer', value : 29, min : 21, max : 36,
+  description : 'Minimum Android API level baked into the APK.'
+)
+option('android-host-build', type : 'string', value : '',
+  description : 'Path to a completed host Meson build dir; supplies bootstrap-emacs and emacs.pdmp consumed by the APK pipeline.'
+)
+option('android-keystore', type : 'string', value : '',
+  description : 'Path to the keystore used to sign the APK (defaults to java/emacs.keystore).'
+)
 
 # ----------------------------------------------------------------------
 # Locale data subset (configure.ac:592).

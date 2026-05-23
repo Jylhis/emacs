@@ -67,6 +67,12 @@
   extraMesonFlags ? [ ],
   extraPatches ? [ ],
   siteStart ? null,
+
+  # When set, the resulting derivation keeps a copy of the meson
+  # build dir at $out/share/emacs/host-build so a downstream
+  # cross-compile (nix/android.nix) can read bootstrap-emacs,
+  # emacs.pdmp, and the byte-compiled lisp tree.
+  exposeHostBuild ? false,
 }:
 
 let
@@ -212,7 +218,19 @@ stdenv.mkDerivation (finalAttrs: {
   '';
 
   postInstall =
-    optionalString (stdenv.isLinux && !noGui) ''
+    optionalString exposeHostBuild ''
+      mkdir -p $out/share/emacs/host-build/src $out/share/emacs/host-build/lisp
+      # bootstrap-emacs + the final pdumper image -- the Android APK
+      # bundles emacs.pdmp under assets/, and the cross build re-uses
+      # bootstrap-emacs to stage byte-compiled lisp.
+      install -m0755 src/bootstrap-emacs $out/share/emacs/host-build/src/
+      install -m0644 src/emacs.pdmp      $out/share/emacs/host-build/src/
+      # Mirror the byte-compiled lisp tree (only .elc files).
+      (cd lisp && find . -name '*.elc' -print0 \
+        | xargs -0 -I {} install -Dm0644 {} \
+            $out/share/emacs/host-build/lisp/{})
+    ''
+    + optionalString (stdenv.isLinux && !noGui) ''
       if [ -f etc/emacs.desktop ]; then
         install -Dm0644 etc/emacs.desktop \
           $out/share/applications/emacs.desktop

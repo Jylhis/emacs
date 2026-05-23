@@ -1,15 +1,29 @@
-# Meson cross-file for Android builds.
+# Meson cross-file for Android (aarch64) builds.
+#
+# Driven by the Android APK pipeline wired in the root meson.build.
+# This file declares the host triple and locates clang from $PATH;
+# the actual toolchain location, sysroot, and target API level are
+# supplied by the meson options -Dandroid-ndk= and -Dandroid-api=,
+# which the root meson.build translates into project-level c_args /
+# c_link_args via add_project_arguments().
 #
 # Usage:
+#   # First, a host build (provides bootstrap-emacs + emacs.pdmp).
+#   meson setup build && meson compile -C build
+#
+#   # Then, the Android cross build.  PATH must contain the NDK's
+#   # llvm/prebuilt/<host>/bin directory (clang, llvm-ar, llvm-strip).
 #   meson setup build-android \
 #     --cross-file cross/meson-android.cross \
-#     -Dandroid-ndk=/path/to/android-ndk-r26 \
-#     -Dandroid-api=29
+#     -Dandroid=enabled \
+#     -Dandroid-ndk=/path/to/android-ndk-r27 \
+#     -Dandroid-sdk=/path/to/android-sdk \
+#     -Dandroid-api=29 \
+#     -Dandroid-host-build=$PWD/build
+#   meson compile -C build-android apk
 #
-# Requires Android NDK r26 or newer with Clang.  See java/INSTALL for
-# the full SDK / NDK / Gradle environment Emacs's Android port needs.
-# Phase 8 starter -- the compile path is incomplete; see
-# .claude/plans/migrate-from-current-build-replicated-gadget.md.
+# Other ABIs (armv7, x86_64, x86) are out of scope for this first cut;
+# duplicate this file with cpu_family / --target= adjusted to add them.
 
 [host_machine]
 system     = 'android'
@@ -18,14 +32,16 @@ cpu        = 'aarch64'
 endian     = 'little'
 
 [binaries]
-c    = ['clang', '--target=aarch64-linux-android29']
-ar   = 'llvm-ar'
-strip = 'llvm-strip'
+c          = 'clang'
+cpp        = 'clang++'
+ar         = 'llvm-ar'
+strip      = 'llvm-strip'
+ranlib     = 'llvm-ranlib'
+objcopy    = 'llvm-objcopy'
 pkg-config = 'false'
 
 [properties]
+# Tests are not executed from the cross build; libemacs.so is loaded
+# by the JVM on device.  Disabling exe-wrapper avoids meson trying to
+# fabricate one.
 needs_exe_wrapper = true
-
-[built-in options]
-c_args = ['-D__ANDROID__=29', '-DHAVE_ANDROID']
-c_link_args = ['-llog']
