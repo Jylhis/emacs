@@ -63,9 +63,9 @@ in
       # gdb
     ])
     # Linux-only: X11/GTK toolkit, Linux POSIX ACL/xattr, D-Bus, and
-    # libgccjit for native compilation.  On macOS the NS/Cocoa build
-    # supplies the GUI stack from the Apple SDK, and `acl` transitively
-    # pulls `attr` which fails to build against macOS xattr headers.
+    # libgccjit for native compilation.  (`acl` transitively pulls
+    # `attr` which fails to build against macOS xattr headers, so it
+    # stays out of the Darwin set.)
     ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
       acl
       dbus
@@ -84,6 +84,16 @@ in
       libxt
       xorg.libSM
       xorg.libICE
+    ])
+    # Darwin-only: unified Apple SDK supplies the AppKit / Cocoa /
+    # Carbon / IOKit / Quartz frameworks the NS port's .m sources
+    # include.  The Nix-wrapped cc picks up apple-sdk's sdkroot as
+    # -isysroot, so #import <AppKit/AppKit.h> resolves without any
+    # explicit -iframework plumbing.  sigtool is needed to ad-hoc
+    # sign the resulting binary (matches nixpkgs make-emacs.nix).
+    ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs; [
+      apple-sdk
+      darwin.sigtool
     ]);
 
   # https://devenv.sh/languages/
@@ -94,14 +104,20 @@ in
     shell.enable = true;
   };
 
-  # The `libgccjit` package in the packages list above puts an
-  # *unwrapped* `gcc` first on PATH, which shadows the gcc-wrapper
-  # provided by `languages.c.enable`.  meson probes the compiler
-  # via `gcc`, so it picks the unwrapped one whose link line has
-  # no `-L /nix/store/.../glibc/lib` and fails with "cannot find
-  # Scrt1.o".  Point CC/CXX at the wrapped binaries by absolute
-  # store path so they're picked regardless of PATH order or what
-  # `languages.c.enable`'s own enterShell sets.
+  # On Linux, `libgccjit` in the packages list puts an *unwrapped*
+  # `gcc` first on PATH and shadows the gcc-wrapper from
+  # `languages.c.enable`.  meson probes the compiler via `gcc`, so it
+  # picks the unwrapped one whose link line has no
+  # `-L /nix/store/.../glibc/lib` and fails with "cannot find Scrt1.o".
+  # Force CC/CXX/OBJC at the wrapped GCC by absolute store path so
+  # they're picked regardless of PATH order.
+  #
+  # On Darwin there's no libgccjit (no native compilation here) and
+  # the .m sources need clang to resolve `#import <AppKit/AppKit.h>`
+  # via the SDKROOT-driven framework search path -- forcing GCC
+  # breaks the NS / Cocoa port.  Leave CC/CXX/OBJC unset there so the
+  # default Darwin stdenv clang (which `languages.c.enable` and the
+  # apple-sdk buildInput already wire up) handles every TU.
   #
   # ccache is prepended as a compiler launcher.  Meson splits CC on
   # whitespace and treats argv[0] as the launcher, so this works
@@ -109,24 +125,25 @@ in
   # with the original env, so NIX_LDFLAGS / NIX_CC_WRAPPER_* stay
   # live.  Defaults: ~/.cache/ccache, 5 GB max -- override with
   # CCACHE_DIR / CCACHE_MAXSIZE if needed.
-  env = {
-    CC = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc";
-    CXX = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/c++";
-    # NS / Cocoa port compiles .m sources on macOS via $OBJC.  On
-    # Linux it stays harmlessly defined.
-    OBJC = "${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc";
+  env = lib.optionalAttrs pkgs.stdenv.isLinux {
+    CC = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}";
+    CXX = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "c++"}";
+    OBJC = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}";
   };
 
-  enterShell = ''
-    export CC="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc"
-    export CXX="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/c++"
-    export OBJC="${pkgs.ccache}/bin/ccache ${pkgs.gcc}/bin/cc"
-    # Hash compile commands relative to the project root so the
-    # cache survives moving the checkout or building from a
-    # worktree.  Must live in enterShell because $DEVENV_ROOT is
-    # only defined at runtime (the `env` block is static nix).
-    export CCACHE_BASEDIR="$DEVENV_ROOT"
-  '';
+  enterShell =
+    (lib.optionalString pkgs.stdenv.isLinux ''
+      export CC="${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}"
+      export CXX="${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "c++"}"
+      export OBJC="${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}"
+    '')
+    + ''
+      # Hash compile commands relative to the project root so the
+      # cache survives moving the checkout or building from a
+      # worktree.  Must live in enterShell because $DEVENV_ROOT is
+      # only defined at runtime (the `env` block is static nix).
+      export CCACHE_BASEDIR="$DEVENV_ROOT"
+    '';
 
   # https://devenv.sh/binary-caching/
   cachix = {
