@@ -72,7 +72,27 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           if [ "${GITHUB_REF_TYPE:-}" = "tag" ]; then
-            echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            tag=${GITHUB_REF_NAME}
+            # Tag scheme: v<emacs-version>-jylhis.<N>[-rc<M>]
+            # The <emacs-version> portion must match meson.build's
+            # project(version : ...) so artifact names, release-notes
+            # version strings, and the tag itself agree.
+            case "$tag" in
+              v*-jylhis.*) : ;;
+              *)
+                echo "::error::tag '$tag' does not match scheme v<version>-jylhis.<N>"
+                exit 1
+                ;;
+            esac
+            tag_ver=${tag#v}
+            tag_ver=${tag_ver%-jylhis.*}
+            if [ "$tag_ver" != "$version" ]; then
+              echo "::error::tag version '$tag_ver' does not match meson.build version '$version'"
+              echo "::error::bump meson.build's project(version : ...) to '$tag_ver' before tagging,"
+              echo "::error::or retag with v${version}-jylhis.<N>."
+              exit 1
+            fi
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
             echo "is_tag=true" >> "$GITHUB_OUTPUT"
           else
             echo "tag=dry-run-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"

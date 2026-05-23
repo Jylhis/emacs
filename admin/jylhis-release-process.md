@@ -9,8 +9,11 @@ tag scheme.
 
 Tags follow `v<emacs-version>-jylhis.<N>` where:
 
-- `<emacs-version>` matches `project()` in `meson.build`
-  (currently `31.0.50`).
+- `<emacs-version>` must equal `project(version : ...)` in
+  `meson.build` at the tagged commit (currently `31.0.50`).  The
+  `release.yml` `resolve` job enforces this and refuses to build if
+  the tag and `meson.build` disagree, so bump `meson.build` first
+  whenever the upstream version part of the tag changes.
 - `<N>` is a monotonically increasing integer per upstream version.
 
 Example: `v31.0.50-jylhis.1`, `v31.0.50-jylhis.2`, ...
