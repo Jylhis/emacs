@@ -4116,6 +4116,25 @@ as preprocessor-skipped reference code.  The 'x-toolkit-scroll-bars'
 docstring now lists only 'gtk' and 'xaw'.
 
 +++
+** ImageMagick image support removed.
+The 'imagemagick image type, the imagemagick-render-type variable,
+the imagemagick-types function, and the entire HAVE_IMAGEMAGICK
+code path in src/image.c are gone.  ImageMagick was default-disabled
+in the Meson build and carries a long tail of CVE advisories;
+'create-image' callers in lisp/ guard the imagemagick type with
+'fboundp' and degrade silently.
+
+---
+** Deprecated build options removed.
+The meson.options entries 'imagemagick', 'gconf', 'xaw3d',
+'cairo-xcb', 'kerberos', 'kerberos5', and 'hesiod' have been
+removed.  All were default-disabled; their gated C code in
+src/xsettings.c (GConf) and src/image.c (ImageMagick) is also
+gone.  The Kerberos/Hesiod blocks in lib-src/pop.c remain as
+preprocessor-skipped code.  GSettings remains the supported
+desktop-settings backend.
+
++++
 ** 'if-let' and 'when-let' are now obsolete.
 Use 'if-let*', 'when-let*' and 'and-let*' instead.
 
