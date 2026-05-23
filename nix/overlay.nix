@@ -1,27 +1,26 @@
-{ src }:
+{ src, externalPackagesModule, externalSourcesModule }:
 
-final: _prev: {
-  emacs-jylhis = final.callPackage ./package.nix { inherit src; };
-
-  emacs-jylhis-nox = final.callPackage ./package.nix {
-    inherit src;
-    noGui = true;
+final: _prev:
+let
+  externalPackages = externalPackagesModule { pkgs = final; };
+  externalSources  = externalSourcesModule {
+    pkgs = final;
+    inherit externalPackages;
   };
 
-  emacs-jylhis-pgtk = final.callPackage ./package.nix {
-    inherit src;
-    withPgtk = true;
-    withGTK3 = false;
-  };
+  callEmacs = args:
+    final.callPackage ./package.nix ({
+      inherit src externalSources;
+    } // args);
+in
+{
+  emacs-external-sources = externalSources;
 
-  emacs-jylhis-gtk3 = final.callPackage ./package.nix {
-    inherit src;
-    withGTK3 = true;
-    withPgtk = false;
-  };
-
-  emacs-jylhis-debug = final.callPackage ./package.nix {
-    inherit src;
+  emacs-jylhis        = callEmacs { };
+  emacs-jylhis-nox    = callEmacs { noGui = true; };
+  emacs-jylhis-pgtk   = callEmacs { withPgtk = true; withGTK3 = false; };
+  emacs-jylhis-gtk3   = callEmacs { withGTK3 = true; withPgtk = false; };
+  emacs-jylhis-debug  = callEmacs {
     extraMesonFlags = [
       "-Dbuildtype=debug"
       "-Dcheck=yes,glyphs"

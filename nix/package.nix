@@ -47,6 +47,7 @@
 
   src ? lib.cleanSource ../.,
   version ? "31.0.50",
+  externalSources ? null,
 
   withNativeCompilation ? stdenv.buildPlatform.canExecute stdenv.hostPlatform,
   withTreeSitter ? true,
@@ -207,9 +208,18 @@ stdenv.mkDerivation (finalAttrs: {
 
   enableParallelBuilding = true;
 
-  postPatch = optionalString (siteStart != null) ''
-    install -m0644 ${siteStart} lisp/site-start.el
-  '';
+  postPatch =
+    optionalString (externalSources != null) ''
+      # Overlay externally-fetched packages onto the source tree at
+      # their canonical paths (lisp/<subdir>/*, etc/themes/*, ...).
+      cp -rT --no-preserve=mode,ownership ${externalSources} ./external-staged
+      rm -f ./external-staged/_manifest.json
+      cp -rT ./external-staged .
+      rm -rf ./external-staged
+    ''
+    + optionalString (siteStart != null) ''
+      install -m0644 ${siteStart} lisp/site-start.el
+    '';
 
   postInstall =
     optionalString (stdenv.isLinux && !noGui) ''

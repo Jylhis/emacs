@@ -33,9 +33,15 @@
 #   modules      gnulib-only: list of gnulib module names imported
 #                via gnulib-tool
 #
-# Plain attrset: fetcher derivations are wired in by consumers (e.g.
-# nix/external-sources.nix) once :src is filled in per package.
+# Consumers pass a `pkgs` argument so individual entries can use
+# `fetchFromGitHub`, `fetchgit`, `fetchurl`, `fetchhg` when their
+# `src` field is filled in.
 
+{ pkgs }:
+
+let
+  inherit (pkgs) fetchFromGitHub fetchgit fetchhg fetchurl;
+in
 {
   ## =====================================================================
   ## Lisp packages listed in admin/MAINTAINERS section 3 (externally
@@ -255,8 +261,13 @@
     sync = "upstream-to-emacs";
     elpa = "gnu";
     license = null;
-    src = null;
-    destination = null;
+    src = fetchFromGitHub {
+      owner = "karthink";
+      repo = "timeout";
+      rev = "b1212984709c4b50c509ef6d3bd959951e5dcc91";
+      hash = "sha256-YZwEAaqm1oTiqL7wiSkYE0NFcUwuyZ88o81gQfs7v8A=";
+    };
+    destination = "lisp/emacs-lisp/timeout.el";
   };
 
   faceup = {

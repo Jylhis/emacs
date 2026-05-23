@@ -2,16 +2,16 @@
   description = "Jotain Emacs -- GNU Emacs 31 from the Jylhis fork (Meson build)";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    nixpkgs.url = "github:NixOS/nixpkgs/a0991c886dc83e6e9de01d5266e4842985b1850e";
+    flake-utils.url = "github:numtide/flake-utils/11707dc2f618dd54ca8739b309ec4fc024de578b";
 
     treefmt-nix = {
-      url = "github:numtide/treefmt-nix";
+      url = "github:numtide/treefmt-nix/790751ff7fd3801feeaf96d7dc416a8d581265ba";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     emacs-overlay = {
-      url = "github:nix-community/emacs-overlay";
+      url = "github:nix-community/emacs-overlay/7f69e608e6ac16770c3bcd28acb188adcf1b67a2";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -32,7 +32,11 @@
         root = ./.;
       };
 
-      overlay = import ./nix/overlay.nix { inherit src; };
+      overlay = import ./nix/overlay.nix {
+        inherit src;
+        externalPackagesModule = import ./nix/external-packages.nix;
+        externalSourcesModule  = import ./nix/external-sources.nix;
+      };
     in
     {
       overlays.default = overlay;
@@ -66,6 +70,7 @@
           emacs-pgtk = pkgs.emacs-jylhis-pgtk;
           emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
           emacs-debug = pkgs.emacs-jylhis-debug;
+          external-sources = pkgs.emacs-external-sources;
         };
 
         apps.default = {
