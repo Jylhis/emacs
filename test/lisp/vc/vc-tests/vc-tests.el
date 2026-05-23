@@ -1166,11 +1166,6 @@ This checks also `vc-backend' and `vc-responsible-backend'."
 (defun vc-test--mtn-enabled ()
   (executable-find vc-mtn-program))
 
-;; Obsoleted.
-(defvar vc-arch-program)
-(defun vc-test--arch-enabled ()
-  (executable-find vc-arch-program))
-
 ;; Create the test cases.
 (dolist (backend vc-handled-backends)
   (let ((backend-string (downcase (symbol-name backend))))
