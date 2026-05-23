@@ -4088,6 +4088,15 @@ vc-arch.el, landmark.el, eudcb-ph.el, gulp.el (25.1).  The pgg
 manual has been removed as well.
 
 +++
+** Libraries obsolete since Emacs 26-28 have been removed.
+The following obsolete libraries are no longer shipped:
+html2text.el, messcompat.el (use 'shr' / 'gnus-w3m' for HTML
+rendering; obsolete since 26.1); url-ns.el, starttls.el, tls.el
+(GnuTLS replaces both), mantemp.el (27.1); inversion.el,
+metamail.el, nnir.el (use 'gnus-search' via 'nnselect'),
+rfc2368.el (use 'rfc6068'), sb-image.el (28.1).
+
++++
 ** 'if-let' and 'when-let' are now obsolete.
 Use 'if-let*', 'when-let*' and 'and-let*' instead.
 
