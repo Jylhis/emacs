@@ -50,10 +50,6 @@ typedef unsigned int CARD32;
 #include <gio/gio.h>
 #endif
 
-#ifdef HAVE_GCONF
-#include <gconf/gconf-client.h>
-#endif
-
 #ifdef USE_CAIRO
 #include <fontconfig/fontconfig.h>
 #include "ftfont.h"
@@ -70,7 +66,7 @@ static char *current_font;
 static Display_Info *first_dpyinfo;
 static Lisp_Object current_tool_bar_style;
 
-#if defined HAVE_GSETTINGS || defined HAVE_GCONF || !defined HAVE_PGTK
+#if defined HAVE_GSETTINGS || !defined HAVE_PGTK
 
 /* Store a config changed event in to the event queue.  */
 
@@ -106,7 +102,7 @@ dpyinfo_valid (Display_Info *dpyinfo)
 
 /* Store a monospace font change event if the monospaced font changed.  */
 
-#if (defined USE_CAIRO || defined HAVE_XFT) && (defined HAVE_GSETTINGS || defined HAVE_GCONF)
+#if (defined USE_CAIRO || defined HAVE_XFT) && defined HAVE_GSETTINGS
 static void
 store_monospaced_changed (const char *newfont)
 {
@@ -125,7 +121,7 @@ store_monospaced_changed (const char *newfont)
 
 /* Store a font name change event if the font name changed.  */
 
-#if (defined USE_CAIRO || defined HAVE_XFT) && (defined HAVE_GSETTINGS || defined HAVE_GCONF || !defined HAVE_PGTK)
+#if (defined USE_CAIRO || defined HAVE_XFT) && (defined HAVE_GSETTINGS || !defined HAVE_PGTK)
 static void
 store_font_name_changed (const char *newfont)
 {
@@ -142,7 +138,7 @@ store_font_name_changed (const char *newfont)
 }
 #endif /* USE_CAIRO || HAVE_XFT */
 
-#if defined HAVE_GSETTINGS || defined HAVE_GCONF || !defined HAVE_PGTK
+#if defined HAVE_GSETTINGS || !defined HAVE_PGTK
 /* Map TOOL_BAR_STYLE from a string to its corresponding Lisp value.
    Return Qnil if TOOL_BAR_STYLE is not known.  */
 
@@ -166,7 +162,7 @@ map_tool_bar_style (const char *tool_bar_style)
 }
 #endif
 
-#if defined HAVE_GSETTINGS || defined HAVE_GCONF || !defined HAVE_PGTK
+#if defined HAVE_GSETTINGS || !defined HAVE_PGTK
 /* Store a tool bar style change event if the tool bar style changed.  */
 
 static void
@@ -482,49 +478,6 @@ something_changed_gsettingsCB (GSettings *settings,
 
 #endif /* HAVE_GSETTINGS */
 
-#ifdef HAVE_GCONF
-#define GCONF_TOOL_BAR_STYLE "/desktop/gnome/interface/toolbar_style"
-#if defined USE_CAIRO || defined HAVE_XFT
-#define GCONF_MONO_FONT  "/desktop/gnome/interface/monospace_font_name"
-#define GCONF_FONT_NAME  "/desktop/gnome/interface/font_name"
-#endif
-
-/* The single GConf instance, or NULL if not connected to GConf.  */
-
-static GConfClient *gconf_client;
-
-/* Callback called when something changed in GConf that we care about.  */
-
-static void
-something_changed_gconfCB (GConfClient *client,
-                           guint cnxn_id,
-                           GConfEntry *entry,
-                           gpointer user_data)
-{
-  GConfValue *v = gconf_entry_get_value (entry);
-  const char *key = gconf_entry_get_key (entry);
-
-  if (!v || v->type != GCONF_VALUE_STRING || ! key) return;
-  if (strcmp (key, GCONF_TOOL_BAR_STYLE) == 0)
-    {
-      const char *value = gconf_value_get_string (v);
-      store_tool_bar_style_changed (value, first_dpyinfo);
-    }
-#if defined USE_CAIRO || defined HAVE_XFT
-  else if (strcmp (key, GCONF_MONO_FONT) == 0)
-    {
-      const char *value = gconf_value_get_string (v);
-      store_monospaced_changed (value);
-    }
-  else if (strcmp (key, GCONF_FONT_NAME) == 0)
-    {
-      const char *value = gconf_value_get_string (v);
-      store_font_name_changed (value);
-    }
-#endif /* USE_CAIRO || HAVE_XFT */
-}
-
-#endif /* HAVE_GCONF */
 
 #if defined USE_CAIRO || defined HAVE_XFT
 
@@ -1192,69 +1145,6 @@ xg_get_system_dark_mode (void)
 }
 #endif	/* HAVE_PGTK && HAVE_GSETTINGS */
 
-/* Init GConf and read startup values.  */
-
-static void
-init_gconf (void)
-{
-#if defined (HAVE_GCONF)
-  char *s;
-
-#if ! GLIB_CHECK_VERSION (2, 36, 0)
-  g_type_init ();
-#endif
-
-  gconf_client = gconf_client_get_default ();
-  gconf_client_set_error_handling (gconf_client, GCONF_CLIENT_HANDLE_NONE);
-  gconf_client_add_dir (gconf_client,
-                        GCONF_TOOL_BAR_STYLE,
-                        GCONF_CLIENT_PRELOAD_ONELEVEL,
-                        NULL);
-  gconf_client_notify_add (gconf_client,
-                           GCONF_TOOL_BAR_STYLE,
-                           something_changed_gconfCB,
-                           NULL, NULL, NULL);
-
-  s = gconf_client_get_string (gconf_client, GCONF_TOOL_BAR_STYLE, NULL);
-  if (s)
-    {
-      current_tool_bar_style = map_tool_bar_style (s);
-      g_free (s);
-    }
-
-#if defined USE_CAIRO || defined HAVE_XFT
-  s = gconf_client_get_string (gconf_client, GCONF_MONO_FONT, NULL);
-  if (s)
-    {
-      dupstring (&current_mono_font, s);
-      g_free (s);
-    }
-  s = gconf_client_get_string (gconf_client, GCONF_FONT_NAME, NULL);
-  if (s)
-    {
-      dupstring (&current_font, s);
-      g_free (s);
-    }
-  gconf_client_add_dir (gconf_client,
-                        GCONF_MONO_FONT,
-                        GCONF_CLIENT_PRELOAD_ONELEVEL,
-                        NULL);
-  gconf_client_notify_add (gconf_client,
-                           GCONF_MONO_FONT,
-                           something_changed_gconfCB,
-                           NULL, NULL, NULL);
-  gconf_client_add_dir (gconf_client,
-                        GCONF_FONT_NAME,
-                        GCONF_CLIENT_PRELOAD_ONELEVEL,
-                        NULL);
-  gconf_client_notify_add (gconf_client,
-                           GCONF_FONT_NAME,
-                           something_changed_gconfCB,
-                           NULL, NULL, NULL);
-#endif /* USE_CAIRO || HAVE_XFT */
-#endif /* HAVE_GCONF */
-}
-
 #ifndef HAVE_PGTK
 /* Init Xsettings and read startup values.  */
 
@@ -1281,7 +1171,6 @@ void
 xsettings_initialize (Display_Info *dpyinfo)
 {
   if (first_dpyinfo == NULL) first_dpyinfo = dpyinfo;
-  init_gconf ();
 #ifndef HAVE_PGTK
   init_xsettings (dpyinfo);
 #endif
@@ -1363,10 +1252,6 @@ syms_of_xsettings (void)
   gsettings_client = NULL;
   PDUMPER_IGNORE (gsettings_client);
 #endif
-#ifdef HAVE_GCONF
-  gconf_client = NULL;
-  PDUMPER_IGNORE (gconf_client);
-#endif
 #ifdef HAVE_PGTK
   font_options = NULL;
   PDUMPER_IGNORE (font_options);
@@ -1395,7 +1280,7 @@ If this variable is nil, Emacs ignores system font changes.  */);
 
 #if defined USE_CAIRO || defined HAVE_XFT
   Fprovide (Qfont_render_setting, Qnil);
-#if defined (HAVE_GCONF) || defined (HAVE_GSETTINGS)
+#ifdef HAVE_GSETTINGS
   Fprovide (Qsystem_font_setting, Qnil);
 #endif
 #endif
