@@ -973,9 +973,6 @@ static const struct x_atom_ref x_atom_refs[] =
     ATOM_REFS_INIT ("_MULE_BASELINE_OFFSET", Xatom_MULE_BASELINE_OFFSET)
     ATOM_REFS_INIT ("_MULE_RELATIVE_COMPOSE", Xatom_MULE_RELATIVE_COMPOSE)
     ATOM_REFS_INIT ("_MULE_DEFAULT_ASCENT", Xatom_MULE_DEFAULT_ASCENT)
-    /* Ghostscript support.  */
-    ATOM_REFS_INIT ("DONE", Xatom_DONE)
-    ATOM_REFS_INIT ("PAGE", Xatom_PAGE)
     ATOM_REFS_INIT ("_EMACS_SCROLLBAR", Xatom_Scrollbar)
     ATOM_REFS_INIT ("_EMACS_HORIZONTAL_SCROLLBAR", Xatom_Horizontal_Scrollbar)
     ATOM_REFS_INIT ("_XEMBED", Xatom_XEMBED)
@@ -18814,28 +18811,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    goto OTHER;
           }
 #endif /* X_TOOLKIT_EDITRES */
-
-        if (event->xclient.message_type == dpyinfo->Xatom_DONE
-	    || event->xclient.message_type == dpyinfo->Xatom_PAGE)
-          {
-            /* Ghostview job completed.  Kill it.  We could
-               reply with "Next" if we received "Page", but we
-               currently never do because we are interested in
-               images, only, which should have 1 page.  */
-	    f = x_window_to_frame (dpyinfo, event->xclient.window);
-	    if (!f)
-	      goto OTHER;
-#ifndef USE_CAIRO
-            Pixmap pixmap = (Pixmap) event->xclient.data.l[1];
-	    /* FIXME: why does this sometimes generate a BadMatch
-	       error?  */
-	    x_catch_errors (dpyinfo->display);
-            x_kill_gs_process (pixmap, f);
-	    x_uncatch_errors ();
-            expose_frame (f, 0, 0, 0, 0);
-#endif	/* !USE_CAIRO */
-	    goto done;
-          }
 
 #ifdef USE_TOOLKIT_SCROLL_BARS
         /* Scroll bar callbacks send a ClientMessage from which
