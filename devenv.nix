@@ -67,35 +67,41 @@ in
     # libgccjit for native compilation.  (`acl` transitively pulls
     # `attr` which fails to build against macOS xattr headers, so it
     # stays out of the Darwin set.)
-    ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
-      acl
-      dbus
-      libgccjit
-      gtk3
-      xorg.libX11
-      xorg.libXfixes
-      xorg.libXrender
-      xorg.libXrandr
-      xorg.libXcomposite
-      xorg.libXinerama
-      xorg.libXi
-      xorg.libXext
-      xorg.libXtst
-      xorg.libXft
-      libxt
-      xorg.libSM
-      xorg.libICE
-    ])
+    ++ lib.optionals pkgs.stdenv.isLinux (
+      with pkgs;
+      [
+        acl
+        dbus
+        libgccjit
+        gtk3
+        xorg.libX11
+        xorg.libXfixes
+        xorg.libXrender
+        xorg.libXrandr
+        xorg.libXcomposite
+        xorg.libXinerama
+        xorg.libXi
+        xorg.libXext
+        xorg.libXtst
+        xorg.libXft
+        libxt
+        xorg.libSM
+        xorg.libICE
+      ]
+    )
     # Darwin-only: unified Apple SDK supplies the AppKit / Cocoa /
     # Carbon / IOKit / Quartz frameworks the NS port's .m sources
     # include.  The Nix-wrapped cc picks up apple-sdk's sdkroot as
     # -isysroot, so #import <AppKit/AppKit.h> resolves without any
     # explicit -iframework plumbing.  sigtool is needed to ad-hoc
     # sign the resulting binary (matches nixpkgs make-emacs.nix).
-    ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs; [
-      apple-sdk
-      darwin.sigtool
-    ]);
+    ++ lib.optionals pkgs.stdenv.isDarwin (
+      with pkgs;
+      [
+        apple-sdk
+        darwin.sigtool
+      ]
+    );
 
   # https://devenv.sh/languages/
   languages = {

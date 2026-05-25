@@ -39,11 +39,24 @@
   libgccjit,
   glib,
   gtk3,
+  libx11,
+  libxfixes,
+  libxrender,
+  libxrandr,
+  libxcomposite,
+  libxinerama,
+  libxi,
+  libxext,
+  libxtst,
+  libxft,
+  libxcb,
+  libxt,
+  libsm,
+  libice,
   libxkbcommon,
   wayland,
-  xorg,
 
-  darwin,
+  apple-sdk,
 
   src ? lib.cleanSource ../.,
   version ? "31.0.50",
@@ -51,7 +64,7 @@
   withNativeCompilation ? stdenv.buildPlatform.canExecute stdenv.hostPlatform,
   withTreeSitter ? true,
   withSqlite3 ? true,
-  withMailutils ? true,
+  withMailutils ? stdenv.isLinux,
   withModules ? true,
   withImageMagick ? false,
   withXwidgets ? false,
@@ -82,27 +95,13 @@ let
     else
       "none";
 
-  darwinFrameworks = lib.optionals stdenv.isDarwin (
-    with darwin.apple_sdk.frameworks;
-    [
-      AppKit
-      Carbon
-      Cocoa
-      IOKit
-      ImageIO
-      OSAKit
-      Quartz
-      QuartzCore
-      GSS
-    ]
-    ++ optional withXwidgets WebKit
-  );
+  darwinFrameworks = optional stdenv.isDarwin apple-sdk;
 
   patchPath = name: ./patches/${name};
   patchExists = name: builtins.pathExists (patchPath name);
 in
 
-stdenv.mkDerivation (finalAttrs: {
+stdenv.mkDerivation (_finalAttrs: {
   pname =
     "emacs-jylhis"
     + optionalString noGui "-nox"
@@ -129,81 +128,90 @@ stdenv.mkDerivation (finalAttrs: {
     makeWrapper
   ];
 
-  buildInputs =
+  buildInputs = [
+    gnutls
+    libxml2
+    ncurses
+    gmp
+    lcms2
+    zlib
+    gawk
+    cairo
+    pango
+    fontconfig
+    freetype
+    harfbuzz
+    libxft
+    libjpeg
+    libtiff
+    giflib
+    libpng
+    librsvg
+    libwebp
+  ]
+  ++ optional withSqlite3 sqlite
+  ++ optional withTreeSitter tree-sitter
+  ++ optional withMailutils mailutils
+  ++ optional withImageMagick imagemagick
+  ++ optionals stdenv.isLinux (
     [
-      gnutls
-      libxml2
-      ncurses
-      gmp
-      lcms2
-      zlib
-      gawk
-      cairo
-      pango
-      fontconfig
-      freetype
-      harfbuzz
-      libjpeg
-      libtiff
-      giflib
-      libpng
-      librsvg
-      libwebp
+      acl
+      dbus
+      glib
     ]
-    ++ optional withSqlite3 sqlite
-    ++ optional withTreeSitter tree-sitter
-    ++ optional withMailutils mailutils
-    ++ optional withImageMagick imagemagick
-    ++ optionals stdenv.isLinux (
-      [
-        acl
-        dbus
-        glib
-      ]
-      ++ optional withNativeCompilation libgccjit
-      ++ optionals (withGTK3 && !withPgtk) (
-        [ gtk3 ]
-        ++ (with xorg; [
-          libX11
-          libXfixes
-          libXrender
-          libXrandr
-          libXcomposite
-          libXinerama
-          libXi
-          libXext
-          libXtst
-          libXft
-          libxcb
-          libxt
-          libSM
-          libICE
-        ])
-      )
-      ++ optionals withPgtk [
-        gtk3
-        libxkbcommon
-        wayland
+    ++ optional withNativeCompilation libgccjit
+    ++ optionals (withGTK3 && !withPgtk) (
+      [ gtk3 ]
+      ++ [
+        libx11
+        libxfixes
+        libxrender
+        libxrandr
+        libxcomposite
+        libxinerama
+        libxi
+        libxext
+        libxtst
+        libxcb
+        libxt
+        libsm
+        libice
       ]
     )
-    ++ darwinFrameworks;
-
-  mesonFlags =
-    [
-      "-Dtoolkit=${toolkit}"
-      "-Dnative-compilation=${if withNativeCompilation then "aot" else "no"}"
-      "-Dcompress-install=true"
-      "-Dbuild-details=false"
-      (lib.mesonEnable "ns" withNS)
-      (lib.mesonEnable "pgtk" withPgtk)
-      (lib.mesonEnable "tree-sitter" withTreeSitter)
-      (lib.mesonEnable "sqlite3" withSqlite3)
-      (lib.mesonEnable "mailutils" withMailutils)
-      (lib.mesonEnable "modules" withModules)
-      (lib.mesonEnable "xwidgets" withXwidgets)
-      (lib.mesonEnable "imagemagick" withImageMagick)
+    ++ optionals withPgtk [
+      gtk3
+      libxkbcommon
+      wayland
     ]
-    ++ extraMesonFlags;
+  )
+  ++ darwinFrameworks;
+
+  mesonFlags = [
+    "-Dtoolkit=${toolkit}"
+    "-Dnative-compilation=${if withNativeCompilation then "aot" else "no"}"
+    "-Dcompress-install=true"
+    "-Dbuild-details=false"
+    (lib.mesonEnable "ns" withNS)
+    (lib.mesonEnable "pgtk" withPgtk)
+    (lib.mesonEnable "tree-sitter" withTreeSitter)
+    (lib.mesonEnable "sqlite3" withSqlite3)
+    (lib.mesonEnable "mailutils" withMailutils)
+    (lib.mesonEnable "modules" withModules)
+    (lib.mesonEnable "toolkit-scroll-bars" (!noGui))
+    (lib.mesonEnable "xwidgets" withXwidgets)
+    (lib.mesonEnable "imagemagick" withImageMagick)
+    (lib.mesonEnable "dbus" stdenv.isLinux)
+    (lib.mesonEnable "gpm" false)
+    (lib.mesonEnable "gsettings" false)
+    (lib.mesonEnable "libotf" false)
+    (lib.mesonEnable "libsystemd" false)
+    (lib.mesonEnable "m17n-flt" false)
+    (lib.mesonEnable "selinux" false)
+    (lib.mesonEnable "xdbe" (stdenv.isLinux && withGTK3 && !withPgtk))
+    (lib.mesonEnable "xim" (stdenv.isLinux && withGTK3 && !withPgtk))
+    (lib.mesonEnable "xinput2" (stdenv.isLinux && withGTK3 && !withPgtk))
+  ]
+  ++ extraMesonFlags;
 
   enableParallelBuilding = true;
 
