@@ -48,8 +48,6 @@
 (defvar mml1991-function-alist
   '((mailcrypt mml1991-mailcrypt-sign
 	       mml1991-mailcrypt-encrypt)
-    (pgg mml1991-pgg-sign
-	 mml1991-pgg-encrypt)
     (epg mml1991-epg-sign
 	 mml1991-epg-encrypt))
   "Alist of PGP functions.")
@@ -162,81 +160,6 @@ Whether the passphrase is cached at all is controlled by
       (insert "\n")
       (insert-buffer-substring cipher)
       (goto-char (point-max)))))
-
-;; pgg wrapper
-
-(autoload 'pgg-sign-region "pgg")
-(autoload 'pgg-encrypt-region "pgg")
-
-(defvar pgg-default-user-id)
-(defvar pgg-errors-buffer)
-(defvar pgg-output-buffer)
-(defvar pgg-text-mode)
-
-(defun mml1991-pgg-sign (_cont)
-  (let ((pgg-text-mode t)
-	(pgg-default-user-id (or (message-options-get 'mml-sender)
-				 pgg-default-user-id))
-	headers cte)
-    ;; Don't sign headers.
-    (goto-char (point-min))
-    (when (re-search-forward "^$" nil t)
-      (setq headers (buffer-substring (point-min) (point)))
-      (save-restriction
-	(narrow-to-region (point-min) (point))
-	(setq cte (mail-fetch-field "content-transfer-encoding")))
-      (forward-line 1)
-      (delete-region (point-min) (point))
-      (when cte
-	(setq cte (intern (downcase cte)))
-	(mm-decode-content-transfer-encoding cte)))
-    (unless (pgg-sign-region (point-min) (point-max) t)
-      (pop-to-buffer pgg-errors-buffer)
-      (error "Encrypt error"))
-    (delete-region (point-min) (point-max))
-    (insert
-     (with-temp-buffer
-       (set-buffer-multibyte nil)
-       (insert-buffer-substring pgg-output-buffer)
-       (goto-char (point-min))
-       (while (re-search-forward "\r+$" nil t)
-	 (replace-match "" t t))
-       (when cte
-	 (mm-encode-content-transfer-encoding cte))
-       (goto-char (point-min))
-       (when headers
-	 (insert headers))
-       (insert "\n")
-       (buffer-string)))
-    t))
-
-(defun mml1991-pgg-encrypt (_cont &optional sign)
-  (goto-char (point-min))
-  (when (re-search-forward "^$" nil t)
-    (let ((cte (save-restriction
-		 (narrow-to-region (point-min) (point))
-		 (mail-fetch-field "content-transfer-encoding"))))
-      ;; Strip MIME headers since it will be ASCII armored.
-      (forward-line 1)
-      (delete-region (point-min) (point))
-      (when cte
-	(mm-decode-content-transfer-encoding (intern (downcase cte))))))
-  (unless (let ((pgg-text-mode t))
-	    (pgg-encrypt-region
-	     (point-min) (point-max)
-	     (split-string
-	      (or
-	       (message-options-get 'message-recipients)
-	       (message-options-set 'message-recipients
-				    (read-string "Recipients: ")))
-	      "[ \f\t\n\r\v,]+")
-	     sign))
-    (pop-to-buffer pgg-errors-buffer)
-    (error "Encrypt error"))
-  (delete-region (point-min) (point-max))
-  (insert "\n")
-  (insert-buffer-substring pgg-output-buffer)
-  t)
 
 ;; epg wrapper
 
