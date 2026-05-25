@@ -49,17 +49,9 @@
 (eval-when-compile
   (require 'epa)) ; for epa-suppress-error-buffer
 
-(declare-function starttls-available-p "starttls" ())
-(declare-function starttls-negotiate "starttls" (process))
-(declare-function starttls-open-stream "starttls" (name buffer host port))
 
 (autoload 'gnutls-negotiate "gnutls")
 (autoload 'open-gnutls-stream "gnutls")
-(defvar starttls-extra-arguments)
-(defvar starttls-extra-args)
-(defvar starttls-use-gnutls)
-(defvar starttls-gnutls-program)
-(defvar starttls-program)
 
 (defcustom network-stream-use-client-certificates nil
   "Whether to use client certificates for network connections.
@@ -306,66 +298,24 @@ gnutls-boot (as returned by `gnutls-boot-parameters')."
     ;; If we have built-in STARTTLS support, try to upgrade the
     ;; connection.
     (when (and starttls-command
-	       (setq starttls-available
-		     (or (gnutls-available-p)
-			 (and (or require-tls
-				  (plist-get parameters :use-starttls-if-possible))
-			      (require 'starttls)
-                              (starttls-available-p))))
+	       (setq starttls-available (gnutls-available-p))
 	       (not (eq (plist-get parameters :type) 'plain)))
-      ;; If using external STARTTLS, drop this connection and start
-      ;; anew with `starttls-open-stream'.
-      (unless (gnutls-available-p)
-	(delete-process stream)
-	(setq start (with-current-buffer buffer (point-max)))
-	(let* ((starttls-extra-arguments
-		(if (or require-tls
-			(member "--insecure" starttls-extra-arguments))
-		    starttls-extra-arguments
-		  ;; For opportunistic TLS upgrades, we don't really
-		  ;; care about the identity of the peer.
-		  (cons "--insecure" starttls-extra-arguments)))
-	       (starttls-extra-args starttls-extra-args)
-	       (cert (network-stream-certificate host service parameters)))
-	  ;; There are client certificates requested, so add them to
-	  ;; the command line.
-	  (when cert
-	    (setq starttls-extra-arguments
-		  (nconc (list "--x509keyfile" (expand-file-name (nth 0 cert))
-			       "--x509certfile" (expand-file-name (nth 1 cert)))
-			 starttls-extra-arguments)
-		  starttls-extra-args
-		  (nconc (list "--key-file" (expand-file-name (nth 0 cert))
-			       "--cert-file" (expand-file-name (nth 1 cert)))
-			 starttls-extra-args)))
-	  (setq stream (starttls-open-stream name buffer host service)))
-	(network-stream-get-response stream start eoc)
-	;; Requery capabilities for protocols that require it; i.e.,
-	;; EHLO for SMTP.
-	(when (plist-get parameters :always-query-capabilities)
-	  (network-stream-command
-           stream
-           (network-stream--capability-command capability-command greeting)
-           eo-capa)))
       (when (let ((response
 		   (network-stream-command stream starttls-command eoc)))
 	      (and response (string-match success-string response)))
 	;; The server said it was OK to begin STARTTLS negotiations.
-	(if (gnutls-available-p)
-	    (let ((cert (network-stream-certificate host service parameters)))
-	      (condition-case nil
-		  (gnutls-negotiate :process stream
-                                    :hostname (puny-encode-domain host)
-				    :keylist (and cert (list cert)))
-		;; If we get a gnutls-specific error (for instance if
-		;; the certificate the server gives us is completely
-		;; syntactically invalid), then close the connection
-		;; and possibly (further down) try to create a
-		;; non-encrypted connection.
-		(gnutls-error
-		 (delete-process stream))))
-	  (unless (starttls-negotiate stream)
-	    (delete-process stream)))
+	(let ((cert (network-stream-certificate host service parameters)))
+	  (condition-case nil
+	      (gnutls-negotiate :process stream
+                                :hostname (puny-encode-domain host)
+				:keylist (and cert (list cert)))
+	    ;; If we get a gnutls-specific error (for instance if
+	    ;; the certificate the server gives us is completely
+	    ;; syntactically invalid), then close the connection
+	    ;; and possibly (further down) try to create a
+	    ;; non-encrypted connection.
+	    (gnutls-error
+	     (delete-process stream))))
 	(if (memq (process-status stream) '(open run))
 	    (setq resulting-type 'tls)
 	  ;; We didn't successfully negotiate STARTTLS; if TLS
@@ -388,25 +338,10 @@ gnutls-boot (as returned by `gnutls-boot-parameters')."
                eo-capa))))
 
     ;; If TLS is mandatory, close the connection if it's unencrypted.
-    (when (and require-tls
-	       ;; ... but Emacs wasn't able to -- either no built-in
-	       ;; support, or no gnutls-cli installed.
-	       (eq resulting-type 'plain))
-      (setq error
-	    (if (or (null starttls-command)
-		    starttls-available)
-		"Server does not support TLS"
-	      ;; See `starttls-available-p'.  If this predicate
-	      ;; changes to allow running under Windows, the error
-	      ;; message below should be amended.
-	      (if (or (memq system-type '(windows-nt ms-dos))
-                      (not (featurep 'starttls)))
-		  (concat "Emacs does not support TLS")
-		(concat "Emacs does not support TLS, and no external `"
-			(if starttls-use-gnutls
-			    starttls-gnutls-program
-			  starttls-program)
-			"' program was found"))))
+    (when (and require-tls (eq resulting-type 'plain))
+      (setq error (if (or (null starttls-command) starttls-available)
+		      "Server does not support TLS"
+		    "Emacs does not support TLS"))
       (delete-process stream)
       (setq stream nil))
     ;; Check certificate validity etc.
@@ -437,35 +372,20 @@ gnutls-boot (as returned by `gnutls-boot-parameters')."
 	(unless (= start (point))
 	  (buffer-substring start (point)))))))
 
-(declare-function open-tls-stream "tls" (name buffer host port))
-
 (defun network-stream-open-tls (name buffer host service parameters)
   (with-current-buffer buffer
     (let* ((start (point-max))
-	   (stream
-            (if (gnutls-available-p)
-                (open-gnutls-stream name buffer host service
-                                    parameters)
-              (require 'tls)
-              (open-tls-stream name buffer host service)))
-	   (eoc (plist-get parameters :end-of-command))
-           greeting)
+	   (stream (and (gnutls-available-p)
+                        (open-gnutls-stream name buffer host service
+                                            parameters)))
+	   (eoc (plist-get parameters :end-of-command)))
       (if (plist-get parameters :nowait)
           (list stream nil nil 'tls)
         ;; Check certificate validity etc.
-        (when (and (gnutls-available-p) stream)
+        (when stream
           (setq stream (nsm-verify-connection stream host service)))
         (if (null stream)
             (list nil nil nil 'plain)
-          ;; If we're using tls.el, we have to delete the output from
-          ;; openssl/gnutls-cli.
-          (when (and (not (gnutls-available-p))
-                     eoc)
-            (setq greeting (network-stream-get-response stream start eoc))
-            (goto-char (point-min))
-            (when (re-search-forward eoc nil t)
-              (goto-char (match-beginning 0))
-              (delete-region (point-min) (line-beginning-position))))
           (let ((capability-command
                  (plist-get parameters :capability-command))
                 (eo-capa (or (plist-get parameters :end-of-capability)
