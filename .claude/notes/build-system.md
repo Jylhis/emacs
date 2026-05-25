@@ -188,5 +188,6 @@ Targets, as of the first cut:
   signed (no Apple Developer ID yet).
 - Nix flake outputs for every system/variant declared in `flake.nix`
   (best-effort -- doesn't gate the release).
-- Android: parked (see table above).  The workflow emits a
-  placeholder `ANDROID_STATUS.md` in the release notes.
+- Android: arm matrix (armeabi-v7a + arm64-v8a) defined in
+  `release.yml`; until the Meson Android recipe lands the matrix
+  entries emit a status doc rather than an APK.
