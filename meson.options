@@ -248,11 +248,12 @@ option('small-ja-dic', type : 'boolean', value : false,
 # so users cannot pass inert options; see
 # .claude/notes/build-system.md "Parked / unsupported".
 #
-# The Android (java/, exec/, cross/ndk-build/, src/android*),
 # Windows (nt/, lib-src/ntlib*), Lucid/Motif/Xaw3d, Ghostscript,
 # ImageMagick, GConf, and Kerberos/Hesiod option stubs have all
 # been deleted along with their gated source code; resurrect from
-# git history if needed.
+# git history if needed.  Android source remains in-tree under
+# java/, exec/, cross/ndk-build/, src/android*; the Meson recipe
+# for it is still a TODO (the 'android' option is declared above).
 #
 # - be-app                       (configure.ac OPTION_DEFAULT_OFF)
 # - be-cairo                     (configure.ac OPTION_DEFAULT_OFF)
