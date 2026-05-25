@@ -31407,17 +31407,13 @@ adjusted if the default value does not work for whatever reason.  */);
   DEFVAR_LISP ("x-toolkit-scroll-bars", Vx_toolkit_scroll_bars,
     doc: /* Which toolkit scroll bars Emacs uses, if any.
 A value of nil means Emacs doesn't use toolkit scroll bars.
-With the X Window system, the value is a symbol describing the
-X toolkit.  Possible values are: gtk or xaw.
-With MS Windows, Haiku windowing or Nextstep, the value is t.
+With the X Window system, the value is the symbol `gtk' when GTK
+toolkit scroll bars are in use.
+With Haiku windowing or Nextstep, the value is t.
 With Android, the value is nil, but that is because Emacs on
 Android does not support scroll bars at all.  */);
 #ifdef USE_TOOLKIT_SCROLL_BARS
-#ifdef USE_GTK
   Vx_toolkit_scroll_bars = intern_c_string ("gtk");
-#else
-  Vx_toolkit_scroll_bars = intern_c_string ("xaw");
-#endif
 #else
   Vx_toolkit_scroll_bars = Qnil;
 #endif
