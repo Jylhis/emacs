@@ -4144,11 +4144,12 @@ manual has been removed as well.
 +++
 ** Libraries obsolete since Emacs 26-28 have been removed.
 The following obsolete libraries are no longer shipped:
-html2text.el, messcompat.el (use 'shr' / 'gnus-w3m' for HTML
-rendering; obsolete since 26.1); url-ns.el, starttls.el, tls.el
-(GnuTLS replaces both), mantemp.el (27.1); inversion.el,
-metamail.el, nnir.el (use 'gnus-search' via 'nnselect'),
-rfc2368.el (use 'rfc6068'), sb-image.el (28.1).
+html2text.el (use 'shr' or 'gnus-w3m' for HTML rendering;
+obsolete since 26.1), messcompat.el (26.1); url-ns.el,
+starttls.el, tls.el (GnuTLS replaces the latter two),
+mantemp.el (27.1); inversion.el, metamail.el, nnir.el (use
+'gnus-search' via 'nnselect'), rfc2368.el (use 'rfc6068'),
+sb-image.el (28.1).
 
 +++
 ** Ghostscript image support removed.
@@ -4167,7 +4168,7 @@ USE_MOTIF', '#ifdef HAVE_XAW3D', and '#ifdef HAVE_CARBON' guarded
 code paths in src/ have been stripped.  The Xaw scrollbar
 callbacks in src/xterm.c remain inside '#else /* not USE_GTK */'
 as preprocessor-skipped reference code.  The 'x-toolkit-scroll-bars'
-docstring now lists only 'gtk' and 'xaw'.
+docstring and value now list only 'gtk'.
 
 ---
 ** GConf settings support removed.
