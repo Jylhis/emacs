@@ -325,7 +325,7 @@ endif
 # option resolves to disabled.
 foreach _dep : [
   jpeg_dep, tiff_dep, png_dep, gif_dep, rsvg_dep, webp_dep, xpm_dep,
-  imagemagick_dep, lcms2_dep, dbus_dep, gpm_dep, gio_dep, selinux_dep,
+  lcms2_dep, dbus_dep, gpm_dep, gio_dep, selinux_dep,
   zlib_dep, libotf_dep, m17n_flt_dep, alsa_dep, webkit_dep,
 ]
   if _dep.found()
