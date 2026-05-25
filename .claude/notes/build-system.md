@@ -117,21 +117,33 @@ Intended for frequent re-installs during development.
     --with-cairo                       # Cairo drawing
     --enable-link-time-optimization    # LTO (slower, crash-prone)
 
+## Supported platforms
+
+The fork commits to three platform families:
+
+- **Linux**: x86_64 and aarch64, three GUI variants each (gtk3, pgtk,
+  nox).  Built natively by the release workflow.
+- **macOS**: x86_64 (Intel) and arm64 (Apple Silicon).  Shipped as a
+  universal `.dmg`.
+- **Android**: arm only (armeabi-v7a + arm64-v8a).  Source for the
+  port stays in-tree under `java/`, `exec/`, `cross/ndk-build/`, and
+  `src/android*`; the Meson recipe to drive the cross-build is still
+  a TODO.  Until that lands, the Android job in `release.yml` is a
+  placeholder.
+
 ## Parked / unsupported
 
 These platform backends from the autotools tree have intentionally
-not been ported to Meson; the fork prioritises Linux GTK3, Linux
-terminal, and macOS NS/terminal.  Reviving any of them means
-porting the platform-specific C/Java code, not just translating a
-Makefile -- the work is a port, not a migration.
+not been ported to Meson; the fork prioritises Linux, macOS, and
+Android.  Reviving any of them means porting the platform-specific
+C/Java code, not just translating a Makefile -- the work is a port,
+not a migration.
 
 | Backend | Autotools recipe (at anchor `08a22b8965ec`) | Why parked |
 |---|---|---|
-| Android cross-build | `java/Makefile.in`, `exec/Makefile.in`, `cross/Makefile.in`, `cross/ndk-build/Makefile.in` | Thousands of lines of NDK + Java glue.  Re-introduces a parallel build system. |
-| Windows GUI / Cygwin | `nt/`, configure.ac w32 / native-image-api / cygwin32-native-compilation switches | C backend not on this fork's roadmap. |
+| Windows GUI / Cygwin | `nt/` and `lib-src/ntlib*` (both deleted upstream), configure.ac w32 / native-image-api / cygwin32-native-compilation switches | C backend not on this fork's roadmap. |
 | Haiku | configure.ac be-app / be-cairo switches | Same. |
 | `admin/grammars/` | `admin/grammars/Makefile.in` | Outputs are committed to `lisp/cedet/semantic/`; only matters when editing `.by`/`.wy` source grammars. |
-| `lib-src/asset-directory-tool` | `lib-src/Makefile.in:418` | Android-only. |
 | `xaw3d` / Motif / Lucid X toolkits | configure.ac toolkit selector | Already dropped per `meson.options:52-53`. |
 | `gconf` | configure.ac AC_ARG_WITH | Deprecated; option `disabled` by default. |
 | `imagemagick` | configure.ac AC_ARG_ENABLE | `disabled` by default; security advisories argue against turning back on. |
