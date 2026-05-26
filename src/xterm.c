@@ -23714,7 +23714,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #ifdef HAVE_X_I18N
 		  if (x_filter_event (dpyinfo, (XEvent *) &xkey))
 		    *finish = X_EVENT_DROP;
-#ifdef USE_GTK
+#elif defined USE_GTK
 		  f = x_any_window_to_frame (xkey->event);
 
 		  if (f && xg_filter_key (f, event))
