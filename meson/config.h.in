@@ -217,12 +217,10 @@
 #mesondefine HAVE_SGTTY_H
 #mesondefine HAVE_GRP_H
 
-/* Linux xattr-based ACL detection (m4/acl.m4).  USE_ACL is 0 here
-   because phase 2 doesn't yet wire libacl/libselinux/libsmack
-   detection; file_has_acl runs purely via listxattr on Linux.  */
+/* Linux xattr-based ACL detection (m4/acl.m4).  */
 #mesondefine HAVE_LINUX_XATTR_H
 #mesondefine HAVE_LISTXATTR
-#define USE_ACL 0
+#mesondefine USE_ACL
 
 /* File notification (configure.ac:619-3712).  Backend is selected
    at configure time: inotify (Linux), kqueue (macOS/BSD), or

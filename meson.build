@@ -243,9 +243,11 @@ endif
 if have_listxattr
   conf_data.set('HAVE_LISTXATTR', 1)
 endif
-# Don't pull in libacl, libselinux, libsmack at this stage: keep
-# file_has_acl strictly listxattr-driven on Linux for now.  Phase 2
-# follow-ups can wire those when --with-acl support is reintroduced.
+# Don't pull in libacl, libselinux, libsmack at this stage; on Linux
+# file_has_acl can still detect ACLs via listxattr-based probing.
+if is_linux and have_linux_xattr_h and have_listxattr
+  conf_data.set('USE_ACL', 1)
+endif
 
 # ----------------------------------------------------------------------
 # Window system & feature dependencies (configure.ac EMACS_CHECK_MODULES
