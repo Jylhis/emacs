@@ -28,7 +28,7 @@
       modules = import ./nix/modules;
 
       src = import ./nix/src-filter.nix {
-        lib = nixpkgs.lib;
+        inherit (nixpkgs) lib;
         root = ./.;
       };
 
@@ -43,44 +43,47 @@
 
       lib = import ./nix/lib.nix { inherit emacs-overlay; };
     }
-    // flake-utils.lib.eachSystem [
-      "x86_64-linux"
-      "aarch64-linux"
-      "x86_64-darwin"
-      "aarch64-darwin"
-    ] (
-      system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-          overlays = [ self.overlays.default ];
-        };
+    //
+      flake-utils.lib.eachSystem
+        [
+          "x86_64-linux"
+          "aarch64-linux"
+          "x86_64-darwin"
+          "aarch64-darwin"
+        ]
+        (
+          system:
+          let
+            pkgs = import nixpkgs {
+              inherit system;
+              overlays = [ self.overlays.default ];
+            };
 
-        treefmtEval = treefmt-nix.lib.evalModule pkgs ./nix/treefmt.nix;
-      in
-      {
-        packages = {
-          default = pkgs.emacs-jylhis;
-          emacs = pkgs.emacs-jylhis;
-          emacs-nox = pkgs.emacs-jylhis-nox;
-          emacs-pgtk = pkgs.emacs-jylhis-pgtk;
-          emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
-          emacs-debug = pkgs.emacs-jylhis-debug;
-        };
+            treefmtEval = treefmt-nix.lib.evalModule pkgs ./nix/treefmt.nix;
+          in
+          {
+            packages = {
+              default = pkgs.emacs-jylhis;
+              emacs = pkgs.emacs-jylhis;
+              emacs-nox = pkgs.emacs-jylhis-nox;
+              emacs-pgtk = pkgs.emacs-jylhis-pgtk;
+              emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
+              emacs-debug = pkgs.emacs-jylhis-debug;
+            };
 
-        apps.default = {
-          type = "app";
-          program = "${pkgs.emacs-jylhis}/bin/emacs";
-        };
+            apps.default = {
+              type = "app";
+              program = "${pkgs.emacs-jylhis}/bin/emacs";
+            };
 
-        legacyPackages = pkgs;
+            legacyPackages = pkgs;
 
-        formatter = treefmtEval.config.build.wrapper;
+            formatter = treefmtEval.config.build.wrapper;
 
-        checks = {
-          emacs-nox = pkgs.emacs-jylhis-nox;
-          formatting = treefmtEval.config.build.check self;
-        };
-      }
-    );
+            checks = {
+              emacs-nox = pkgs.emacs-jylhis-nox;
+              formatting = treefmtEval.config.build.check self;
+            };
+          }
+        );
 }
