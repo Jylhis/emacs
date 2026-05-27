@@ -1,6 +1,6 @@
 project(
   'emacs',
-  ['c', 'objc'],
+  'c',
   version : '31.0.50',
   license : 'GPL-3.0-or-later',
   meson_version : '>= 1.3.0',
@@ -59,6 +59,10 @@ endif
 # Platform booleans used throughout.
 is_darwin = host_machine.system() == 'darwin'
 is_linux  = host_machine.system() == 'linux'
+
+if is_darwin
+  add_languages('objc', native : false, required : true)
+endif
 
 # Dynamic library / module suffixes (configure.ac:4370-4390).
 if is_darwin

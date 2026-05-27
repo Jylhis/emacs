@@ -209,9 +209,9 @@ in
   enterTest = ''
     set -euo pipefail
     echo "Running devenv tests"
-    git --version | grep --color=auto "${pkgs.git.version}"
-    cc --version | head -1
-    ccache --version | head -1
+    git --version
+    cc --version | sed -n '1p'
+    ccache --version | sed -n '1p'
     pkg-config --version
   '';
 
