@@ -4104,6 +4104,12 @@ such as 'mupdf' or 'pdf-tools' to display PostScript files.
 The HAVE_GHOSTSCRIPT block in src/image.c and the associated
 Ghostview client-message handler in src/xterm.c are gone.
 
+---
+** GConf settings support removed.
+The legacy GConf desktop-settings backend (the HAVE_GCONF code in
+src/xsettings.c and the default-disabled 'gconf' build option) has
+been removed.  GSettings remains the supported backend.
+
 +++
 ** 'if-let' and 'when-let' are now obsolete.
 Use 'if-let*', 'when-let*' and 'and-let*' instead.

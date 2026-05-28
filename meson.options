@@ -129,8 +129,6 @@ option('gpm',         type : 'feature', value : 'auto',
   description : 'GPM mouse support on GNU/Linux console.')
 option('dbus',        type : 'feature', value : 'auto',
   description : 'D-Bus IPC support.')
-option('gconf',       type : 'feature', value : 'disabled',
-  description : 'GConf settings support.')
 option('gsettings',   type : 'feature', value : 'auto',
   description : 'GSettings support.')
 option('selinux',     type : 'feature', value : 'auto',
