@@ -73,9 +73,11 @@
   withPgtk ? false,
   withGTK3 ? stdenv.isLinux && !noGui && !withPgtk,
   withNS ? stdenv.isDarwin && !noGui,
+  withNsSelfContained ? false,
 
   withSystemAppearancePatch ? false,
   withRoundUndecoratedPatch ? false,
+  withFixNsXColorsPatch ? false,
 
   extraMesonFlags ? [ ],
   extraPatches ? [ ],
@@ -106,7 +108,8 @@ stdenv.mkDerivation (_finalAttrs: {
     "emacs-jylhis"
     + optionalString noGui "-nox"
     + optionalString (withPgtk && !noGui) "-pgtk"
-    + optionalString (withGTK3 && !withPgtk && !noGui && stdenv.isLinux) "-gtk3";
+    + optionalString (withGTK3 && !withPgtk && !noGui && stdenv.isLinux) "-gtk3"
+    + optionalString (withNsSelfContained && stdenv.isDarwin) "-macos";
 
   inherit version src;
 
@@ -116,6 +119,9 @@ stdenv.mkDerivation (_finalAttrs: {
     )
     ++ optional (withRoundUndecoratedPatch && patchExists "round-undecorated-frame.patch") (
       patchPath "round-undecorated-frame.patch"
+    )
+    ++ optional (withFixNsXColorsPatch && patchExists "fix-ns-x-colors.patch") (
+      patchPath "fix-ns-x-colors.patch"
     )
     ++ extraPatches;
 
@@ -211,6 +217,7 @@ stdenv.mkDerivation (_finalAttrs: {
     (lib.mesonEnable "xim" (stdenv.isLinux && withGTK3 && !withPgtk))
     (lib.mesonEnable "xinput2" (stdenv.isLinux && withGTK3 && !withPgtk))
   ]
+  ++ optional withNsSelfContained (lib.mesonEnable "ns-self-contained" true)
   ++ extraMesonFlags;
 
   enableParallelBuilding = true;

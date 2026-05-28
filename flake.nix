@@ -66,10 +66,17 @@
               default = pkgs.emacs-jylhis;
               emacs = pkgs.emacs-jylhis;
               emacs-nox = pkgs.emacs-jylhis-nox;
-              emacs-pgtk = pkgs.emacs-jylhis-pgtk;
-              emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
               emacs-debug = pkgs.emacs-jylhis-debug;
-            };
+            }
+            // (
+              if pkgs.stdenv.isDarwin then
+                { emacs-macos = pkgs.emacs-jylhis-macos; }
+              else
+                {
+                  emacs-pgtk = pkgs.emacs-jylhis-pgtk;
+                  emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
+                }
+            );
 
             apps.default = {
               type = "app";

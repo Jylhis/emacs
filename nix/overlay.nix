@@ -20,6 +20,15 @@ final: _prev: {
     withPgtk = false;
   };
 
+  emacs-jylhis-macos = final.callPackage ./package.nix {
+    inherit src;
+    withNS = true;
+    withNsSelfContained = true;
+    withSystemAppearancePatch = true;
+    withRoundUndecoratedPatch = true;
+    withFixNsXColorsPatch = true;
+  };
+
   emacs-jylhis-debug = final.callPackage ./package.nix {
     inherit src;
     extraMesonFlags = [
