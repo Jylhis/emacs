@@ -1,6 +1,7 @@
 {
   lib,
   stdenv,
+  writeText,
   meson,
   ninja,
   pkg-config,
@@ -21,8 +22,10 @@ let
   # Write the cross file inline so the NDK toolchain bin dir from
   # androidComposition can be wired into [binaries] without forcing
   # users to edit a tracked file.  The actual --target / --sysroot /
-  # API-level flags flow through -Dandroid-* meson options.
-  crossFile = builtins.toFile "android.cross" ''
+  # API-level flags flow through -Dandroid-* meson options.  Use
+  # writeText rather than builtins.toFile: the content references the
+  # androidsdk derivation, which toFile forbids.
+  crossFile = writeText "android.cross" ''
     [host_machine]
     system     = 'android'
     cpu_family = 'aarch64'
