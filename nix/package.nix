@@ -95,14 +95,14 @@ let
   inherit (lib) optional optionals optionalString;
 
   toolkit =
-    if noGui || withNS then
+    if noGui then
       "none"
     else if withPgtk then
       "pgtk"
     else if withGTK3 then
       "gtk3"
     else
-      "none";
+      "auto";
 
   darwinFrameworks = optional stdenv.isDarwin apple-sdk;
 
@@ -211,7 +211,7 @@ stdenv.mkDerivation (_finalAttrs: {
     (lib.mesonEnable "sqlite3" withSqlite3)
     (lib.mesonEnable "mailutils" withMailutils)
     (lib.mesonEnable "modules" withModules)
-    (lib.mesonEnable "toolkit-scroll-bars" (!noGui))
+    (lib.mesonEnable "toolkit-scroll-bars" (withGTK3 || withPgtk || withNS))
     (lib.mesonEnable "xwidgets" withXwidgets)
     (lib.mesonEnable "imagemagick" withImageMagick)
     (lib.mesonEnable "dbus" stdenv.isLinux)
