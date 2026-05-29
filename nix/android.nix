@@ -112,7 +112,10 @@ stdenv.mkDerivation {
     '';
     homepage = "https://github.com/Jylhis/emacs";
     license = lib.licenses.gpl3Plus;
-    platforms = [ "x86_64-linux" "aarch64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     maintainers = [ ];
   };
 }

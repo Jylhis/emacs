@@ -517,7 +517,11 @@
   gnulib = {
     kind = "vendored-c";
     upstream = "https://git.savannah.gnu.org/git/gnulib.git";
-    paths = [ "lib/" "m4/" "build-aux/" ];
+    paths = [
+      "lib/"
+      "m4/"
+      "build-aux/"
+    ];
     sync = "admin/merge-gnulib";
     elpa = null;
     license = null;
