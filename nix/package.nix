@@ -13,6 +13,7 @@
   libxml2,
   ncurses,
   gmp,
+  libgcrypt,
   lcms2,
   zlib,
   gawk,
@@ -145,6 +146,7 @@ stdenv.mkDerivation (_finalAttrs: {
     libxml2
     ncurses
     gmp
+    libgcrypt
     lcms2
     zlib
     gawk
