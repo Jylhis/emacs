@@ -28,7 +28,7 @@ are not persisted in the repo.
 from __future__ import annotations
 
 import argparse
-import fnmatch
+from pathlib import PurePosixPath
 import hashlib
 import json
 import os
@@ -121,7 +121,12 @@ def clone_source(src: dict, dest: Path) -> None:
 
 def list_patches(repo: Path, globs: list[str]) -> dict[str, str]:
     """Return ``{relpath: sha256}`` for every file in ``repo`` matching
-    any glob.  Glob matching uses fnmatch on the POSIX path."""
+    any glob.  Glob matching uses ``PurePosixPath.match`` so ``*`` does
+    NOT cross directory boundaries — that prevents a glob like
+    ``pkgs/applications/editors/emacs/*.patch`` from silently picking
+    up patches several levels deeper (e.g. under
+    ``elisp-packages/manual-packages/``).  To recurse, write the glob
+    explicitly with ``**`` or list each subdir."""
     # Use `git ls-files` so we honour the repo's index (avoids picking
     # up stray files left by previous runs in the worktree).
     out = subprocess.check_output(
@@ -129,8 +134,9 @@ def list_patches(repo: Path, globs: list[str]) -> dict[str, str]:
     )
     selected = []
     for path in out.splitlines():
+        pp = PurePosixPath(path)
         for glob in globs:
-            if fnmatch.fnmatch(path, glob):
+            if pp.match(glob):
                 selected.append(path)
                 break
     result: dict[str, str] = {}
