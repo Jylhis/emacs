@@ -101,22 +101,22 @@ compile_first_elcs = custom_target(
 # ----------------------------------------------------------------------
 # compile-main: every other .el under lisp/.
 # ----------------------------------------------------------------------
-# Glob every .el under lisp/ at meson configure time so adding /
-# removing an .el invalidates the manifest target.  meson has no
-# native glob in custom_target, so use run_command.
-_all_lisp_files = run_command(
-  py, list_lisp_files,
-  '--lisp-dir', meson.global_source_root() / 'lisp',
-  '--output',   '-',
-  check : true,
-).stdout().strip().split('\n')
-_all_lisp_paths = []
-foreach rel : _all_lisp_files
-  if rel != ''
-    _all_lisp_paths += meson.global_source_root() / 'lisp' / rel
-  endif
-endforeach
-
+# Enumerate .el files at build time, not configure time, so the
+# manifest reflects the current state of lisp/ -- including the
+# *-loaddefs.el files written by loaddefs_stamp, plus any .el a
+# developer added or removed since the last `meson setup`.
+#
+# build_always_stale rebuilds the manifest on every ninja invocation;
+# Meson short-circuits downstream targets when the manifest content
+# is unchanged, so this only triggers a real byte-compile when the
+# set of .el files actually shifts.
+#
+# Must enumerate after loaddefs.el is generated, so the manifest
+# picks up loaddefs.el (and theme-loaddefs.el etc.).  Without those
+# byte-compiled, the final pdump errors with
+#   Attempt to autoload rx while preparing to dump
+# because eager macro expansion of `(autoload 'rx ... nil t)` in
+# source-loaded loaddefs.el triggers a load that pdump rejects.
 compile_main_manifest = custom_target(
   'compile-main.manifest',
   output : 'compile-main.manifest',
@@ -125,14 +125,8 @@ compile_main_manifest = custom_target(
     '--lisp-dir', meson.global_source_root() / 'lisp',
     '--output',   '@OUTPUT@',
   ],
-  depend_files : _all_lisp_paths,
-  # Must enumerate after loaddefs.el is generated, so the manifest
-  # picks up loaddefs.el (and theme-loaddefs.el etc.).  Without
-  # those byte-compiled, the final pdump errors with
-  #   Attempt to autoload rx while preparing to dump
-  # because eager macro expansion of `(autoload 'rx ... nil t)` in
-  # source-loaded loaddefs.el triggers a load that pdump rejects.
   depends : [loaddefs_stamp],
+  build_always_stale : true,
   build_by_default : true,
 )
 
