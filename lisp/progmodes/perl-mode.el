@@ -649,6 +649,15 @@ create a new comment."
     (if (re-search-backward "^sub[ \t]+\\([^({ \t\n]+\\)" nil t)
 	(match-string-no-properties 1))))
 
+(defcustom perl-flymake-enable-by-default nil
+  "Whether Perl buffers should register `perl-flymake' automatically.
+When nil, `perl-mode' does not add `perl-flymake' to
+`flymake-diagnostic-functions' automatically, since running
+`perl-flymake-command' can execute compile-time Perl code from
+untrusted buffers."
+  :version "32.1"
+  :type 'boolean)
+
 
 ;;; Flymake support
 (defcustom perl-flymake-command '("perl" "-w" "-c")
@@ -775,8 +784,9 @@ Turning on Perl mode runs the normal hook `perl-mode-hook'."
   (setq-local indent-line-function #'perl-indent-line)
   (setq-local comment-start "# ")
   (setq-local comment-end "")
-  (setq-local comment-start-skip "\\(^\\|\\s-\\);?#+ *")
-  (setq-local comment-indent-function #'perl-comment-indent)
+  ;; Setup Flymake.
+  (when perl-flymake-enable-by-default
+    (add-hook 'flymake-diagnostic-functions #'perl-flymake nil t)))
   (setq-local parse-sexp-ignore-comments t)
 
   ;; Tell font-lock.el how to handle Perl.
