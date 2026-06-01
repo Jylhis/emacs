@@ -71,6 +71,26 @@ usage (int err)
   exit (err);
 }
 
+static bool
+scorefile_name_valid (char const *name)
+{
+  if (name[0] == '\0' || name[0] == '/')
+    return false;
+
+  for (char const *p = name; ; p++)
+    if (*p == '/' || *p == '\0')
+      {
+	ptrdiff_t len = p - name;
+	if (len == 0
+	    || (len == 1 && name[0] == '.')
+	    || (len == 2 && name[0] == '.' && name[1] == '.'))
+	  return false;
+	if (*p == '\0')
+	  return true;
+	name = p + 1;
+      }
+}
+
 static int lock_file (const char *filename, void **state);
 static int unlock_file (const char *filename, void *state);
 
@@ -218,6 +238,9 @@ main (int argc, char **argv)
     lose ("This program can run either suid or sgid, but not both.");
 
   prefix = get_prefix (running_suid || running_sgid, user_prefix);
+
+  if (! scorefile_name_valid (argv[optind]))
+    lose ("Invalid score file name");
 
   scorefile = malloc (strlen (prefix) + strlen (argv[optind]) + 2);
   if (!scorefile)
