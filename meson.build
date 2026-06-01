@@ -36,9 +36,26 @@ conf_data.set('PACKAGE_TARNAME', 'emacs')
 # system-configuration-options and system-configuration-features
 # describe the actual build (configure.ac:6365 / 6782).
 
-# Canonical build triple, used by system-configuration variable.
-conf_data.set('EMACS_CONFIGURATION',
-              host_machine.cpu_family() + '-pc-' + host_machine.system())
+# Canonical build triple, used by Lisp `system-configuration'.
+# autotools derives this from $build_alias / $host_alias, which
+# canonicalise to triples like x86_64-pc-linux-gnu or
+# aarch64-apple-darwin23.  Meson's host_machine.system() returns just
+# the OS family, so add a vendor/abi suffix per OS to match what
+# downstream packagers and (emacs-version t) consumers expect.
+_config_vendor_abi = {
+  'linux'   : 'pc-linux-gnu',
+  'darwin'  : 'apple-darwin',
+  'android' : 'unknown-linux-android',
+}
+if _config_vendor_abi.has_key(host_machine.system())
+  conf_data.set('EMACS_CONFIGURATION',
+                host_machine.cpu_family() + '-'
+                + _config_vendor_abi[host_machine.system()])
+else
+  conf_data.set('EMACS_CONFIGURATION',
+                host_machine.cpu_family() + '-pc-'
+                + host_machine.system())
+endif
 
 # OS family / opsys, used for system-type symbol and a few code paths.
 # Mirrors configure.ac:2343-2375: autotools maps the host opsys to a
@@ -1075,6 +1092,18 @@ if cc.compiles(flexmember_test, name : 'C99 flexible array member')
 else
   conf_data.set('FLEXIBLE_ARRAY_MEMBER', '1')
 endif
+
+# BINDIR is referenced by src/pdumper.c:5557 inside the
+# `#if HAVE_NS && !NS_SELF_CONTAINED' branch to locate Lisp resources
+# when running from a non-self-contained .app bundle.  Mirrors
+# configure.ac:7172 (AC_DEFINE_UNQUOTED([BINDIR], ["${_prefix}/bin/"]).
+# A separate parity item tracks wiring NS_SELF_CONTAINED itself; until
+# then this prevents Darwin NS builds from failing to compile on an
+# undefined BINDIR identifier.  Resolved via get_option here because
+# the prefix/bindir locals below are defined later -- conf_data has to
+# be sealed before configure_file() consumes it.
+conf_data.set('BINDIR',
+              (get_option('prefix') / get_option('bindir')) + '/')
 
 config_h = configure_file(
   input : 'meson/config.h.in',

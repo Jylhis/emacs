@@ -37,6 +37,11 @@
 #define EMACS_CONFIG_FEATURES "@EMACS_CONFIG_FEATURES@"
 #define SYSTEM_TYPE           "@SYSTEM_TYPE@"
 
+/* Absolute install path of bin/, used by src/pdumper.c to locate
+   Lisp resources from a non-self-contained .app bundle.  Mirrors
+   configure.ac:7172.  */
+#define BINDIR                "@BINDIR@"
+
 /* USER_FULL_NAME on POSIX is pw_gecos (configure.ac:2429).  */
 #define USER_FULL_NAME pw->pw_gecos
 
