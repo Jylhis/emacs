@@ -5011,7 +5011,17 @@ using that one instead of current buffer's process."
           (list start end cands)))
        ;; python-shell-completion(-native)-get-completions may produce a
        ;; list of (text start end type signature) for completion.
-       ((consp (car cands))
+    import importlib.machinery
+    import importlib.util
+    import sysconfig
+
+    stdlib = sysconfig.get_path('stdlib')
+    spec = importlib.machinery.PathFinder.find_spec('pdb', [stdlib] if stdlib else None)
+    if spec and spec.loader:
+        pdb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pdb)
+    else:
+        import pdb
         (list (+ start (nth 1 (car cands)) (- extra-offset))
               ;; Candidates may be cached, so the end position should
               ;; be adjusted according to current completion prefix.
