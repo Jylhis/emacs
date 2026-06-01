@@ -4151,11 +4151,12 @@ manual has been removed as well.
 +++
 ** Libraries obsolete since Emacs 26-28 have been removed.
 The following obsolete libraries are no longer shipped:
-html2text.el, messcompat.el (use 'shr' / 'gnus-w3m' for HTML
-rendering; obsolete since 26.1); url-ns.el, starttls.el, tls.el
-(GnuTLS replaces both), mantemp.el (27.1); inversion.el,
-metamail.el, nnir.el (use 'gnus-search' via 'nnselect'),
-rfc2368.el (use 'rfc6068'), sb-image.el (28.1).
+html2text.el (use 'shr' or 'gnus-w3m' for HTML rendering;
+obsolete since 26.1), messcompat.el (26.1); url-ns.el,
+starttls.el, tls.el (GnuTLS replaces the latter two),
+mantemp.el (27.1); inversion.el, metamail.el, nnir.el (use
+'gnus-search' via 'nnselect'), rfc2368.el (use 'rfc6068'),
+sb-image.el (28.1).
 
 +++
 ** Ghostscript image support removed.
@@ -4166,10 +4167,40 @@ The HAVE_GHOSTSCRIPT block in src/image.c and the associated
 Ghostview client-message handler in src/xterm.c are gone.
 
 ---
+** Lucid, Motif, Xaw3d, and Carbon source branches removed.
+The Meson build has not offered Lucid (Athena), Motif, or Xaw3d
+toolkits since the autotools cutover (only 'gtk3', 'pgtk', 'ns',
+and 'none' are supported); the '#ifdef USE_LUCID', '#ifdef
+USE_MOTIF', '#ifdef HAVE_XAW3D', and '#ifdef HAVE_CARBON' guarded
+code paths in src/ have been stripped.  The Xaw scrollbar
+callbacks in src/xterm.c remain inside '#else /* not USE_GTK */'
+as preprocessor-skipped reference code.  The 'x-toolkit-scroll-bars'
+docstring and value now list only 'gtk'.
+
+---
 ** GConf settings support removed.
 The legacy GConf desktop-settings backend (the HAVE_GCONF code in
 src/xsettings.c and the default-disabled 'gconf' build option) has
 been removed.  GSettings remains the supported backend.
+
++++
+** ImageMagick image support removed.
+The 'imagemagick' image type, the imagemagick-render-type variable,
+the imagemagick-types function, and the entire HAVE_IMAGEMAGICK
+code path in src/image.c are gone.  ImageMagick was default-disabled
+in the Meson build and carries a long tail of CVE advisories;
+'create-image' callers in lisp/ guard the imagemagick type with
+'fboundp' and degrade silently.
+
+---
+** Deprecated build options removed.
+The meson.options entries 'imagemagick', 'gconf', 'xaw3d',
+'cairo-xcb', 'kerberos', 'kerberos5', and 'hesiod' have been
+removed.  All were default-disabled; their gated C code in
+src/xsettings.c (GConf) and src/image.c (ImageMagick) is also
+gone.  The Kerberos/Hesiod blocks in lib-src/pop.c remain as
+preprocessor-skipped code.  GSettings remains the supported
+desktop-settings backend.
 
 +++
 ** 'if-let' and 'when-let' are now obsolete.

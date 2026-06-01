@@ -1141,7 +1141,7 @@ bar width, change the @code{scroll-bar-width} frame parameter
 
 @vindex scroll-bar-adjust-thumb-portion
 @cindex overscrolling
-If you're using Emacs on X (with GTK+ or Motif), you can customize the
+If you're using Emacs on X (with GTK+), you can customize the
 variable @code{scroll-bar-adjust-thumb-portion} to control
 @dfn{overscrolling} of the scroll bar, i.e., dragging the thumb down even
 when the end of the buffer is visible.  If its value is

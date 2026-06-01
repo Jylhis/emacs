@@ -706,8 +706,8 @@ frames.  Display of the title bar can be suppressed by setting the
 @cindex internal menu bar
 @cindex external menu bar
 The menu bar (@pxref{Menu Bar}) can be either internal (drawn by Emacs
-itself) or external (drawn by the toolkit).  Most builds (GTK+, Lucid,
-Motif and MS-Windows) rely on an external menu bar.  NS also uses an
+itself) or external (drawn by the toolkit).  Most builds (GTK+ and
+MS-Windows) rely on an external menu bar.  NS also uses an
 external menu bar which, however, is not part of the outer frame.
 Non-toolkit builds can provide an internal menu bar.  On text terminal
 frames, the menu bar is part of the frame's root window (@pxref{Windows
@@ -718,7 +718,7 @@ to zero.
 
 Whether the menu bar is wrapped or truncated whenever its width
 becomes too large to fit on its frame depends on the toolkit .
-Usually, only Motif and MS-Windows builds can wrap the menu bar.  When
+Usually, only MS-Windows builds can wrap the menu bar.  When
 they (un-)wrap the menu bar, they try to keep the outer height of the
 frame unchanged, so the native height of the frame (see below) will
 change instead.
@@ -783,13 +783,13 @@ indicate that position for the various builds:
 @itemize @w{}
 @item (1) non-toolkit, Android, Haiku, and terminal frames
 
-@item (2) Lucid, Motif, and MS-Windows frames
+@item (2) MS-Windows frames
 
 @item (3) GTK+ and NS frames
 @end itemize
 
 Accordingly, the native height of a frame may include the height of the
-tool bar but not that of the menu bar (Lucid, Motif, MS-Windows) or
+tool bar but not that of the menu bar (MS-Windows) or
 those of the menu bar and the tool bar (non-toolkit and text terminal
 frames).
 
@@ -1202,7 +1202,7 @@ character-wise provided the window manager is willing to process the
 corresponding size hints.  Calling @code{set-frame-size} (see below)
 with arguments that do not specify the frame size as an integer multiple
 of its character size, however, may: be ignored, cause a rounding
-(GTK+), or be accepted (Lucid, Motif, MS-Windows).
+(GTK+), or be accepted (MS-Windows).
 
 With some window managers you may have to set this to non-@code{nil} in
 order to make a frame appear truly maximized or full-screen.
@@ -1338,7 +1338,7 @@ implicitly changing the size of the frame's text area.
 remove such a decoration, it will issue a second request with the
 intention to restore the original size of the frame's text area.  When
 any of these decorations is drawn by Emacs itself (like the tool bar
-with the Lucid or MS-Windows builds or the tab bar), Emacs may still
+with the MS-Windows build or the tab bar), Emacs may still
 have to alter the size of the native frame accordingly and issue a
 resize request because these decorations should not be accounted for by
 the text area of the frame.
@@ -1388,8 +1388,8 @@ width of one scroll bar provided this option is @code{nil} and keep it
 unchanged if this option is @code{t} or a list containing
 @code{vertical-scroll-bars}.
 
-The default value is @code{(tab-bar-lines tool-bar-lines)} for Lucid,
-Motif and MS-Windows (which means that adding/removing a tool or tab
+The default value is @code{(tab-bar-lines tool-bar-lines)} for
+MS-Windows (which means that adding/removing a tool or tab
 bar there does not change the outer frame height),
 @code{(tab-bar-lines)} on all other window systems including GTK+
 (which means that changing any of the parameters listed above with the

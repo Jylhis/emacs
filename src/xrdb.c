@@ -393,14 +393,12 @@ x_load_resources (Display *display, const char *xrm_string,
      widgets will use some other default font.  */
   sprintf (line, "Emacs.dialog*.background: grey75");
   XrmPutLineResource (&rdb, line);
-#if !(defined USE_CAIRO || defined HAVE_XFT) || !defined (USE_LUCID)
   sprintf (line, "Emacs.dialog*.font: %s",
 	   "-*-helvetica-medium-r-*--*-120-*-*-*-*-iso8859-1");
   XrmPutLineResource (&rdb, line);
   sprintf (line, "*XlwMenu*font: %s",
 	   "-*-helvetica-medium-r-*--*-120-*-*-*-*-iso8859-1");
   XrmPutLineResource (&rdb, line);
-#endif
   sprintf (line, "*XlwMenu*background: grey75");
   XrmPutLineResource (&rdb, line);
   sprintf (line, "Emacs*verticalScrollBar.background: grey75");

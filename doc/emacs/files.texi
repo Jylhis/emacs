@@ -2688,24 +2688,6 @@ the color to use.
 The size and rotation commands are ``repeating'', which means that you
 can continue adjusting the image without using the @kbd{i} prefix.
 
-@cindex ImageMagick support
-@vindex imagemagick-enabled-types
-@vindex imagemagick-types-inhibit
-  If Emacs was compiled with support for the ImageMagick library, it
-can use ImageMagick to render a wide variety of images.  The variable
-@code{imagemagick-enabled-types} lists the image types that Emacs may
-render using ImageMagick; each element in the list should be an
-internal ImageMagick name for an image type, as a symbol or an
-equivalent string (e.g., @code{BMP} for @file{.bmp} images).  To
-enable ImageMagick for all possible image types, change
-@code{imagemagick-enabled-types} to @code{t}.  The variable
-@code{imagemagick-types-inhibit} lists the image types which should
-never be rendered using ImageMagick, regardless of the value of
-@code{imagemagick-enabled-types} (the default list includes types like
-@code{C} and @code{HTML}, which ImageMagick can render as an image
-but Emacs should not).  To disable ImageMagick entirely, change
-@code{imagemagick-types-inhibit} to @code{t}.
-
 @vindex image-use-external-converter
   If Emacs doesn't have native support for the image format in
 question, and @code{image-use-external-converter} is non-@code{nil},

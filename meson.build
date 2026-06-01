@@ -699,12 +699,6 @@ else
   xpm_dep = dependency('', required : false)
 endif
 
-imagemagick_opt = get_option('imagemagick')
-imagemagick_dep = dependency('MagickWand', required : imagemagick_opt)
-if imagemagick_dep.found()
-  conf_data.set('HAVE_IMAGEMAGICK', 1)
-endif
-
 # ----------------------------------------------------------------------
 # Misc system libraries (configure.ac:544-619).
 # ----------------------------------------------------------------------
@@ -817,8 +811,8 @@ if threads_opt.allowed()
 endif
 
 # ----------------------------------------------------------------------
-# Cairo XCB (configure.ac:--with-cairo-xcb), XInput 2 extension,
-# Xaw3d.  All X11-gated; explicit `enabled` errors out without GTK3.
+# XInput 2 extension.  X11-gated; explicit `enabled` errors out
+# without GTK3.
 # ----------------------------------------------------------------------
 xinput2_opt = get_option('xinput2').disable_auto_if(_no_all)
 xdbe_opt = get_option('xdbe').disable_auto_if(_no_all)
@@ -895,61 +889,6 @@ if pop_opt.allowed()
   conf_data.set('MAIL_USE_POP', 1)
 endif
 
-# --with-kerberos / --with-kerberos5 -- POP authentication backends.
-kerberos_opt = get_option('kerberos')
-if kerberos_opt.allowed()
-  _krb = cc.find_library('krb', required : kerberos_opt)
-  if not _krb.found()
-    _krb = cc.find_library('krb4', required : false)
-  endif
-  if _krb.found()
-    conf_data.set('KERBEROS', 1)
-    movemail_extra_libs += _krb
-    foreach _lib : ['des', 'des425']
-      _dep = cc.find_library(_lib, required : false)
-      if _dep.found()
-        movemail_extra_libs += _dep
-        break
-      endif
-    endforeach
-  endif
-endif
-
-kerberos5_opt = get_option('kerberos5')
-if kerberos5_opt.allowed()
-  _krb5 = cc.find_library('krb5', required : kerberos5_opt)
-  if _krb5.found()
-    conf_data.set('KERBEROS', 1)
-    conf_data.set('KERBEROS5', 1)
-    movemail_extra_libs += _krb5
-    foreach _lib : ['k5crypto', 'crypto']
-      _dep = cc.find_library(_lib, required : false)
-      if _dep.found()
-        movemail_extra_libs += _dep
-        break
-      endif
-    endforeach
-    _comerr = cc.find_library('com_err', required : false)
-    if _comerr.found()
-      movemail_extra_libs += _comerr
-    endif
-  endif
-endif
-
-# --with-hesiod -- POP-host lookup (HESIOD + -lhesiod -lresolv).
-hesiod_opt = get_option('hesiod')
-if hesiod_opt.allowed()
-  _hesiod = cc.find_library('hesiod', required : hesiod_opt)
-  if _hesiod.found()
-    conf_data.set('HESIOD', 1)
-    movemail_extra_libs += _hesiod
-    _resolv = cc.find_library('resolv', required : false)
-    if _resolv.found()
-      movemail_extra_libs += _resolv
-    endif
-  endif
-endif
-
 # --with-mail-unlink -- empty vs. unlink the mail spool after read.
 if get_option('mail-unlink')
   conf_data.set('MAIL_UNLINK_SPOOL', 1)
@@ -993,7 +932,7 @@ foreach _knob : [
   'all-features', 'native-compilation', 'toolkit', 'pgtk', 'ns',
   'tree-sitter', 'gnutls', 'sqlite3', 'xml2', 'libsystemd',
   'cairo', 'harfbuzz', 'xft', 'jpeg', 'tiff', 'gif', 'png', 'rsvg',
-  'webp', 'imagemagick', 'lcms2', 'dbus', 'gsettings', 'gpm',
+  'webp', 'lcms2', 'dbus', 'gsettings', 'gpm',
   'modules', 'threads', 'sound', 'file-notification',
   'gcc-warnings', 'lto', 'check-lisp-object-type',
   'small-ja-dic', 'mailutils', 'pop',
