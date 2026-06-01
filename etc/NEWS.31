@@ -4178,7 +4178,7 @@ been removed.  GSettings remains the supported backend.
 
 +++
 ** ImageMagick image support removed.
-The 'imagemagick image type, the imagemagick-render-type variable,
+The 'imagemagick' image type, the imagemagick-render-type variable,
 the imagemagick-types function, and the entire HAVE_IMAGEMAGICK
 code path in src/image.c are gone.  ImageMagick was default-disabled
 in the Meson build and carries a long tail of CVE advisories;
