@@ -835,10 +835,8 @@ movemail_extra_libs = []
 # movemail is NOT installed (the install gate lives in
 # lib-src/meson.build).  HAVE_MAILUTILS is consumed by src/callproc.c.
 mailutils_opt = get_option('mailutils')
-if mailutils_opt.allowed() and dependency('mailutils', required : false).found()
+if mailutils_opt.enabled()
   conf_data.set('HAVE_MAILUTILS', 1)
-elif mailutils_opt.enabled()
-  error('mailutils=enabled but no mailutils pkg-config file found')
 endif
 mailutils_install_movemail = not conf_data.has('HAVE_MAILUTILS')
 
