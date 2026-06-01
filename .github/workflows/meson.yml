@@ -758,6 +758,160 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+  # ================================================================
+  # C test-coverage build for SonarCloud.
+  #
+  # SonarCloud only analyzes the C/C++ (and meson/*.py) sources here --
+  # there is no Elisp analyzer -- so the coverage that matters is C
+  # coverage, which is produced by running the instrumented `emacs`
+  # binary through the ERT suite.  That needs a full `-Db_coverage=true`
+  # build, which is too expensive to repeat on every PR and would
+  # invalidate the build-and-test ccache (instrumented objects carry
+  # extra --coverage flags).  So this is a dedicated job that runs once
+  # per dev push, converts the gcov data to SonarQube's generic
+  # test-coverage XML with gcovr, and uploads it as an artifact.  The
+  # SonarCloud workflow downloads the latest such artifact off dev and
+  # imports it via sonar.coverageReportPaths.
+  coverage:
+    name: coverage (C, for SonarCloud)
+    needs: [classify, lint]
+    # Only when buildable code changed, and only on dev pushes (not on
+    # PRs or other branches) to bound the cost of the instrumented build.
+    if: >-
+      needs.classify.outputs.linux_meson == 'true'
+      && github.event_name == 'push'
+      && github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+
+      - name: Set up devenv
+        uses: ./.github/actions/setup-devenv
+        with:
+          # Pull-only; build-and-test is the canonical pusher to jylhis.
+          cachix-auth-token: ''
+
+      # Instrumented objects must not share the non-coverage cache, so
+      # use a distinct ccache key.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03  # v1.2.23
+        with:
+          key: ccache-${{ runner.os }}-coverage
+          max-size: 500M
+          verbose: 1
+          install: 'no'
+
+      # Byte-compiled lisp is independent of the C coverage flags, so we
+      # can share the build-and-test elc cache to speed the lisp compile.
+      - name: Cache source-tree byte-compile artefacts
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae  # v5.0.5
+        with:
+          path: |
+            lisp/**/*.elc
+            lisp/loaddefs.el
+            lisp/**/*-loaddefs.el
+            lisp/international/charscript.el
+            lisp/international/emoji-zwj.el
+            lisp/international/uni-*.el
+            lisp/international/charprop.el
+            etc/charsets/**
+            etc/DOC
+          key: elc4-${{ runner.os }}-${{ hashFiles('lisp/**/*.el', 'admin/charsets/**', 'admin/unidata/**') }}
+          restore-keys: |
+            elc4-${{ runner.os }}-
+
+      - name: meson setup (coverage instrumentation)
+        run: |
+          case "$CC"  in *ccache*) ;; *) export CC="ccache $CC"   ;; esac
+          case "$CXX" in *ccache*) ;; *) export CXX="ccache $CXX" ;; esac
+          meson setup build -Db_coverage=true
+
+      # Mirror the build-and-test compile chain.  The foundation, dump,
+      # and smoke tests are the green-run gate (no continue-on-error):
+      # if the instrumented emacs can't be built/dumped or the
+      # deterministic smoke suite fails, the job fails and no coverage is
+      # uploaded.  The byte-compile of the full lisp tree (~75% clean)
+      # and the broad ERT suite are tolerated so the dump can still be
+      # produced from .el fallback and so the broad suite can widen the
+      # exercised C paths without gating the upload.
+      - name: meson compile (foundation)
+        run: |
+          set -o pipefail
+          meson compile -C build --verbose \
+            temacs \
+            bootstrap-emacs \
+            emacs \
+            etc-DOC \
+            make-docfile make-fingerprint \
+            etags ctags emacsclient ebrowse hexl movemail \
+            update-game-score \
+            charsets-stamp charscript.el emoji-zwj.el \
+            2>&1 | tee build/compile.log
+
+      - name: meson compile bootstrap-emacs.pdmp
+        run: meson compile -C build bootstrap-emacs.pdmp
+
+      - name: meson compile compile-first + loaddefs
+        run: meson compile -C build compile-first loaddefs-stamp
+
+      - name: meson compile compile-main (tolerate byte-compile tail)
+        continue-on-error: true
+        run: meson compile -C build compile-main
+
+      - name: meson compile emacs.pdmp
+        run: meson compile -C build emacs.pdmp
+
+      - name: ERT smoke tests (gate)
+        run: meson test -C build --suite smoke --print-errorlogs
+
+      - name: ERT broad suite (coverage breadth)
+        # Excludes :expensive-test / :unstable via run_test.py's
+        # selector.  Failures here are tolerated: the smoke suite above
+        # is the green-run gate; this step exists only to exercise more
+        # C paths for the coverage report.
+        continue-on-error: true
+        run: |
+          meson test -C build --no-suite smoke --print-errorlogs \
+            --timeout-multiplier 2
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats --verbose || true
+
+      # gcov data (.gcda) is written into build/ as the instrumented
+      # emacs runs.  gcovr resolves each object back to its repo-relative
+      # source via the .gcno notes; --root keeps the reported paths
+      # repo-relative (e.g. src/buffer.c) so they match what SonarCloud
+      # indexes.  Restrict to the C we own (src/, lib-src/); gnulib
+      # (lib/) and generated build/ sources are out of scope.
+      - name: Generate SonarQube coverage report
+        run: |
+          gcovr --root "$PWD" \
+            --sonarqube coverage.xml \
+            --filter 'src/' \
+            --filter 'lib-src/' \
+            --gcov-ignore-parse-errors \
+            --print-summary
+          test -s coverage.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: coverage-sonarqube
+          path: coverage.xml
+          retention-days: 14
+
+      - name: Dump build diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== last 200 lines of compile.log ==="
+          tail -200 build/compile.log || true
+          echo "=== meson-log.txt ==="
+          tail -200 build/meson-logs/meson-log.txt || true
+
   required:
     name: meson required
     needs: [classify, lint, build-and-test, macos-build-and-test]

@@ -61,6 +61,11 @@ jobs:
     needs: [classify]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    permissions:
+      contents: read
+      # Needed to list/download the coverage artifact produced by the
+      # meson.yml workflow's coverage job (see step below).
+      actions: read
     # GitHub does not expose repository secrets (SONAR_TOKEN) to
     # workflows triggered from forked PRs, so the scan step would
     # fail with auth errors.  Skip the whole job for fork PRs --
@@ -94,7 +99,60 @@ jobs:
       - name: meson setup
         run: meson setup build
 
+      # ---- Import C test coverage ------------------------------------
+      # The instrumented coverage build is too expensive to run on every
+      # scan, so meson.yml's `coverage` job produces it once per dev push
+      # and uploads a `coverage-sonarqube` artifact.  Pull the most
+      # recent such artifact off dev and unpack coverage.xml at the repo
+      # root, where sonar.coverageReportPaths (set in
+      # sonar-project.properties) expects it.  The coverage may lag the
+      # scanned commit by a push; that is an accepted tradeoff for not
+      # rebuilding an instrumented tree on every scan.  If no artifact is
+      # found, the scan still runs -- SonarCloud just reports no
+      # coverage for this run.
+      - name: Download latest C coverage report
+        id: cov
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner, repo, workflow_id: 'meson.yml',
+              branch: 'dev', per_page: 30,
+            });
+            for (const run of runs.data.workflow_runs) {
+              const arts = await github.rest.actions.listWorkflowRunArtifacts({
+                owner, repo, run_id: run.id, per_page: 100,
+              });
+              const art = arts.data.artifacts.find(
+                a => a.name === 'coverage-sonarqube' && !a.expired);
+              if (!art) continue;
+              const dl = await github.rest.actions.downloadArtifact({
+                owner, repo, artifact_id: art.id, archive_format: 'zip',
+              });
+              fs.writeFileSync('coverage.zip', Buffer.from(dl.data));
+              core.info(
+                `Downloaded coverage-sonarqube from meson.yml run ${run.id} `
+                + `(${run.head_sha.slice(0, 7)}).`);
+              core.setOutput('found', 'true');
+              return;
+            }
+            core.warning(
+              'No coverage-sonarqube artifact found on dev; '
+              + 'scanning without coverage data.');
+            core.setOutput('found', 'false');
+
+      - name: Unpack coverage report
+        if: steps.cov.outputs.found == 'true'
+        run: |
+          unzip -o coverage.zip
+          test -s coverage.xml
+
       # ---- SonarCloud scan -------------------------------------------
+      # sonar.coverageReportPaths=coverage.xml is set in
+      # sonar-project.properties; the scanner imports it when the file is
+      # present and warns (without failing) when it is not.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995  # v8.1.0
         env:

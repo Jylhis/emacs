@@ -12,6 +12,9 @@ session.
   build, debug builds, and incremental rebuild strategies.
 - [Developer Tools](developer-tools.md) -- admin/ scripts, codespell,
   coccinelle, emake, bisect, and CI infrastructure.
+- [SonarCloud + Test Coverage](sonarcloud-coverage.md) -- how C
+  coverage is built (`-Db_coverage=true` + gcovr) in meson.yml and
+  imported into the SonarCloud scan.
 - [Conventions and Style](conventions-and-style.md) -- spelling,
   documentation rules, commit messages, NEWS entries, and jargon.
 - [Git Workflow](git-workflow.md) -- branching model, worktrees,

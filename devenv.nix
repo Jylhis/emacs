@@ -27,6 +27,13 @@ in
       # builds of the same translation unit are hashed and reused.
       ccache
 
+      # Coverage: converts the gcov data emitted by a
+      # `-Db_coverage=true` build into the SonarQube generic
+      # test-coverage XML that .github/workflows/meson.yml feeds to
+      # SonarCloud (see sonar.coverageReportPaths in
+      # sonar-project.properties).
+      gcovr
+
       # Text/image stack used by both X11/GTK and NS/Cocoa builds
       cairo
       pango
