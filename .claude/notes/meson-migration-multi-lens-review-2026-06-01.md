@@ -26,6 +26,7 @@ Findings followed up since the audit landed:
 | F-22  | `meson: produce a canonical EMACS_CONFIGURATION triple and define BINDIR` | fixed |
 | F-11  | `Surface failures in native-comp + sandbox install resolve (F-11, F-14)` | fixed |
 | F-14  | `Surface failures in native-comp + sandbox install resolve (F-11, F-14)` | fixed |
+| F-13  | `meson: plumb android-target-api through the APK pipeline (F-13)` | fixed |
 | F-40  | n/a — over-flagged; the function-probe loop pattern is uniform across ~30 entries and gating one is inconsistency, not safety | rejected |
 
 Open P0s requiring larger refactors / decisions:
