@@ -2290,9 +2290,14 @@ init_minibuf_once_for_pdumper (void)
    would have total cost 27, and ultimately settles on the match at
    positions 7,8,9,10 which has cost 5:
 
-             -1  0  1  2  3  4  5  6  7  8  9 10
-              -  e  g  l  o  t  -  -  g  o  t  o
-   M:  -1  -  ∞  ∞  ∞  ∞  ∞  ∞  ∞  ∞  ∞  ∞  ∞  ∞
+    ptrdiff_t patrows;
+    ptrdiff_t width;
+    ptrdiff_t size;
+    if (patlen == 0 || strlen == 0
+        || ckd_add (&patrows, patlen, 1)
+        || ckd_add (&width, strlen, 1)
+        || ckd_mul (&size, patrows, width)
+        || size > FLEX_MAX_MATRIX_SIZE)
         0  g  ∞  ∞  5  ∞  ∞  ∞  ∞  ∞  5  ∞  ∞  ∞
         1  o  ∞  ∞  ∞  ∞ 15  ∞  ∞  ∞  ∞  5  ∞ 16
         2  t  ∞  ∞  ∞  ∞  ∞ 15  ∞  ∞  ∞  ∞  5  ∞
