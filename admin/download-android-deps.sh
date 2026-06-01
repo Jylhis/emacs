@@ -11,7 +11,9 @@ set -e
 
 bits_64=no
 
-if [ "$1" == "64" ]; then
+# POSIX sh uses '=', not '==', for string equality; the latter
+# silently succeeds under bash and fails under dash.
+if [ "$1" = "64" ]; then
     bits_64=yes
 fi
 
@@ -19,17 +21,31 @@ ndk_path=
 
 mirror=${2-https://master.dl.sourceforge.net/project/android-ports-for-gnu-emacs}
 
+# Reject mirror values that don't look like a plain https URL so a
+# wrapper script that exposes $2 to user input can't smuggle curl
+# flags via whitespace or leading dashes.  The hash check below
+# catches a tampered tarball after the download runs; this guard
+# catches an attacker who tries to coerce curl's argv before that
+# point.
+case $mirror in
+    https://*) ;;
+    *)
+	echo "Refusing mirror '$mirror': expected an https:// URL." >&2
+	exit 1
+	;;
+esac
+
 download_tarball ()
 {
     echo "Downloading $mirror/$1"
-    curl -OL $mirror/$1
-    hash=`shasum $1 | cut -d " " -f 1`
+    curl --proto '=https' --tlsv1.2 -fSL -O -- "$mirror/$1"
+    hash=$(shasum "$1" | cut -d " " -f 1)
     if test "$hash" != "$3"; then
 	echo "Hash mismatch detected with archive $1:\
  expected $3, but received $hash."
 	exit 1
     fi
-    tar xfz $1 $2
+    tar xfz "$1" "$2"
 
     if test ! -d "$2"; then
 	echo "\`$1' was extracted but without producing the directory \`$2'." >&2

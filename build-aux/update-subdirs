@@ -27,10 +27,17 @@ for file in *; do
 	  ;;
 	*)
             if [ -d "$file" ]; then
+		# Escape " and \ so a hostile subdir name (e.g. one
+		# staged into --prefix by an attacker before
+		# meson_install.py runs update-subdirs against it)
+		# can't break out of the elisp string and execute
+		# arbitrary forms when subdirs.el is loaded.
+		escaped=$(printf '%s' "$file" \
+		    | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
 		if [ "$file" = "obsolete" ]; then
-		    subdirs="$subdirs \"$file\""
+		    subdirs="$subdirs \"$escaped\""
 		else
-		    subdirs="\"$file\" $subdirs"
+		    subdirs="\"$escaped\" $subdirs"
 		fi
 	    fi
 	    ;;
