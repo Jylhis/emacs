@@ -99,6 +99,29 @@ compile_first_elcs = custom_target(
 )
 
 # ----------------------------------------------------------------------
+# CEDET grammars -- generate *-wy.el / *-by.el from admin/grammars/.
+# Ports the removed admin/grammars/Makefile.in.  Upstream stopped
+# committing these generated parsers (f9b697ddaa6); ~20 cedet files
+# fail to byte-compile without them.  Must run before compile-main so
+# list_lisp_files.py enumerates the generated .el into the manifest.
+# Needs cl-loaddefs (hence the loaddefs_stamp dependency).
+# ----------------------------------------------------------------------
+gen_grammars = files('../meson/gen_grammars.py')
+grammars_stamp = custom_target(
+  'grammars-stamp',
+  output : 'grammars.stamp',
+  command : [
+    py, gen_grammars,
+    '--bootstrap-emacs', bootstrap_emacs.full_path(),
+    '--dump-file',       bootstrap_pdmp.full_path(),
+    '--source-root',     meson.global_source_root(),
+    '--stamp',           '@OUTPUT@',
+  ],
+  depends : [bootstrap_emacs, bootstrap_pdmp, loaddefs_stamp],
+  build_by_default : true,
+)
+
+# ----------------------------------------------------------------------
 # compile-main: every other .el under lisp/.
 # ----------------------------------------------------------------------
 # Enumerate .el files at build time, not configure time, so the
@@ -125,7 +148,7 @@ compile_main_manifest = custom_target(
     '--lisp-dir', meson.global_source_root() / 'lisp',
     '--output',   '@OUTPUT@',
   ],
-  depends : [loaddefs_stamp],
+  depends : [loaddefs_stamp, grammars_stamp],
   build_always_stale : true,
   build_by_default : true,
 )

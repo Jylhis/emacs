@@ -134,6 +134,25 @@ def main() -> int:
         if rc != 0:
             return rc
 
+    # Standalone targets not in unidata-file-alist (the explicit rules in
+    # admin/unidata/Makefile.in).  Their input data files (Scripts.txt,
+    # confusables.txt, IdnaMappingTable.txt) are found via data-directory
+    # (EMACSDATA, set above).  international/textsec.el requires both
+    # uni-confusable and idna-mapping.
+    for fname, func in [
+        ("uni-scripts.el",    "unidata-gen-scripts"),
+        ("uni-confusable.el", "unidata-gen-confusable"),
+        ("idna-mapping.el",   "unidata-gen-idna-mapping"),
+    ]:
+        out = intl_dir / fname
+        if out.exists():
+            continue
+        cmd = base_cmd + ["-f", func, str(out)]
+        print(f"generating {out.relative_to(src_root)}", flush=True)
+        rc = subprocess.run(cmd, cwd=src_root / "src", env=env).returncode
+        if rc != 0:
+            return rc
+
     args.stamp.parent.mkdir(parents=True, exist_ok=True)
     args.stamp.write_text("ok\n")
     return 0
