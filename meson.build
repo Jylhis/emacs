@@ -41,8 +41,38 @@ conf_data.set('EMACS_CONFIGURATION',
               host_machine.cpu_family() + '-pc-' + host_machine.system())
 
 # OS family / opsys, used for system-type symbol and a few code paths.
-# Mirrors configure.ac:2145.
-conf_data.set('SYSTEM_TYPE', host_machine.system())
+# Mirrors configure.ac:2343-2375: autotools maps the host opsys to a
+# canonical Lisp symbol by stripping trailing digits, replacing '-'
+# with '/', and collapsing BSD-family / Win32 / SysV variants.  Meson's
+# host_machine.system() returns the pre-mapped name, so do the
+# equivalent translation here -- otherwise Lisp code that branches on
+# (eq system-type 'gnu/linux) (battery.el, dired-aux.el, man.el, and
+# ~60 others) silently picks the wrong arm.
+_system_type_map = {
+  'linux'        : 'gnu/linux',
+  'darwin'       : 'darwin',
+  'android'      : 'android',
+  'windows'      : 'windows-nt',
+  'cygwin'       : 'cygwin',
+  'haiku'        : 'haiku',
+  'gnu'          : 'gnu',
+  'gnu/kfreebsd' : 'gnu/kfreebsd',
+  'freebsd'      : 'berkeley-unix',
+  'dragonfly'    : 'berkeley-unix',
+  'netbsd'       : 'berkeley-unix',
+  'openbsd'      : 'berkeley-unix',
+  'sunos'        : 'usg-unix-v',
+}
+if _system_type_map.has_key(host_machine.system())
+  conf_data.set('SYSTEM_TYPE', _system_type_map[host_machine.system()])
+else
+  warning('Unrecognised host_machine.system() value "@0@"; '.format(
+            host_machine.system())
+          + 'SYSTEM_TYPE left as-is. (eq system-type ...) tests in '
+          + 'Lisp will not match the upstream-documented set '
+          + '(see DEFVAR_LISP for system-type in src/emacs.c).')
+  conf_data.set('SYSTEM_TYPE', host_machine.system())
+endif
 
 # COPYRIGHT and SEPCHAR are referenced unquoted in C code (e.g.
 # ebrowse.c uses SEPCHAR as a char literal).  We pass the inner text
