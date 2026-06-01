@@ -148,7 +148,7 @@ compile_main_manifest = custom_target(
     '--lisp-dir', meson.global_source_root() / 'lisp',
     '--output',   '@OUTPUT@',
   ],
-  depends : [loaddefs_stamp, grammars_stamp],
+  depends : [loaddefs_stamp, grammars_stamp, unidata_stamp],
   build_always_stale : true,
   build_by_default : true,
 )
@@ -172,6 +172,7 @@ compile_main_elcs = custom_target(
     bootstrap_emacs, bootstrap_pdmp,
     charscript_el, emoji_zwj_el, charsets_stamp,
     compile_first_elcs, compile_main_manifest, loaddefs_stamp,
+    unidata_stamp,
   ],
   build_by_default : true,
 )

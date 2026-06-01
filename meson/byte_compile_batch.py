@@ -142,6 +142,18 @@ def main() -> int:
         # those priority files do not use cl-extra, so a no-op load is fine.
         "--eval",
         "(load \"cl-loaddefs\" 'noerror 'quiet)",
+        # Likewise register the Unicode char-code properties.  bootstrap-
+        # emacs.pdmp is dumped before charprop.el exists (it is generated
+        # with that very pdmp), so loadup.el's silent (load "charprop.el"
+        # t) is a no-op there and the compile image has no char-code
+        # properties.  Files that consult them at compile time --
+        # char-fold.el's `(unicode-property-table-internal 'decomposition)',
+        # and the syntax/category tables in nxml, css-mode, mhtml, the
+        # *-ts-mode wrappers -- then fail with "char-table-p, nil".  Loading
+        # charprop registers the deferred uni-*.el tables, which
+        # uniprop_table (src/chartab.c) loads on demand from the load path.
+        "--eval",
+        "(load \"international/charprop\" 'noerror 'quiet)",
         "-f", "batch-byte-compile",
     ]
 
