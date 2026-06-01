@@ -18,6 +18,10 @@ Findings followed up since the audit landed:
 | F-07  | `meson: drop inert options and parked GNUstep templates` | fixed |
 | F-26  | `Delete autotools-era orphaned scripts in build-aux/ and meson/` | fixed |
 | F-29  | `Delete autotools-era orphaned scripts in build-aux/ and meson/` | fixed |
+| F-23  | `Harden build scripts against hostile inputs (F-23, F-33, F-39)` | fixed |
+| F-33  | `Harden build scripts against hostile inputs (F-23, F-33, F-39)` | fixed |
+| F-39  | `Harden build scripts against hostile inputs (F-23, F-33, F-39)` | fixed |
+| F-50  | `; Note phase 8 status in build-system notes (F-50)` | fixed |
 | F-40  | n/a — over-flagged; the function-probe loop pattern is uniform across ~30 entries and gating one is inconsistency, not safety | rejected |
 
 Open P0s requiring larger refactors / decisions:
