@@ -41,6 +41,49 @@ Bootstrap dance (custom_targets):
     native-lisp-stamp          # .eln (with -Dnative-compilation=yes)
     emacs / emacs.pdmp         # final pdumped image
 
+### Byte-compile skips (the "N skipped (compile errors)" line)
+
+`meson/byte_compile_batch.py` prints `byte-compiled N files; M skipped
+(compile errors)` and always exits 0, so byte-compile failures are silent
+-- the file just never gets a `.elc` (nor a `.eln`) and Emacs falls back
+to source at runtime.  This masked a large regression: the build reported
+**140 skipped**.  Root causes, in the order they bite:
+
+1. **cl-extra functions void at compile time** (was ~115 files, incl. the
+   whole `cedet/` tree, css-mode, ox-*, window-tool-bar).  The compiler is
+   `bootstrap-emacs` running `bootstrap-emacs.pdmp`, which is dumped with
+   `--temacs=pbootstrap` *before* `loaddefs-stamp` generates
+   `cl-loaddefs.el` (loaddefs-stamp depends on bootstrap_pdmp).  At dump
+   time `cl-lib.el`'s `(load "cl-loaddefs")` fails and its fallback loads
+   `cl-macs`+`cl-seq` but deliberately **not** `cl-extra`; `cl-lib` is then
+   already `provide`d, so a file's own `(require 'cl-lib)` is a no-op and
+   the `cl-extra` autoloads (`cl-every`, `cl-some`, `cl-mapl`, `cl-subseq`,
+   ...) never register.  Fix: `byte_compile_batch.py` loads `cl-loaddefs`
+   in the compile session.  Fixing this exposed a load-path collision --
+   with `cedet/srecode/compile.elc` now built, a bare `(require 'compile)`
+   found it instead of `progmodes/compile`.  cedet sub-packages are
+   reachable via their slash-prefixed features through the `cedet` entry
+   alone, so `_load_path` now drops the nested `cedet/*` directories.
+
+2. **`no-byte-compile: t` missed** (23 files: `international/uni-*.el`,
+   `charprop.el`, `ldefs-boot.el`, `loadup.el`, `theme-loaddefs.el`,
+   `org/org-version.el`).  These carry the cookie in a trailing
+   `Local Variables:` block; `list_lisp_files.py` inspected only the first
+   line, so they entered the manifest and `batch-byte-compile` correctly
+   refused them -- miscounted as errors.  Fix: scan both ends of the file.
+
+After both fixes: **25 residual skips**, a *separate* pre-existing gap, not
+cl-related:
+- ~20 CEDET files need generated grammar outputs (`semantic/bovine/*-by`,
+  `semantic/wisent/*-wy`, `srecode/srt-wy`) that are **absent from the
+  tree** (0 on disk, 0 git-tracked).  NB: the parked-backends table below
+  claims `admin/grammars/` outputs "are committed to lisp/cedet/semantic/"
+  -- that is currently false; reviving CEDET fully needs the grammar
+  generation (`.wy`/`.by` -> `*-wy.el`/`*-by.el`) wired into Meson.
+- 4 obsolete files (`obsolete/idlw*`, `isearchb`->`iswitchb`) fail because
+  `obsolete/` is excluded from the byte-compile load path.
+- `international/textsec.el` needs the generated `uni-confusable.el`.
+
 ## First-time autotools build (legacy on this branch)
 
     ./autogen.sh    # generates configure (needs autoconf, git, texinfo)
