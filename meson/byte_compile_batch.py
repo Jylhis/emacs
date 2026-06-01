@@ -119,6 +119,7 @@ def main() -> int:
     # chunk well clear.
     chunk_size = 50
     failed_individually: list[Path] = []
+    chunk_failures: list[tuple[int, int]] = []
     for i in range(0, len(rel_files), chunk_size):
         chunk = rel_files[i:i + chunk_size]
         cmd = base_cmd + [str(lisp_root / r) for r in chunk]
@@ -126,6 +127,8 @@ def main() -> int:
               f"{len(chunk)} files starting with {chunk[0]}",
               file=sys.stderr, flush=True)
         rc = subprocess.run(cmd, env=env).returncode
+        if rc != 0 and not args.retry_failed:
+            chunk_failures.append((i // chunk_size + 1, rc))
         if rc != 0 and args.retry_failed:
             # When a chunk fails (bootstrap-emacs segfaults at the
             # first un-compilable file), files after the crash have
@@ -180,6 +183,14 @@ def main() -> int:
         moved += 1
     print(f"byte-compiled {moved} files; {skipped} skipped (compile errors)",
           file=sys.stderr)
+    if chunk_failures:
+        print("byte-compile aborted: one or more chunks failed:",
+              file=sys.stderr, flush=True)
+        for chunk_num, rc in chunk_failures[:5]:
+            print(f"  chunk {chunk_num} failed (rc={rc})",
+                  file=sys.stderr, flush=True)
+        return 1
+
     if args.stamp is not None:
         args.stamp.write_text("ok\n")
     return 0
