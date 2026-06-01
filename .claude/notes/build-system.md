@@ -72,17 +72,32 @@ to source at runtime.  This masked a large regression: the build reported
    line, so they entered the manifest and `batch-byte-compile` correctly
    refused them -- miscounted as errors.  Fix: scan both ends of the file.
 
-After both fixes: **25 residual skips**, a *separate* pre-existing gap, not
-cl-related:
-- ~20 CEDET files need generated grammar outputs (`semantic/bovine/*-by`,
-  `semantic/wisent/*-wy`, `srecode/srt-wy`) that are **absent from the
-  tree** (0 on disk, 0 git-tracked).  NB: the parked-backends table below
-  claims `admin/grammars/` outputs "are committed to lisp/cedet/semantic/"
-  -- that is currently false; reviving CEDET fully needs the grammar
-  generation (`.wy`/`.by` -> `*-wy.el`/`*-by.el`) wired into Meson.
-- 4 obsolete files (`obsolete/idlw*`, `isearchb`->`iswitchb`) fail because
-  `obsolete/` is excluded from the byte-compile load path.
-- `international/textsec.el` needs the generated `uni-confusable.el`.
+Those two fixes left **25 residual skips** with a *separate* root cause
+(missing build-time-generated files), since fixed in turn:
+
+3. **obsolete/ excluded from the load path** (4 files: `obsolete/idlw*`,
+   `isearchb`->`iswitchb`).  Those packages `require` one another but
+   `_load_path` skipped `obsolete/`.  Fix: append `obsolete/` last (after
+   every live directory, so it never shadows a replacement).
+
+4. **CEDET grammars never generated** (~20 files).  Upstream stopped
+   committing the `*-wy.el`/`*-by.el` parsers (f9b697ddaa6); they are built
+   from `admin/grammars/*.{wy,by}`.  The autotools `admin/grammars/Makefile.in`
+   was dropped at the cutover and never ported.  (The parked-backends table
+   below still claims these "are committed to lisp/cedet/semantic/" -- that
+   is false; the outputs are `.gitignore`d.)  Fix: `meson/gen_grammars.py` +
+   a `grammars_stamp` target run before the compile-main manifest, using
+   `bovine-batch-make-parser` / `wisent-batch-make-parser`
+   (`semantic/grm-wy-boot.el` bootstraps the grammar-language parser).
+
+5. **Standalone unidata tables never generated** (`international/textsec.el`
+   needs `uni-confusable.el` + `idna-mapping.el`).  `run_unidata.py` built
+   only `unidata-file-alist` + `charprop.el`, not the three standalone
+   targets.  Fix: also generate `uni-scripts.el`, `uni-confusable.el`,
+   `idna-mapping.el` (mirrors admin/unidata/Makefile.in).
+
+End state: **0 skips** -- the full lisp tree byte-compiles, verified by
+`meson compile` and a clean `nix flake check`.
 
 ## First-time autotools build (legacy on this branch)
 
@@ -197,7 +212,7 @@ not a migration.
 |---|---|---|
 | Windows GUI / Cygwin | `nt/` and `lib-src/ntlib*` (both deleted upstream), configure.ac w32 / native-image-api / cygwin32-native-compilation switches | C backend not on this fork's roadmap. |
 | Haiku | configure.ac be-app / be-cairo switches | Same. |
-| `admin/grammars/` | `admin/grammars/Makefile.in` | Outputs are committed to `lisp/cedet/semantic/`; only matters when editing `.by`/`.wy` source grammars. |
+| `admin/grammars/` | `admin/grammars/Makefile.in` | NO LONGER PARKED: ported to `meson/gen_grammars.py` + the `grammars_stamp` target.  Outputs are generated from `.wy`/`.by` at build time (and `.gitignore`d), not committed. |
 | `xaw3d` / Motif / Lucid X toolkits | configure.ac toolkit selector | Already dropped per `meson.options:52-53`. |
 | `gconf` | configure.ac AC_ARG_WITH | Deprecated; option `disabled` by default. |
 | `imagemagick` | configure.ac AC_ARG_ENABLE | `disabled` by default; security advisories argue against turning back on. |
