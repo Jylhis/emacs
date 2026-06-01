@@ -27,6 +27,8 @@ Findings followed up since the audit landed:
 | F-11  | `Surface failures in native-comp + sandbox install resolve (F-11, F-14)` | fixed |
 | F-14  | `Surface failures in native-comp + sandbox install resolve (F-11, F-14)` | fixed |
 | F-13  | `meson: plumb android-target-api through the APK pipeline (F-13)` | fixed |
+| F-04  | `ci: hard-fail guarded post-build smoke tests (F-04, F-05)` | partial (compile chain still tolerated; six guarded test steps now hard-fail) |
+| F-05  | `ci: hard-fail guarded post-build smoke tests (F-04, F-05)` | partial (compile chain still tolerated; six guarded test steps now hard-fail) |
 | F-40  | n/a — over-flagged; the function-probe loop pattern is uniform across ~30 entries and gating one is inconsistency, not safety | rejected |
 
 Open P0s requiring larger refactors / decisions:
@@ -35,10 +37,14 @@ Open P0s requiring larger refactors / decisions:
   per-target staging dir, but loaddefs (F-12) shares the same root
   cause and loadup.el resolves loaddefs through EMACSLOADPATH —
   multi-file refactor.
-- **F-04 / F-05** CI `continue-on-error: true` flags.  Comments at
-  `.github/workflows/meson.yml:440-446` say flakiness is *intentionally
-  tolerated* during post-cutover recovery.  Flipping needs either a
-  pbootstrap fix first or a narrow fail-if-pdmp-missing gate.
+- **F-04 / F-05** CI `continue-on-error` chain.  **Partially fixed
+  in `c9ec2a18983`**: six guarded post-build steps now hard-fail
+  (factorial, smoke ERT, install, parity, installed-eval, avy
+  reproducer).  Remaining: the five unguarded compile-chain steps
+  (`bootstrap-emacs.pdmp`, `compile-first`, `loaddefs-stamp`,
+  `compile-main`, `emacs.pdmp`) — these need a real pbootstrap
+  stabilisation pass before they can hard-fail.  ERT normal-suite
+  intentionally still tolerant pending a flaky-test triage.
 
 ## Executive summary
 
