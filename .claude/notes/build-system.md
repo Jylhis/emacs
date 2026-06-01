@@ -96,8 +96,26 @@ Those two fixes left **25 residual skips** with a *separate* root cause
    targets.  Fix: also generate `uni-scripts.el`, `uni-confusable.el`,
    `idna-mapping.el` (mirrors admin/unidata/Makefile.in).
 
+6. **No Unicode char-code properties in the compile image** (13 files:
+   `char-fold.el`, the `nxml/*` set, `css-mode`/`mhtml`/`*-ts-mode`,
+   `cedet/semantic/html.el`).  `bootstrap-emacs.pdmp` is dumped *without*
+   unidata (intentionally -- charprop.el is generated *using* that pdmp),
+   so `loadup.el`'s silent `(load "charprop.el" t)` is a no-op and
+   `char-code-property-alist` is empty in the compiler.  Files reading a
+   property at compile time -- `char-fold.el`'s
+   `(unicode-property-table-internal 'decomposition)` and syntax/category
+   tables elsewhere -- got `nil` and failed with `char-table-p, nil`.  This
+   was a clean-build-only failure: a stale `charprop.el` present when the
+   pdmp was dumped masked it locally (and in earlier nix runs it hid behind
+   the larger skip count -- 38 -> 34 -> 13 -> 0 across the fixes).  Fix:
+   `byte_compile_batch.py` loads `international/charprop` (registers the
+   deferred `uni-*.el` tables; `uniprop_table` in `src/chartab.c` loads
+   each on demand), and compile-main now depends on `unidata_stamp` so
+   `charprop.el` exists first.
+
 End state: **0 skips** -- the full lisp tree byte-compiles, verified by
-`meson compile` and a clean `nix flake check`.
+`meson compile` *and* a clean-from-scratch `nix flake check` (which
+exercises every generator in the sandbox).
 
 ## First-time autotools build (legacy on this branch)
 
