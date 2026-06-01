@@ -6,6 +6,31 @@ deduplicates and prioritises their findings, then cross-references
 the prior audit notes so already-known items are cited rather than
 restated.
 
+## Resolution status
+
+Findings followed up since the audit landed:
+
+| ID    | Resolved by commit | Status |
+|-------|--------------------|--------|
+| F-01  | `meson: map host_machine.system() to upstream SYSTEM_TYPE` | fixed |
+| F-02  | `meson: enumerate compile-main lisp at build time, not configure time` | fixed |
+| F-06  | `meson: drop inert options and parked GNUstep templates` | fixed |
+| F-07  | `meson: drop inert options and parked GNUstep templates` | fixed |
+| F-26  | `Delete autotools-era orphaned scripts in build-aux/ and meson/` | fixed |
+| F-29  | `Delete autotools-era orphaned scripts in build-aux/ and meson/` | fixed |
+| F-40  | n/a — over-flagged; the function-probe loop pattern is uniform across ~30 entries and gating one is inconsistency, not safety | rejected |
+
+Open P0s requiring larger refactors / decisions:
+
+- **F-03** byte-compile race on source-tree `.elc`.  Clean fix is
+  per-target staging dir, but loaddefs (F-12) shares the same root
+  cause and loadup.el resolves loaddefs through EMACSLOADPATH —
+  multi-file refactor.
+- **F-04 / F-05** CI `continue-on-error: true` flags.  Comments at
+  `.github/workflows/meson.yml:440-446` say flakiness is *intentionally
+  tolerated* during post-cutover recovery.  Flipping needs either a
+  pbootstrap fix first or a narrow fail-if-pdmp-missing gate.
+
 ## Executive summary
 
 **Counts after deduplication.**
