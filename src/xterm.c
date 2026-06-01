@@ -15434,7 +15434,7 @@ xg_end_scroll_callback (GtkWidget *widget,
 }
 
 
-#else /* not USE_GTK and not USE_MOTIF */
+#else /* not USE_GTK */
 
 /* Xaw scroll bar callback.  Invoked when the thumb is dragged.
    WIDGET is the scroll bar widget.  CLIENT_DATA is a pointer to the

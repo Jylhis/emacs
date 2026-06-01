@@ -762,8 +762,8 @@ if threads_opt.allowed()
 endif
 
 # ----------------------------------------------------------------------
-# Cairo XCB (configure.ac:--with-cairo-xcb), XInput 2 extension,
-# Xaw3d.  All X11-gated; explicit `enabled` errors out without GTK3.
+# XInput 2 extension.  X11-gated; explicit `enabled` errors out
+# without GTK3.
 # ----------------------------------------------------------------------
 xinput2_opt = get_option('xinput2').disable_auto_if(_no_all)
 xdbe_opt = get_option('xdbe').disable_auto_if(_no_all)
