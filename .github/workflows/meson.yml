@@ -478,8 +478,12 @@ jobs:
           fi
 
       - name: Smoke test full emacs (factorial)
+        # Guarded by `if [ -f build/lisp/emacs.pdmp ]`, so a missing
+        # pdmp from the upstream flaky compile chain doesn't fail
+        # this step.  Removed `continue-on-error: true` (F-04/F-05)
+        # so a present pdmp that evaluates wrong actually turns CI
+        # red instead of silently passing.
         if: success()
-        continue-on-error: true
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
             EMACSDATA="$PWD/etc" EMACSDOC="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
@@ -501,8 +505,10 @@ jobs:
           build/lib-src/etags --version | head -1
 
       # ---- ERT test suites ---------------------------------------------
+      # Smoke tests are deterministic by design (three files, fixed
+      # timeout).  Hard-fail on failure (F-04/F-05); guard handles
+      # missing pdmp.
       - name: ERT smoke tests (meson)
-        continue-on-error: true
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
             meson test -C build --suite smoke --print-errorlogs
@@ -510,6 +516,9 @@ jobs:
             echo "emacs.pdmp not produced; skipping ERT smoke tests"
           fi
 
+      # ERT normal-suite still tolerates failure: it covers the full
+      # ~150-file lisp test surface, some of which is genuinely
+      # flaky.  Tighten this once the flaky long-tail is triaged.
       - name: ERT normal tests (excludes expensive/unstable)
         continue-on-error: true
         run: |
@@ -524,8 +533,15 @@ jobs:
       # Verifies that meson install lays out a tree that matches what
       # autotools `make install` used to produce.  Catches regressions
       # in build_by_default flips and meson_install.py walks.
+      #
+      # All four steps below are guarded by `if [ -f ... ]` / `if [ -x
+      # ... ]`, so a missing pdmp from the upstream flaky compile
+      # chain produces an "echo skipping" and exits 0.  Removed
+      # `continue-on-error: true` from each (F-04/F-05) so a present
+      # pdmp that produces a broken install / parity drift / eval
+      # failure / byte-compile segfault turns CI red instead of
+      # passing silently.
       - name: meson install (staged)
-        continue-on-error: true
         if: success()
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
@@ -535,7 +551,6 @@ jobs:
           fi
 
       - name: Check installed-tree parity
-        continue-on-error: true
         if: success()
         run: |
           if [ -d stage/usr/local ]; then
@@ -546,7 +561,6 @@ jobs:
           fi
 
       - name: Smoke test installed Emacs (batch eval)
-        continue-on-error: true
         if: success()
         run: |
           bin=stage/usr/local/bin/emacs
@@ -562,7 +576,6 @@ jobs:
           fi
 
       - name: Avy byte-compile reproducer (downstream segfault gate)
-        continue-on-error: true
         if: success()
         run: |
           # Heavy byte-compile workload that segfaulted under the
