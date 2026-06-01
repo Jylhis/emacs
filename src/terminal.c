@@ -252,7 +252,7 @@ decode_tty_terminal (Lisp_Object terminal)
 {
   struct terminal *t = decode_live_terminal (terminal);
 
-  return (t->type == output_termcap || t->type == output_msdos_raw) ? t : NULL;
+  return t->type == output_termcap ? t : NULL;
 }
 
 /* Return an active (not suspended) text-based terminal device that uses
@@ -268,7 +268,7 @@ get_named_terminal (const char *name)
 
   for (t = terminal_list; t; t = t->next_terminal)
     {
-      if ((t->type == output_termcap || t->type == output_msdos_raw)
+      if (t->type == output_termcap
           && !strcmp (t->display_info.tty->name, name)
           && TERMINAL_ACTIVE_P (t))
         return t;
@@ -462,16 +462,10 @@ return values.  */)
       return Qt;
     case output_x_window:
       return Qx;
-    case output_w32:
-      return Qw32;
-    case output_msdos_raw:
-      return Qpc;
     case output_ns:
       return Qns;
     case output_pgtk:
       return Qpgtk;
-    case output_haiku:
-      return Qhaiku;
     case output_android:
       return Qandroid;
     default:

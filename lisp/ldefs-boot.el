@@ -2590,11 +2590,6 @@ Default to the URL around or before point.
 The optional argument NEW-WINDOW is not used.
 
 (fn URL &optional NEW-WINDOW)" t)
-(autoload 'browse-url-default-haiku-browser "browse-url"
-"Browse URL with the system default browser.
-Default to the URL around or before point.
-
-(fn URL &optional NEW-WINDOW)" t)
 (autoload 'browse-url-default-android-browser "browse-url"
 "Browse URL with the system default browser.
 If `browse-url-android-share' is non-nil, try to share URL using
@@ -8755,21 +8750,6 @@ is t or contains the mode name.")
 ;;; Generated autoloads from dom.el
 
 (register-definition-prefixes "dom" '("dom-"))
-
-
-;;; Generated autoloads from dos-fns.el
-
-(register-definition-prefixes "dos-fns" '("dos"))
-
-
-;;; Generated autoloads from dos-vars.el
-
-(register-definition-prefixes "dos-vars" '("dos-codepage-setup-hook" "msdos-shells"))
-
-
-;;; Generated autoloads from dos-w32.el
-
-(register-definition-prefixes "dos-w32" '("file-name-buffer-file-type-alist" "find-" "w32-"))
 
 
 ;;; Generated autoloads from double.el
@@ -38995,16 +38975,6 @@ Visual-Wrap-Prefix mode.
 ;;; Generated autoloads from emacs-lisp/vtable.el
 
 (register-definition-prefixes "vtable" '("vtable"))
-
-
-;;; Generated autoloads from w32-fns.el
-
-(register-definition-prefixes "w32-fns" '("w32-"))
-
-
-;;; Generated autoloads from w32-vars.el
-
-(register-definition-prefixes "w32-vars" '("w32-"))
 
 
 ;;; Generated autoloads from image/wallpaper.el

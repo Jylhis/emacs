@@ -21,6 +21,7 @@
 # Ignore all dot-files except for those under version control.
 .*
 !.claude
+.claude/settings.json
 .claude/settings.local.json
 !.clang-format
 !.clangd
@@ -407,6 +408,10 @@ devenv.local.yaml
 
 # direnv
 .direnv
+
+# nix build output symlinks
+/result
+/result-*
 
 # pre-commit
 .pre-commit-config.yaml

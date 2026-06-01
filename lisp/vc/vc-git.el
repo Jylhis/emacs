@@ -1691,11 +1691,13 @@ If PROMPT is non-nil, prompt for the Git command to run."
                              (replace-regexp-in-string "\r\\(\\'\\|[^\n]\\)"
                                                        "\n\\1" string))))
     (with-current-buffer buffer
-      (vc-run-delayed
+        (vc-run-delayed
         (vc-compilation-mode 'git)
         (setq-local compile-command
-                    (concat git-program " " command " "
-                            (mapconcat #'identity extra-args " ")))
+                    (mapconcat #'shell-quote-argument
+                               (cons git-program
+                                     (cons command extra-args))
+                               " "))
         (setq-local compilation-directory root)
         ;; Either set `compilation-buffer-name-function' locally to nil
         ;; or use `compilation-arguments' to set `name-function'.
@@ -2678,8 +2680,9 @@ In other modes, call `vc-deduce-fileset' to determine files to stash."
   (interactive "sStash name: ")
   (let ((root (vc-git-root default-directory)))
     (when root
-      (apply #'vc-git--call nil nil "stash" "push" "-m" name
-             (vc-git--deduce-files-for-stash))
+      (let ((files (vc-git--deduce-files-for-stash)))
+        (apply #'vc-git--call nil nil "stash" "push" "-m" name
+               (if files (cons "--" files) files)))
       (vc-resynch-buffer root t t))))
 
 (defvar vc-git-stash-read-history nil

@@ -23,7 +23,13 @@ RETRY_TSV=${RUN_DIR}/retry-applied.tsv
 FAILED_TSV=${RUN_DIR}/failed.tsv
 NEWS_PORT_TSV=${RUN_DIR}/news-port.tsv
 LOG=${RUN_DIR}/run.log
-: > "$APPLIED_TSV" "$RETRY_TSV" "$FAILED_TSV" "$NEWS_PORT_TSV" "$LOG"
+# Create all output files up front.  `: > A B C` only redirects to A,
+# so iterate explicitly — otherwise the unwritten files never exist and
+# the final `wc -l` summary warns about them on the no-retries path.
+for _f in "$APPLIED_TSV" "$RETRY_TSV" "$FAILED_TSV" "$NEWS_PORT_TSV" "$LOG"; do
+    : > "$_f"
+done
+unset _f
 
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*" | tee -a "$LOG" >&2; }
 die() { log "FATAL: $*"; exit 1; }
@@ -43,6 +49,10 @@ preflight_clean() {
 }
 
 # Pre-flight: ensure the upstream remote points at savannah.
+# Fetch master (the main candidate set) AND the active release branch
+# emacs-31 (which receives safe bug/doc fixes that the gitmerge cron
+# only forwards to master in batches — polling emacs-31 directly catches
+# them earlier and avoids the gitmerge merge-commit baggage).
 preflight_remote() {
     local url
     if url=$(git remote get-url "$REMOTE_NAME" 2>/dev/null); then
@@ -52,7 +62,7 @@ preflight_remote() {
         log "adding $REMOTE_NAME -> $EMACS_UPSTREAM"
         git remote add "$REMOTE_NAME" "$EMACS_UPSTREAM"
     fi
-    git fetch "$REMOTE_NAME" master >/dev/null \
+    git fetch "$REMOTE_NAME" master emacs-31 >/dev/null \
         || die "fetch from $REMOTE_NAME failed"
 }
 

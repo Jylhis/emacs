@@ -30,13 +30,8 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #endif
 
 /* To help make dependencies clearer elsewhere, this file typically
-   does not #include other files.  The exception is ms-w32.h (DOS_NT
-   only) because it historically was included here and changing that
-   would take some work.  */
+   does not #include other files.  */
 
-#if defined WINDOWSNT && !defined DEFER_MS_W32_H
-# include <ms-w32.h>
-#endif
 
 /* GNUC_PREREQ (V, W, X) is true if this is GNU C version V.W.X or later.
    It can be used in a preprocessor expression.  */
@@ -96,14 +91,6 @@ typedef bool bool_bf;
    So we go with HAVE_LRAND48 being defined.  */
 
 
-#if defined HAVE_NTGUI && !defined DebPrint
-# ifdef EMACSDEBUG
-extern void _DebPrint (const char *fmt, ...);
-#  define DebPrint(stuff) _DebPrint stuff
-# else
-#  define DebPrint(stuff) ((void) 0)
-# endif
-#endif
 
 
 /* Tell time_rz.c to use Emacs's getter and setter for TZ.
@@ -118,28 +105,6 @@ extern int emacs_setenv_TZ (char const *);
 
 #if GNUC_PREREQ (4, 4, 0) && defined __GLIBC_MINOR__
 # define PRINTF_ARCHETYPE __gnu_printf__
-#elif GNUC_PREREQ (4, 4, 0) && defined __MINGW32__
-# ifdef MINGW_W64
-/* When __USE_MINGW_ANSI_STDIO is non-zero (as set by config.h),
-   MinGW64 replaces printf* with its own versions that are
-   __gnu_printf__ compatible, and emits warnings for MS native %I64d
-   format spec.  */
-#  if __USE_MINGW_ANSI_STDIO
-#   define PRINTF_ARCHETYPE __gnu_printf__
-#  else
-#   define PRINTF_ARCHETYPE __ms_printf__
-#  endif
-# else	/* mingw.org's MinGW */
-/* Starting from runtime v5.0.0, mingw.org's MinGW with GCC 6 and
-   later turns on __USE_MINGW_ANSI_STDIO by default, replaces printf*
-   with its own __mingw_printf__ version, which still recognizes
-   %I64d.  */
-#  if GNUC_PREREQ (6, 0, 0) && __MINGW32_MAJOR_VERSION >= 5
-#   define PRINTF_ARCHETYPE __mingw_printf__
-#  else  /* __MINGW32_MAJOR_VERSION < 5 */
-#   define PRINTF_ARCHETYPE __ms_printf__
-#  endif  /* __MINGW32_MAJOR_VERSION < 5 */
-# endif	 /* MinGW */
 #else
 # define PRINTF_ARCHETYPE __printf__
 #endif
@@ -306,51 +271,3 @@ extern int emacs_setenv_TZ (char const *);
    nor Gnulib strftime support for non-Gregorian calendars.  */
 #define REQUIRE_GNUISH_STRFTIME_AM_PM false
 #define SUPPORT_NON_GREG_CALENDARS_IN_STRFTIME false
-
-
-#if defined WINDOWSNT && !(defined OMIT_CONSOLESAFE && OMIT_CONSOLESAFE == 1)
-# if !defined _UCRT || !(HAVE_DECL_GETDELIM && HAVE_DECL_GETLINE)
-#  include <stdio.h>
-#  include <stddef.h>
-#  if !defined _UCRT
-#   include <stdarg.h>
-
-/* Workarounds for MSVCRT bugs.
-
-   The functions below are in Gnulib, but their prototypes and
-   redirections must be here because the MS-Windows build omits the
-   Gnulib stdio-h module, which does the below in Gnulib's stdio.h
-   file, which is not used by the MS-Windows build.  */
-
-extern size_t gl_consolesafe_fwrite (const void *ptr, size_t size,
-				     size_t nmemb, FILE *fp)
-  ARG_NONNULL ((1, 4));
-extern int gl_consolesafe_fprintf (FILE *restrict fp,
-				   const char *restrict format, ...)
-  ATTRIBUTE_FORMAT_PRINTF (2, 3)
-  ARG_NONNULL ((1, 2));
-extern int gl_consolesafe_printf (const char *restrict format, ...)
-  ATTRIBUTE_FORMAT_PRINTF (1, 2)
-  ARG_NONNULL ((1));
-extern int gl_consolesafe_vfprintf (FILE *restrict fp,
-				    const char *restrict format, va_list args)
-  ATTRIBUTE_FORMAT_PRINTF (2, 0)
-  ARG_NONNULL ((1, 2));
-extern int gl_consolesafe_vprintf (const char *restrict format, va_list args)
-  ATTRIBUTE_FORMAT_PRINTF (1, 0)
-  ARG_NONNULL ((1));
-#   define fwrite gl_consolesafe_fwrite
-#   define fprintf gl_consolesafe_fprintf
-#   define printf gl_consolesafe_printf
-#   define vfprintf gl_consolesafe_vfprintf
-#   define vprintf gl_consolesafe_vprintf
-#  endif /* !_UCRT */
-
-#  if !HAVE_DECL_GETDELIM
-extern ssize_t getdelim (char **, size_t *, int, FILE *);
-#  endif
-#  if !HAVE_DECL_GETLINE
-extern ssize_t getline (char **, size_t *, FILE *);
-#  endif
-# endif
-#endif	/* WINDOWSNT */

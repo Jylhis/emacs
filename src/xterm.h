@@ -584,9 +584,6 @@ struct x_display_info
     Xatom_MULE_BASELINE_OFFSET, Xatom_MULE_RELATIVE_COMPOSE,
     Xatom_MULE_DEFAULT_ASCENT;
 
-  /* More atoms for Ghostscript support.  */
-  Atom Xatom_DONE, Xatom_PAGE;
-
   /* Atoms used in toolkit scroll bar client messages.  */
   Atom Xatom_Scrollbar, Xatom_Horizontal_Scrollbar;
 
@@ -1128,13 +1125,6 @@ struct x_output
      bars).  */
   unsigned long scroll_bar_background_pixel;
 
-#if defined (USE_LUCID) && defined (USE_TOOLKIT_SCROLL_BARS)
-  /* Top and bottom shadow colors for 3D Lucid scrollbars.
-     -1 means let the scroll compute them itself.  */
-  unsigned long scroll_bar_top_shadow_pixel;
-  unsigned long scroll_bar_bottom_shadow_pixel;
-#endif
-
   /* Descriptor for the cursor in use for this window.  */
   Cursor text_cursor;
   Cursor nontext_cursor;
@@ -1555,11 +1545,6 @@ struct scroll_bar
      being dragged, this is -1.  */
   int dragging;
 
-#if defined (USE_TOOLKIT_SCROLL_BARS) && defined (USE_LUCID)
-  /* Last scroll bar part seen in xaw_jump_callback and xaw_scroll_callback.  */
-  enum scroll_bar_part last_seen_part;
-#endif
-
 #if defined (USE_TOOLKIT_SCROLL_BARS) && !defined (USE_GTK)
   /* Last value of whole for horizontal scrollbars.  */
   int whole;
@@ -1737,8 +1722,7 @@ extern unsigned long x_copy_color (struct frame *, unsigned long);
 extern bool x_alloc_nearest_color (struct frame *, Colormap, XColor *);
 extern void x_query_colors (struct frame *f, XColor *, int);
 extern void x_clear_area (struct frame *f, int, int, int, int);
-#if (defined USE_LUCID && defined HAVE_XINPUT2) \
-  || (!defined USE_X_TOOLKIT && !defined USE_GTK)
+#if !defined USE_X_TOOLKIT && !defined USE_GTK
 extern void x_mouse_leave (struct x_display_info *);
 #endif
 extern void x_wait_for_cell_change (Lisp_Object, struct timespec);
@@ -1799,7 +1783,7 @@ extern void x_handle_pending_selection_requests (void);
 extern bool x_detect_pending_selection_requests (void);
 extern Lisp_Object x_dnd_begin_drag_and_drop (struct frame *, Time, Atom,
 					      Lisp_Object, Atom *, const char **,
-					      size_t, bool, Atom *, int,
+					      int, bool, Atom *, int,
 					      Lisp_Object, bool);
 extern int x_display_pixel_height (struct x_display_info *);
 extern int x_display_pixel_width (struct x_display_info *);
@@ -1920,7 +1904,7 @@ extern char *xic_create_fontsetname (const char *, bool);
 extern Lisp_Object xw_popup_dialog (struct frame *, Lisp_Object, Lisp_Object);
 #endif
 
-#if defined USE_GTK || defined USE_MOTIF
+#ifdef USE_GTK
 extern void x_menu_set_in_use (bool);
 #endif
 extern void x_menu_wait_for_event (void *data);

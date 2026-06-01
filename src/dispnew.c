@@ -484,16 +484,15 @@ adjust_glyph_matrix (struct window *w, struct glyph_matrix *matrix, int x, int y
 
 	  while (row < end)
 	    {
-	      /* Only realloc if matrix got wider or taller (bug#77961).  */
+	      /* Realloc if matrix got wider or taller (bug#77961).  */
 	      if (dim.width > matrix->matrix_w || new_rows)
 		{
-		  row->glyphs[LEFT_MARGIN_AREA]
-		    = xnrealloc (row->glyphs[LEFT_MARGIN_AREA],
-				 dim.width, sizeof (struct glyph));
+		  xfree (row->glyphs[LEFT_MARGIN_AREA]);
+		  row->glyphs[LEFT_MARGIN_AREA] = NULL;
 		  /* We actually need to clear only the 'frame' member, but
 		     it's easier to clear everything.  */
-		  memset (row->glyphs[LEFT_MARGIN_AREA], 0,
-			  dim.width * sizeof (struct glyph));
+		  row->glyphs[LEFT_MARGIN_AREA]
+		    = xcalloc (dim.width, sizeof (struct glyph));
 		}
 
 	      if ((row == matrix->rows + dim.height - 1
@@ -1325,7 +1324,7 @@ realloc_glyph_pool (struct glyph_pool *pool, struct dim matrix_dim)
 
   /* Enlarge the glyph pool.  */
   if (ckd_mul (&needed, matrix_dim.height, matrix_dim.width))
-    memory_full (SIZE_MAX);
+    memory_full_up ();
   if (needed > pool->nglyphs)
     {
       ptrdiff_t old_nglyphs = pool->nglyphs;
@@ -1882,7 +1881,7 @@ save_current_matrix (struct frame *f)
   int i;
   struct glyph_matrix *saved = xzalloc (sizeof *saved);
   saved->nrows = f->current_matrix->nrows;
-  saved->rows = xzalloc (saved->nrows * sizeof *saved->rows);
+  saved->rows = xcalloc (saved->nrows, sizeof *saved->rows);
 
   for (i = 0; i < saved->nrows; ++i)
     {
@@ -3134,8 +3133,6 @@ redraw_frame (struct frame *f)
   /* Error if F has no glyphs.  */
   eassert (f->glyphs_initialized_p);
   update_begin (f);
-  if (FRAME_MSDOS_P (f))
-    FRAME_TERMINAL (f)->set_terminal_modes_hook (FRAME_TERMINAL (f));
 
   if (FRAME_WINDOW_P (f))
     /* Garbage the frame now.  Otherwise, platforms that support
@@ -3409,7 +3406,7 @@ tty_raise_lower_frame (struct frame *f, bool raise)
 bool
 is_tty_frame (struct frame *f)
 {
-  return FRAME_TERMCAP_P (f) || FRAME_MSDOS_P (f);
+  return FRAME_TERMCAP_P (f);
 }
 
 /* Return true if frame F is a tty child frame.  */
@@ -4307,28 +4304,6 @@ redraw_overlapping_rows (struct window *w, int yb)
 #endif /* HAVE_WINDOW_SYSTEM */
 
 
-#if defined GLYPH_DEBUG && 0
-
-/* Check that no row in the current matrix of window W is enabled
-   which is below what's displayed in the window.  */
-
-static void
-check_current_matrix_flags (struct window *w)
-{
-  bool last_seen_p = 0;
-  int i, yb = window_text_bottom_y (w);
-
-  for (i = 0; i < w->current_matrix->nrows - 1; ++i)
-    {
-      struct glyph_row *row = MATRIX_ROW (w->current_matrix, i);
-      if (!last_seen_p && MATRIX_ROW_BOTTOM_Y (row) >= yb)
-	last_seen_p = 1;
-      else if (last_seen_p && row->enabled_p)
-	emacs_abort ();
-    }
-}
-
-#endif /* GLYPH_DEBUG */
 
 
 /* Update display of window W.  */
@@ -5321,7 +5296,7 @@ scrolling_window (struct window *w, int tab_line_p)
        - next_almost_prime_increment_max);
     ptrdiff_t current_nrows_max = row_table_max - desired_matrix->nrows;
     if (current_nrows_max < current_matrix->nrows)
-      memory_full (SIZE_MAX);
+      memory_full_up ();
   }
 
   /* Reallocate vectors, tables etc. if necessary.  */
@@ -6652,21 +6627,7 @@ void
 change_frame_size (struct frame *f, int new_width, int new_height,
 		   bool pretend, bool delay, bool safe)
 {
-  Lisp_Object tail, frame;
-
-  if (FRAME_MSDOS_P (f) && !FRAME_PARENT_FRAME (f))
-    {
-      /* On MS-DOS, all frames use the same screen, so a change in
-         size affects all frames.  Termcap now supports multiple
-         ttys. */
-      FOR_EACH_FRAME (tail, frame)
-	if (!FRAME_WINDOW_P (XFRAME (frame))
-	    && !FRAME_PARENT_FRAME (XFRAME (frame)))
-	  change_frame_size_1 (XFRAME (frame), new_width, new_height,
-			       pretend, delay, safe);
-    }
-  else
-    change_frame_size_1 (f, new_width, new_height, pretend, delay, safe);
+  change_frame_size_1 (f, new_width, new_height, pretend, delay, safe);
 }
 
 /* Return non-zero if we delayed size-changes of frame F and haven't
@@ -6734,7 +6695,7 @@ when TERMINAL is nil.  */)
 
   if (t->type == output_initial)
     out = stdout;
-  else if (t->type != output_termcap && t->type != output_msdos_raw)
+  else if (t->type != output_termcap)
     error ("Device %d is not a termcap terminal device", t->id);
   else
     {

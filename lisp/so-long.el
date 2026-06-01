@@ -518,8 +518,6 @@
 (defconst so-long--latest-version "1.1.2")
 
 (declare-function buffer-line-statistics "fns.c" t t) ;; Emacs 28+
-(declare-function longlines-mode "longlines")
-(defvar longlines-mode)
 
 (defvar so-long-enabled nil
   ;; This was initially a renaming of the old `so-long-mode-enabled' and
@@ -700,11 +698,7 @@ Note that `so-long-statistics-excessive-p' requires Emacs 28.1 or later."
     (so-long-minor-mode
      "Enable so-long-minor-mode"
      turn-on-so-long-minor-mode
-     turn-off-so-long-minor-mode)
-    (longlines-mode
-     "Enable longlines-mode"
-     so-long-function-longlines-mode
-     so-long-revert-function-longlines-mode))
+     turn-off-so-long-minor-mode))
   "Options for `so-long-action'.
 
 Each element is a list comprising (KEY LABEL ACTION REVERT)
@@ -736,9 +730,6 @@ Alternatively, the `so-long-minor-mode' action retains the original major mode
 while still disabling minor modes and overriding variables.  These are the only
 standard values for which `so-long-minor-modes' and `so-long-variable-overrides'
 will be automatically processed; but custom actions can also do these things.
-
-The value `longlines-mode' causes that minor mode to be enabled.  See
-longlines.el for more details.
 
 Each action likewise determines the behavior of `so-long-revert'.
 
@@ -1311,21 +1302,6 @@ This is the default `so-long-predicate' function in Emacs versions < 28.1.
                                       so-long-threshold)))
             (throw 'excessive t))
           (setq count (1+ count)))))))
-
-(defun so-long-function-longlines-mode ()
-  "Enable minor mode `longlines-mode'."
-  (require 'longlines)
-  (so-long-remember 'longlines-mode)
-  (longlines-mode 1))
-
-(defun so-long-revert-function-longlines-mode ()
-  "Restore original state of `longlines-mode'."
-  (require 'longlines)
-  (let ((state (so-long-original 'longlines-mode :exists)))
-    (if state
-        (unless (equal (cadr state) longlines-mode)
-          (longlines-mode (if (cadr state) 1 0)))
-      (longlines-mode 0))))
 
 (defun turn-on-so-long-minor-mode ()
   "Enable minor mode `so-long-minor-mode'."

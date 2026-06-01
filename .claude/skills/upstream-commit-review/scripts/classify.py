@@ -35,7 +35,6 @@ from typing import Iterable
 AUTOTOOLS_RX = re.compile(
     r"^(configure\.ac|autogen\.sh|make-dist|GNUmakefile)$"
     r"|Makefile\.in$"
-    r"|^m4/"
 )
 ADMIN_RX = re.compile(r"^admin/|^ChangeLog(\.[0-9]+)?$|^etc/MAINTAINERS$")
 MERGE_SUBJECT_RX = re.compile(r"^(; *)?Merge \b|gitmerge", re.IGNORECASE)
@@ -84,6 +83,31 @@ RENAMED_TO: dict[str, str] = {
     "etc/NEWS": "etc/NEWS.31",
 }
 
+# Paths in areas this fork removed wholesale (autotools cutover, NS-only
+# focus, no lwlib/Xaw, no MSDOS/MinGW, no Haiku, no w32term/w32proc).
+# A commit whose every non-added file falls under one of these regexes
+# is SKIPPED with the `removed-area` bucket — there is nothing for the
+# human to triage, and the rows would otherwise repeat as REVIEW rows
+# (with `missing-file:...` reasons) on every run.  A commit that ALSO
+# touches files outside these areas still goes to REVIEW via the
+# missing-file rule so the human can decide whether the in-area portion
+# is worth a partial cherry-pick.
+REMOVED_AREAS_RX = re.compile(
+    r"^lwlib/"
+    r"|^m4/"
+    r"|^msdos/"
+    r"|^config\.bat$"
+    r"|^admin/merge-gnulib$"
+    r"|^src/w32proc\.c$"
+    r"|^src/w32term\.c$"
+    r"|^src/w32image\.c$"
+    r"|^src/haikufns\.c$"
+    r"|^src/haikufont\.c$"
+    r"|^src/haikuselect\.c$"
+    r"|^src/haikuterm\.c$"
+    r"|^doc/translations/(?!en/)"
+)
+
 
 @dataclass
 class Commit:
@@ -115,6 +139,14 @@ class Commit:
                 return f
         return None
 
+    @property
+    def all_in_removed_area(self) -> bool:
+        """True iff every non-added file is in a permanently-removed area."""
+        relevant = [f for f in self.files if f not in self.added_files]
+        return bool(relevant) and all(
+            REMOVED_AREAS_RX.search(f) for f in relevant
+        )
+
 
 @dataclass
 class Decision:
@@ -129,7 +161,7 @@ class Decision:
 
     def is_skip(self) -> bool:
         return self.bucket in {"autotools", "merge-noise", "admin",
-                               "release-branch"}
+                               "release-branch", "removed-area"}
 
 
 # ---- Rule engine ------------------------------------------------------------
@@ -164,6 +196,11 @@ def classify(c: Commit) -> Decision:
     # master via merges; the standalone commit doesn't apply.
     if RELEASE_BRANCH_SUBJ_RX.search(subj):
         return Decision("release-branch", "release-branch commit")
+
+    # SKIP / removed-area: every non-added file is in a permanently-
+    # removed area of this fork.  Nothing for the human to triage.
+    if c.all_in_removed_area:
+        return Decision("removed-area", "removed-area only")
 
     # Missing-file forces REVIEW regardless of file pattern.
     # (added_files and renamed paths handled inside missing_file.)

@@ -36,7 +36,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "buffer.h"
 #include "blockinput.h"
 #include "coding.h"
-#include "md5.h"
+#include "emacs-hash.h"
 #include "sysstdio.h"
 #include "zlib.h"
 
@@ -2374,8 +2374,7 @@ emit_static_object (const char *name, Lisp_Object obj)
           /* If strlen returned 0 that means that the static object
              contains a NULL byte.  In that case just move over to the
              next block.  We can rely on the byte being zero because
-             of the previous call to bzero and because the dynamic
-             linker cleared it.  */
+             the dynamic linker cleared it.  */
           p++;
           i++;
           gcc_jit_block_add_assignment (

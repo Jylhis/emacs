@@ -406,7 +406,7 @@ If REALNAME is nil, ignore that author.")
     "unidata/.*\\.txt\\'"
     "BidiCharacterTest\\.txt"
     ;; TODO lib/? Matches other things?
-    "build-aux/" "m4/" "Emacs\\.xcodeproj" "mapfiles" "\\.map\\'"
+    "build-aux/" "Emacs\\.xcodeproj" "mapfiles" "\\.map\\'"
     "preferences\\.\\(nib\\|gorm\\)"
     ;; Generated files that have since been removed.
     "\\(refcard\\(-de\\|-pl\\)?\\|calccard\\|dired-ref\\|orgcard\\|\

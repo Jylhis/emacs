@@ -9,6 +9,17 @@ The autotools entry points were removed at phase-10 cutover (commit
 `313f867`).  See `/root/.claude/plans/review-current-meson-based-merry-fairy.md`
 for the post-cutover parity audit and the prioritised work plan.
 
+### Phase numbering
+
+`git log --oneline --grep="Meson migration phase"` shows commits for
+phases 1, 2, 3, 4, 5, 6, 7, and 10; phase 9 lands at `2bf867f8398`
+("Phase 9: refresh top-level docs for the dropped platforms").
+Phase 8 has no matching commit title -- it was either silently
+rolled into the surrounding lib-src buildup or skipped.  The
+numbering is preserved for historical traceability rather than
+self-documentation; do not assume phase N+1 follows phase N
+strictly.
+
 ## Meson build
 
     meson setup build -Dnative-compilation=yes
@@ -29,6 +40,82 @@ Bootstrap dance (custom_targets):
     compile-first / compile-main  # byte-compile lisp/
     native-lisp-stamp          # .eln (with -Dnative-compilation=yes)
     emacs / emacs.pdmp         # final pdumped image
+
+### Byte-compile skips (the "N skipped (compile errors)" line)
+
+`meson/byte_compile_batch.py` prints `byte-compiled N files; M skipped
+(compile errors)` and always exits 0, so byte-compile failures are silent
+-- the file just never gets a `.elc` (nor a `.eln`) and Emacs falls back
+to source at runtime.  This masked a large regression: the build reported
+**140 skipped**.  Root causes, in the order they bite:
+
+1. **cl-extra functions void at compile time** (was ~115 files, incl. the
+   whole `cedet/` tree, css-mode, ox-*, window-tool-bar).  The compiler is
+   `bootstrap-emacs` running `bootstrap-emacs.pdmp`, which is dumped with
+   `--temacs=pbootstrap` *before* `loaddefs-stamp` generates
+   `cl-loaddefs.el` (loaddefs-stamp depends on bootstrap_pdmp).  At dump
+   time `cl-lib.el`'s `(load "cl-loaddefs")` fails and its fallback loads
+   `cl-macs`+`cl-seq` but deliberately **not** `cl-extra`; `cl-lib` is then
+   already `provide`d, so a file's own `(require 'cl-lib)` is a no-op and
+   the `cl-extra` autoloads (`cl-every`, `cl-some`, `cl-mapl`, `cl-subseq`,
+   ...) never register.  Fix: `byte_compile_batch.py` loads `cl-loaddefs`
+   in the compile session.  Fixing this exposed a load-path collision --
+   with `cedet/srecode/compile.elc` now built, a bare `(require 'compile)`
+   found it instead of `progmodes/compile`.  cedet sub-packages are
+   reachable via their slash-prefixed features through the `cedet` entry
+   alone, so `_load_path` now drops the nested `cedet/*` directories.
+
+2. **`no-byte-compile: t` missed** (23 files: `international/uni-*.el`,
+   `charprop.el`, `ldefs-boot.el`, `loadup.el`, `theme-loaddefs.el`,
+   `org/org-version.el`).  These carry the cookie in a trailing
+   `Local Variables:` block; `list_lisp_files.py` inspected only the first
+   line, so they entered the manifest and `batch-byte-compile` correctly
+   refused them -- miscounted as errors.  Fix: scan both ends of the file.
+
+Those two fixes left **25 residual skips** with a *separate* root cause
+(missing build-time-generated files), since fixed in turn:
+
+3. **obsolete/ excluded from the load path** (4 files: `obsolete/idlw*`,
+   `isearchb`->`iswitchb`).  Those packages `require` one another but
+   `_load_path` skipped `obsolete/`.  Fix: append `obsolete/` last (after
+   every live directory, so it never shadows a replacement).
+
+4. **CEDET grammars never generated** (~20 files).  Upstream stopped
+   committing the `*-wy.el`/`*-by.el` parsers (f9b697ddaa6); they are built
+   from `admin/grammars/*.{wy,by}`.  The autotools `admin/grammars/Makefile.in`
+   was dropped at the cutover and never ported.  (The parked-backends table
+   below still claims these "are committed to lisp/cedet/semantic/" -- that
+   is false; the outputs are `.gitignore`d.)  Fix: `meson/gen_grammars.py` +
+   a `grammars_stamp` target run before the compile-main manifest, using
+   `bovine-batch-make-parser` / `wisent-batch-make-parser`
+   (`semantic/grm-wy-boot.el` bootstraps the grammar-language parser).
+
+5. **Standalone unidata tables never generated** (`international/textsec.el`
+   needs `uni-confusable.el` + `idna-mapping.el`).  `run_unidata.py` built
+   only `unidata-file-alist` + `charprop.el`, not the three standalone
+   targets.  Fix: also generate `uni-scripts.el`, `uni-confusable.el`,
+   `idna-mapping.el` (mirrors admin/unidata/Makefile.in).
+
+6. **No Unicode char-code properties in the compile image** (13 files:
+   `char-fold.el`, the `nxml/*` set, `css-mode`/`mhtml`/`*-ts-mode`,
+   `cedet/semantic/html.el`).  `bootstrap-emacs.pdmp` is dumped *without*
+   unidata (intentionally -- charprop.el is generated *using* that pdmp),
+   so `loadup.el`'s silent `(load "charprop.el" t)` is a no-op and
+   `char-code-property-alist` is empty in the compiler.  Files reading a
+   property at compile time -- `char-fold.el`'s
+   `(unicode-property-table-internal 'decomposition)` and syntax/category
+   tables elsewhere -- got `nil` and failed with `char-table-p, nil`.  This
+   was a clean-build-only failure: a stale `charprop.el` present when the
+   pdmp was dumped masked it locally (and in earlier nix runs it hid behind
+   the larger skip count -- 38 -> 34 -> 13 -> 0 across the fixes).  Fix:
+   `byte_compile_batch.py` loads `international/charprop` (registers the
+   deferred `uni-*.el` tables; `uniprop_table` in `src/chartab.c` loads
+   each on demand), and compile-main now depends on `unidata_stamp` so
+   `charprop.el` exists first.
+
+End state: **0 skips** -- the full lisp tree byte-compiles, verified by
+`meson compile` *and* a clean-from-scratch `nix flake check` (which
+exercises every generator in the sandbox).
 
 ## First-time autotools build (legacy on this branch)
 
@@ -117,21 +204,33 @@ Intended for frequent re-installs during development.
     --with-cairo                       # Cairo drawing
     --enable-link-time-optimization    # LTO (slower, crash-prone)
 
+## Supported platforms
+
+The fork commits to three platform families:
+
+- **Linux**: x86_64 and aarch64, three GUI variants each (gtk3, pgtk,
+  nox).  Built natively by the release workflow.
+- **macOS**: x86_64 (Intel) and arm64 (Apple Silicon).  Shipped as a
+  universal `.dmg`.
+- **Android**: arm only (armeabi-v7a + arm64-v8a).  Source for the
+  port stays in-tree under `java/`, `exec/`, `cross/ndk-build/`, and
+  `src/android*`; the Meson recipe to drive the cross-build is still
+  a TODO.  Until that lands, the Android job in `release.yml` is a
+  placeholder.
+
 ## Parked / unsupported
 
 These platform backends from the autotools tree have intentionally
-not been ported to Meson; the fork prioritises Linux GTK3, Linux
-terminal, and macOS NS/terminal.  Reviving any of them means
-porting the platform-specific C/Java code, not just translating a
-Makefile -- the work is a port, not a migration.
+not been ported to Meson; the fork prioritises Linux, macOS, and
+Android.  Reviving any of them means porting the platform-specific
+C/Java code, not just translating a Makefile -- the work is a port,
+not a migration.
 
 | Backend | Autotools recipe (at anchor `08a22b8965ec`) | Why parked |
 |---|---|---|
-| Android cross-build | `java/Makefile.in`, `exec/Makefile.in`, `cross/Makefile.in`, `cross/ndk-build/Makefile.in` | Thousands of lines of NDK + Java glue.  Re-introduces a parallel build system. |
-| Windows GUI / Cygwin | `nt/`, configure.ac w32 / native-image-api / cygwin32-native-compilation switches | C backend not on this fork's roadmap. |
+| Windows GUI / Cygwin | `nt/` and `lib-src/ntlib*` (both deleted upstream), configure.ac w32 / native-image-api / cygwin32-native-compilation switches | C backend not on this fork's roadmap. |
 | Haiku | configure.ac be-app / be-cairo switches | Same. |
-| `admin/grammars/` | `admin/grammars/Makefile.in` | Outputs are committed to `lisp/cedet/semantic/`; only matters when editing `.by`/`.wy` source grammars. |
-| `lib-src/asset-directory-tool` | `lib-src/Makefile.in:418` | Android-only. |
+| `admin/grammars/` | `admin/grammars/Makefile.in` | NO LONGER PARKED: ported to `meson/gen_grammars.py` + the `grammars_stamp` target.  Outputs are generated from `.wy`/`.by` at build time (and `.gitignore`d), not committed. |
 | `xaw3d` / Motif / Lucid X toolkits | configure.ac toolkit selector | Already dropped per `meson.options:52-53`. |
 | `gconf` | configure.ac AC_ARG_WITH | Deprecated; option `disabled` by default. |
 | `imagemagick` | configure.ac AC_ARG_ENABLE | `disabled` by default; security advisories argue against turning back on. |
@@ -140,3 +239,42 @@ To revive a parked backend, start by `git show 08a22b8965ec:<path>`
 and translate the rules into a new Meson `subdir()` block.  Update
 `meson.build`'s parked-subdirs list and `meson.options` (which
 keeps a stub list of parked option names) when promoting one.
+
+## Compilation caching (ccache)
+
+Both the local devenv and CI wrap the Nix-wrapped `cc`/`c++` with
+ccache as a compiler launcher.  `devenv.nix` exports
+`CC="ccache <nix-cc>"` (multi-word -- Meson splits on whitespace and
+treats `argv[0]` as the launcher), so no `meson.build` changes are
+needed.  CI uses `hendrikmuhs/ccache-action` with separate 500 MB
+cache entries per matrix variant (`Linux/GTK3`, `Linux/no-X`,
+`macos-14-terminal`); the action restores the cache before
+`meson setup` and saves at job end.  Locally, ccache uses its
+default directory (`~/.cache/ccache` on Linux,
+`~/Library/Caches/ccache` on macOS).
+
+Inspect with `ccache --show-stats`.  Bypass with
+`CCACHE_DISABLE=1 meson compile -C build`.  ccache does NOT cache
+`.eln` native-comp artefacts or link steps -- the `build/`
+actions/cache entry handles link outputs across runs.
+
+## Release pipeline
+
+Tag-driven multi-platform releases run from
+`.github/workflows/release.yml`.  The full process (tag scheme, what
+ships, how to cut a release, how to verify) is documented in
+`admin/jylhis-release-process.md`.
+
+Targets, as of the first cut:
+
+- Linux x86_64 + aarch64, three GUI variants each (`gtk3` for X11,
+  `pgtk` for Wayland, `nox` for terminal-only) -- shipped as
+  `tar.xz` of the `meson install --destdir` tree.
+- macOS universal `.dmg`: x86_64 + arm64 `Emacs.app` bundles merged
+  with `lipo` via `admin/build-darwin-universal.sh`, then ad-hoc
+  signed (no Apple Developer ID yet).
+- Nix flake outputs for every system/variant declared in `flake.nix`
+  (best-effort -- doesn't gate the release).
+- Android: arm matrix (armeabi-v7a + arm64-v8a) defined in
+  `release.yml`; until the Meson Android recipe lands the matrix
+  entries emit a status doc rather than an APK.

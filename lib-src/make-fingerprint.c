@@ -41,23 +41,12 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <getopt.h>
 #include <intprops.h>
 #include <min-max.h>
-#include <sha256.h>
+#include "emacs-hash.h"
 
 #ifndef SSIZE_MAX
 # define SSIZE_MAX TYPE_MAXIMUM (ssize_t)
 #endif
 
-#ifdef WINDOWSNT
-/* Defined to be sys_fopen in ms-w32.h, but only #ifdef emacs, so this
-   is really just insurance.  */
-#undef fopen
-#include <direct.h>
-
-#ifndef MINGW_W64
-# undef fseeko
-# define fseeko fseeko64
-#endif
-#endif /* WINDOWSNT */
 
 /* Static (instead of being local to 'main') to pacify LeakSanitizer.  */
 static char *buf;

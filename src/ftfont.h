@@ -30,9 +30,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 # include FT_BDF_H
 #endif
 
-#ifdef USE_BE_CAIRO
-#include <cairo.h>
-#endif
 
 #ifdef HAVE_HARFBUZZ
 #include <hb.h>

@@ -13,9 +13,13 @@ ns_appname = 'Emacs.app'
 ns_bundle_dir = meson.current_build_dir() / ns_appname
 
 # ----------------------------------------------------------------------
-# configure_file substitutions for Info.plist / Emacs.desktop /
-# InfoPlist.strings.  Mirrors autotools' AC_SUBST list at
-# configure.ac NS section.
+# configure_file substitutions for Info.plist / InfoPlist.strings.
+# Mirrors autotools' AC_SUBST list at configure.ac NS section.
+#
+# The GNUstep variants (Info-gnustep.plist, Emacs.desktop) that
+# upstream nextstep/Makefile.in still generates are intentionally
+# absent: this fork has parked GNUstep, and the X11 .desktop entry
+# is etc/emacs.desktop installed by the root meson.build.
 # ----------------------------------------------------------------------
 ns_plist_data = configuration_data()
 ns_plist_data.set('version', meson.project_version())
@@ -28,16 +32,6 @@ ns_plist_data.set('year', '2026')
 info_plist = configure_file(
   input         : files('templates/Info.plist.in'),
   output        : 'Info.plist',
-  configuration : ns_plist_data,
-)
-configure_file(
-  input         : files('templates/Info-gnustep.plist.in'),
-  output        : 'Info-gnustep.plist',
-  configuration : ns_plist_data,
-)
-configure_file(
-  input         : files('templates/Emacs.desktop.in'),
-  output        : 'Emacs.desktop',
   configuration : ns_plist_data,
 )
 configure_file(

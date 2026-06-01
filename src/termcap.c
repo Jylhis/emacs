@@ -373,12 +373,6 @@ tgetent (char *bp, const char *name)
   termcap_name = getenv ("TERMCAP");
   if (termcap_name && *termcap_name == '\0')
     termcap_name = NULL;
-#if defined (MSDOS) && !defined (TEST)
-  if (termcap_name && (*termcap_name == '\\'
-		       || *termcap_name == '/'
-		       || termcap_name[1] == ':'))
-    dostounix_filename (termcap_name);
-#endif
 
   filep = termcap_name && valid_filename_p (termcap_name);
 

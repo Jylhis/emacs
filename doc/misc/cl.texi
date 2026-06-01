@@ -209,10 +209,9 @@ behave in exactly the same way as the @file{cl-lib.el} versions.
 @c There is also cl-mapc, which was called cl-mapc even before cl-lib.el.
 @c But not autoloaded, so maybe not much used?
 
-The old file @file{cl.el}, as well as the even older
-@file{cl-compat.el}, are deprecated and will be removed in a future
-version of Emacs.  Any existing code that uses them should be updated
-to use @file{cl-lib.el} instead.
+The old file @file{cl.el} is deprecated and will be removed in a
+future version of Emacs.  Any existing code that uses it should be
+updated to use @file{cl-lib.el} instead.
 
 @node Naming Conventions
 @section Naming Conventions

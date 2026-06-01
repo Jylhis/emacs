@@ -104,6 +104,21 @@ def main() -> int:
         os.environ.get("MESON_INSTALL_DESTDIR_PREFIX", args.prefix)
     ).resolve()
 
+    # Recover the DESTDIR component so absolute install paths that
+    # don't live under prefix (e.g. --sysconfdir=/etc with
+    # --prefix=/usr/local) still land inside the staged tree.  Meson
+    # sets MESON_INSTALL_DESTDIR_PREFIX = DESTDIR + MESON_INSTALL_PREFIX,
+    # so DESTDIR is the prefix-stripped remainder.  If DESTDIR is
+    # unset (no staged install), destdir == Path('/'), and absolute
+    # paths flow through unchanged to the real filesystem -- the
+    # behaviour the user asked for by omitting --destdir.
+    _destdir_str = str(destdir_prefix)
+    _prefix_str = str(install_prefix)
+    if _destdir_str.endswith(_prefix_str):
+        destdir = Path(_destdir_str[: -len(_prefix_str)] or "/")
+    else:
+        destdir = Path("/")
+
     def resolve(p: str) -> Path:
         path = Path(p)
         if not path.is_absolute():
@@ -111,7 +126,14 @@ def main() -> int:
         try:
             rel = path.relative_to(install_prefix)
         except ValueError:
-            return path
+            # Absolute path outside --prefix (the autotools idiom
+            # "--prefix=/usr/local --sysconfdir=/etc").  Re-attach
+            # DESTDIR so a staged install doesn't escape to the
+            # real filesystem -- otherwise `sudo meson install
+            # --destdir=stage` writes to system /etc.
+            if destdir == Path("/"):
+                return path
+            return Path(str(destdir) + str(path))
         return destdir_prefix / rel
 
     bindir = resolve(args.bindir)

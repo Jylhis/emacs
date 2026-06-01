@@ -13,6 +13,7 @@ in
       texinfo
       gnutls
       jansson
+      libgcrypt
       libxml2
       ncurses
       sqlite
@@ -21,6 +22,10 @@ in
       meson
       ninja
       python3
+
+      # Compiler cache: wraps cc/c++ via CC/CXX below so repeated
+      # builds of the same translation unit are hashed and reused.
+      ccache
 
       # Text/image stack used by both X11/GTK and NS/Cocoa builds
       cairo
@@ -59,28 +64,44 @@ in
       # gdb
     ])
     # Linux-only: X11/GTK toolkit, Linux POSIX ACL/xattr, D-Bus, and
-    # libgccjit for native compilation.  On macOS the NS/Cocoa build
-    # supplies the GUI stack from the Apple SDK, and `acl` transitively
-    # pulls `attr` which fails to build against macOS xattr headers.
-    ++ lib.optionals pkgs.stdenv.isLinux (with pkgs; [
-      acl
-      dbus
-      libgccjit
-      gtk3
-      xorg.libX11
-      xorg.libXfixes
-      xorg.libXrender
-      xorg.libXrandr
-      xorg.libXcomposite
-      xorg.libXinerama
-      xorg.libXi
-      xorg.libXext
-      xorg.libXtst
-      xorg.libXft
-      libxt
-      xorg.libSM
-      xorg.libICE
-    ]);
+    # libgccjit for native compilation.  (`acl` transitively pulls
+    # `attr` which fails to build against macOS xattr headers, so it
+    # stays out of the Darwin set.)
+    ++ lib.optionals pkgs.stdenv.isLinux (
+      with pkgs;
+      [
+        acl
+        dbus
+        libgccjit
+        gtk3
+        xorg.libX11
+        xorg.libXfixes
+        xorg.libXrender
+        xorg.libXrandr
+        xorg.libXcomposite
+        xorg.libXinerama
+        xorg.libXi
+        xorg.libXext
+        xorg.libXtst
+        xorg.libXft
+        libxt
+        xorg.libSM
+        xorg.libICE
+      ]
+    )
+    # Darwin-only: unified Apple SDK supplies the AppKit / Cocoa /
+    # Carbon / IOKit / Quartz frameworks the NS port's .m sources
+    # include.  The Nix-wrapped cc picks up apple-sdk's sdkroot as
+    # -isysroot, so #import <AppKit/AppKit.h> resolves without any
+    # explicit -iframework plumbing.  sigtool is needed to ad-hoc
+    # sign the resulting binary (matches nixpkgs make-emacs.nix).
+    ++ lib.optionals pkgs.stdenv.isDarwin (
+      with pkgs;
+      [
+        apple-sdk
+        darwin.sigtool
+      ]
+    );
 
   # https://devenv.sh/languages/
   languages = {
@@ -90,23 +111,59 @@ in
     shell.enable = true;
   };
 
-  # The `libgccjit` package in the packages list above puts an
-  # *unwrapped* `gcc` first on PATH, which shadows the gcc-wrapper
-  # provided by `languages.c.enable`.  meson probes the compiler
-  # via `gcc`, so it picks the unwrapped one whose link line has
-  # no `-L /nix/store/.../glibc/lib` and fails with "cannot find
-  # Scrt1.o".  Point CC/CXX at the wrapped binaries by absolute
-  # store path so they're picked regardless of PATH order or what
-  # `languages.c.enable`'s own enterShell sets.
-  env = {
-    CC = "${pkgs.gcc}/bin/cc";
-    CXX = "${pkgs.gcc}/bin/c++";
+  # On Linux, `libgccjit` in the packages list puts an *unwrapped*
+  # `gcc` first on PATH and shadows the gcc-wrapper from
+  # `languages.c.enable`.  meson probes the compiler via `gcc`, so it
+  # picks the unwrapped one whose link line has no
+  # `-L /nix/store/.../glibc/lib` and fails with "cannot find Scrt1.o".
+  # Force CC/CXX/OBJC at the wrapped GCC by absolute store path so
+  # they're picked regardless of PATH order.
+  #
+  # On Darwin there's no libgccjit (no native compilation here) and
+  # the .m sources need clang to resolve `#import <AppKit/AppKit.h>`
+  # via the SDKROOT-driven framework search path -- forcing GCC
+  # breaks the NS / Cocoa port.  Leave CC/CXX/OBJC unset there so the
+  # default Darwin stdenv clang (which `languages.c.enable` and the
+  # apple-sdk buildInput already wire up) handles every TU.
+  #
+  # ccache is prepended as a compiler launcher.  Meson splits CC on
+  # whitespace and treats argv[0] as the launcher, so this works
+  # without any meson.build changes.  ccache execs the wrapped cc
+  # with the original env, so NIX_LDFLAGS / NIX_CC_WRAPPER_* stay
+  # live.  Defaults: ~/.cache/ccache, 5 GB max -- override with
+  # CCACHE_DIR / CCACHE_MAXSIZE if needed.
+  env = lib.optionalAttrs pkgs.stdenv.isLinux {
+    CC = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}";
+    CXX = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "c++"}";
+    OBJC = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}";
+
+    # Runtime native compilation: libgccjit shells out to the gcc
+    # driver, which then invokes `ld` to link each .eln.  That driver
+    # is *not* the cc-wrapper, so it cannot find the C runtime startup
+    # files (crti.o, from glibc) or libgcc_s (from gcc's lib output)
+    # on its own and fails with "cannot find crti.o" / "-lgcc_s".
+    # LIBRARY_PATH points the driver at both.  Without this, any test
+    # that redefines a primitive subr (which triggers an on-demand
+    # trampoline native-compile, e.g. subr-tests-bug22027) fails.
+    LIBRARY_PATH = lib.makeLibraryPath [
+      pkgs.stdenv.cc.cc
+      pkgs.stdenv.cc.libc
+    ];
   };
 
-  enterShell = ''
-    export CC=${pkgs.gcc}/bin/cc
-    export CXX=${pkgs.gcc}/bin/c++
-  '';
+  enterShell =
+    (lib.optionalString pkgs.stdenv.isLinux ''
+      export CC="${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}"
+      export CXX="${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "c++"}"
+      export OBJC="${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}"
+    '')
+    + ''
+      # Hash compile commands relative to the project root so the
+      # cache survives moving the checkout or building from a
+      # worktree.  Must live in enterShell because $DEVENV_ROOT is
+      # only defined at runtime (the `env` block is static nix).
+      export CCACHE_BASEDIR="$DEVENV_ROOT"
+    '';
 
   # https://devenv.sh/binary-caching/
   cachix = {
@@ -166,8 +223,9 @@ in
   enterTest = ''
     set -euo pipefail
     echo "Running devenv tests"
-    git --version | grep --color=auto "${pkgs.git.version}"
-    cc --version | head -1
+    git --version
+    cc --version | sed -n '1p'
+    ccache --version | sed -n '1p'
     pkg-config --version
   '';
 

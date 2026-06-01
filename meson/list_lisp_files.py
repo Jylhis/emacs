@@ -26,12 +26,25 @@ SKIP_PATTERNS = ("subdirs.el", "leim-list.el")
 
 
 def is_no_byte_compile(p: Path) -> bool:
+    # Emacs honours a `no-byte-compile: t' file-local variable in either
+    # the first-line `-*- ... -*-' cookie or a `Local Variables:' block
+    # near the end of the file; batch-byte-compile then silently refuses
+    # to compile the file.  Inspecting only the first line (as before)
+    # missed generated data files that carry the cookie in a trailing
+    # Local Variables block -- international/uni-*.el, charprop.el,
+    # ldefs-boot.el, loadup.el, theme-loaddefs.el, org/org-version.el --
+    # which then entered the manifest and were miscounted as compile
+    # errors.  Check both ends.  Work in bytes to avoid decoding the
+    # multi-megabyte loaddefs.el / ldefs-boot.el in full; Emacs itself
+    # only scans the last few KB for the Local Variables block.
+    needle = b"no-byte-compile: t"
     try:
-        with p.open(encoding="utf-8", errors="replace") as f:
-            head = f.readline()
+        data = p.read_bytes()
     except OSError:
         return False
-    return "no-byte-compile: t" in head
+    if needle in data[:256]:        # first-line -*- ... -*- cookie
+        return True
+    return needle in data[-3000:]   # trailing Local Variables block
 
 
 def main() -> int:

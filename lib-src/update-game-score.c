@@ -48,9 +48,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <c-ctype.h>
 #include <unlocked-io.h>
 
-#ifdef WINDOWSNT
-#include "ntlib.h"
-#endif
 
 #ifndef min
 # define min(a,b) ((a) < (b) ? (a) : (b))
@@ -437,10 +434,8 @@ write_scores (const char *filename, mode_t mode,
   fd = mkostemp (tempfile, 0);
   if (fd < 0)
     return -1;
-#ifndef DOS_NT
   if (fchmod (fd, mode) != 0)
     return -1;
-#endif
   f = fdopen (fd, "w");
   if (! f)
     return -1;

@@ -27,7 +27,6 @@
 (require 'url-parse)
 (require 'url-util)
 (require 'ldap)
-(autoload 'tls-certificate-information "tls")
 
 ;; This has been implemented from RFC2255 'The LDAP URL Format' (Dec 1997)
 ;;
@@ -71,7 +70,6 @@
     ("owner"      . url-ldap-dn-formatter)
     ("creatorsname" . url-ldap-dn-formatter)
     ("jpegphoto"     . url-ldap-image-formatter)
-    ("usercertificate" . url-ldap-certificate-formatter)
     ("modifiersname" . url-ldap-dn-formatter)
     ("namingcontexts" . url-ldap-dn-formatter)
     ("defaultnamingcontext" . url-ldap-dn-formatter)
@@ -90,18 +88,6 @@
   (concat "<a href='/"
 	  (url-hexify-string dn)
 	  "'>" dn "</a>"))
-
-(defun url-ldap-certificate-formatter (data)
-  ;; FIXME: tls.el is obsolete.
-  (let ((vals (tls-certificate-information data)))
-    (if (not vals)
-	"<b>Unable to parse certificate</b>"
-      (concat "<table border=0>\n"
-	      (mapconcat
-	       (lambda (ava)
-		 (format "<tr><td>%s</td><td>%s</td></tr>\n" (car ava) (cdr ava)))
-	       vals "\n")
-	      "</table>\n"))))
 
 (defun url-ldap-image-formatter (data)
   (format "<img alt='JPEG Photo' src='data:image/jpeg;base64,%s'>"

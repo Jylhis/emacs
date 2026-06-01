@@ -38,13 +38,7 @@ enum { READ_CHUNK_SIZE = 100 * 1024 };
 static bool
 filename_eq (char const *x, char const *y)
 {
-#ifdef __MSDOS__
-  return strcasecmp (x, y) == 0;
-#elif defined WINDOWSNT
-  return stricmp (x, y) == 0;
-#else
   return streq (x, y);
-#endif
 }
 
 /* The default output file name.  */

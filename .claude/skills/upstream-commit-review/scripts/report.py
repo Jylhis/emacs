@@ -113,7 +113,8 @@ def render(args) -> str:
     n_retry = len(retry_rows)
     n_failed = len(failed_rows)
     n_skip = sum(1 for r in classify_rows
-                 if r[1] in {"autotools", "merge-noise", "admin", "release-branch"})
+                 if r[1] in {"autotools", "merge-noise", "admin",
+                              "release-branch", "removed-area"})
     n_review = sum(1 for r in classify_rows if r[1] == "review")
     n_news = len(news_rows)
 
@@ -197,7 +198,8 @@ def render(args) -> str:
 
     # SKIPPED
     skipped = [r for r in classify_rows
-               if r[1] in {"autotools", "merge-noise", "admin", "release-branch"}]
+               if r[1] in {"autotools", "merge-noise", "admin",
+                              "release-branch", "removed-area"}]
     if skipped:
         lines.append("## Skipped")
         lines.append("")

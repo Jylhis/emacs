@@ -9,29 +9,18 @@ documented in config.in, and this file would not be necessary.
 
 AIX
 _AIX
-CYGWIN		Compiling the Cygwin port.
-__CYGWIN__	Ditto
 GNU_LINUX
 HPUX
-MSDOS		Compiling the MS-DOS port.
-__MSDOS__	Ditto.
-__DJGPP_MINOR__ Minor version number of the DJGPP library; used only in msdos.c and dosfns.c.
-DOS_NT		Compiling for either the MS-DOS or native MS-Windows port.
-WINDOWSNT	Compiling the native MS-Windows (W32) port.
-__MINGW32__	Compiling the W32 port with the MinGW or MinGW-w64 ports of GCC.
-MINGW_W64	Compiling the W32 port with the MinGW-w64 port of GCC.
 DARWIN_OS	Compiling on macOS or pure Darwin (and using s/darwin.h).
 SOLARIS2
 USG
 USG5_4
-HAIKU		Compiling on Haiku.
 __ANDROID__	Compiling for the Android operating system.
 __ANDROID_API__ A numerical "API level" indicating the version of
 		Android being compiled for; see http://apilevels.com.
 
 ** Distinguishing GUIs **
 
-HAVE_NTGUI	Use the native W32 GUI for windows, frames, menus&scrollbars.
 HAVE_NS		Use the NeXT/OpenStep/Cocoa UI under macOS or GNUstep.
 NS_IMPL_GNUSTEP	Compile support for GNUstep implementation of NS GUI API.
 		Only true on systems other than macOS.
@@ -39,7 +28,6 @@ NS_IMPL_COCOA	Compile support for Cocoa (Apple) implementation of NS GUI API.
 		Only true on macOS.
 HAVE_X11	Compile support for the X11 GUI.
 HAVE_PGTK	Compile support for using GTK itself without directly using X Windows APIs.
-HAVE_HAIKU	Compile support for the Haiku window system.
 HAVE_X_WINDOWS	Compile support for X Window system.  Equivalent to HAVE_X11.
 HAVE_ANDROID    Compiling the Android GUI interface.  Enough of this
 		code is compiled for the build machine cross-compiling
@@ -54,9 +42,7 @@ HAVE_X11R6	Whether or not the system has X11R6.  (Always defined.)
 HAVE_X11R6_XIM	Whether or not the system supports XIM features introduced in R6.
 HAVE_X11XTR6	Whether or not the Xt is from X11R6 or newer.
 
-USE_LUCID	Use the Lucid toolkit for menus&scrollbars.  Requires HAVE_X11.
-USE_MOTIF	Use the Motif toolkit for menus&scrollbars.  Requires HAVE_X11.
-USE_GTK		Use the Gtk   toolkit for menus&scrollbars.  Requires HAVE_X11 or HAVE_PGTK.
+USE_GTK		Use the Gtk toolkit for menus&scrollbars.  Requires HAVE_X11 or HAVE_PGTK.
 HAVE_GTK3	Use GTK version 3 or later. Requires HAVE_X11.
 
 HAVE_XCB_SHAPE	Whether or not XCB supports the Nonrectangular Window Shape extension.
@@ -79,9 +65,7 @@ USE_XCB		Whether or not the XCB library is used to optimize some X requests.
 
 FRAME_TERMCAP_P	A tty (character terminal) frame.
 FRAME_X_P	A frame on X Window system.
-FRAME_MSDOS_P	An MS-DOS frame (used only by the DOS port).
-FRAME_W32_P	A frame using native MS-Windows GUI.
-FRAME_WINDOW_P	A GUI frame (like X, w32, etc.)
+FRAME_WINDOW_P	A GUI frame.
 
 ** Support for accessing other processes on the system **
 
@@ -92,7 +76,6 @@ HAVE_PROCFS     The /proc filesystem is supported.
 REL_ALLOC	Compile in the relocatable memory allocator ralloc.c.
 SYSTEM_MALLOC	Use the system library's malloc.
 subprocesses    System can use subprocesses (for M-x shell for example).
-                Defined by default, only MSDOS undefines it.
 DEBUG_LISP_OBJECT_TYPE Define it in lisp.h enable compile time checks
                        on Lisp_Object use.
 
@@ -106,7 +89,7 @@ SYSTEM_TYPE
 
 ** Misc macros
 USER_FULL_NAME   If defined, overrides the default pw->pw_gecos for
-getting at the full user name.  Only MSDOS overrides the default.
+getting at the full user name.
 
 ** Miscellaneous defines.  Some of these might not be used in the code
 anymore, so they can be removed.
@@ -164,7 +147,6 @@ HAVE_FUTIMENS
 HAVE_FUTIMES
 HAVE_FUTIMESAT
 HAVE_GAI_STRERROR
-HAVE_GCONF
 HAVE_GETGRENT
 HAVE_GETHOSTNAME
 HAVE_GETIFADDRS
@@ -179,7 +161,6 @@ HAVE_GETRUSAGE
 HAVE_GETSOCKNAME
 HAVE_GETTIMEOFDAY
 HAVE_GET_CURRENT_DIR_NAME
-HAVE_GHOSTSCRIPT
 HAVE_GIF
 HAVE_GNUTLS
 HAVE_GPM
@@ -189,15 +170,8 @@ HAVE_GTK3
 HAVE_GTK_FILE_SELECTION_NEW
 HAVE_GTK_WINDOW_SET_HAS_RESIZE_GRIP
 HAVE_IFADDRS_H
-HAVE_IMAGEMAGICK
 HAVE_INTTYPES_H
 HAVE_JPEG
-HAVE_KERBEROSIV_KRB_H
-HAVE_KERBEROS_KRB_H
-HAVE_KRB5_ERROR_E_TEXT
-HAVE_KRB5_ERROR_TEXT
-HAVE_KRB5_H
-HAVE_KRB_H
 HAVE_LANGINFO_CODESET
 HAVE_LIBDGC
 HAVE_LIBKSTAT
@@ -329,7 +303,6 @@ HAVE_WORKING_FORK
 HAVE_WORKING_UTIMES
 HAVE_WORKING_VFORK
 HAVE_WS2TCPIP_H
-HAVE_XAW3D
 HAVE_XFT
 HAVE_XIM
 HAVE_XPM
@@ -470,7 +443,7 @@ ctime
 dup
 dup2
 execlp
-execvp  (also emacsclient.c [WINDOWSNT])
+execvp
 fdopen
 fileno
 fopen
@@ -505,7 +478,7 @@ umask
 unlink
 utimbuf
 utime
-wait  (also movemail.c [WINDOWSNT])
+wait
 write
 
 lib-src/ntlib:

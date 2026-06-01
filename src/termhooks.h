@@ -59,11 +59,8 @@ enum output_method
   output_initial,
   output_termcap,
   output_x_window,
-  output_msdos_raw,
-  output_w32,
   output_ns,
   output_pgtk,
-  output_haiku,
   output_android,
 };
 
@@ -382,8 +379,7 @@ struct input_event
   Lisp_Object device;
 };
 
-#define EVENT_INIT(event) (memset (&(event), 0, sizeof (struct input_event)), \
-			   (event).device = Qt)
+#define EVENT_INIT(event) ((event) = (struct input_event) {.device = Qt})
 
 /* Bits in the modifiers member of the input_event structure.
    Note that reorder_modifiers assumes that the bits are in canonical
@@ -506,10 +502,8 @@ struct terminal
   {
     struct tty_display_info *tty;		/* termchar.h */
     struct x_display_info *x;			/* xterm.h */
-    struct w32_display_info *w32;		/* w32term.h */
     struct ns_display_info *ns;			/* nsterm.h */
     struct pgtk_display_info *pgtk;		/* pgtkterm.h */
-    struct haiku_display_info *haiku;		/* haikuterm.h */
     struct android_display_info *android;	/* androidterm.h */
   } display_info;
 
@@ -584,8 +578,7 @@ struct terminal
      BGCOLOR.  */
   void (*query_frame_background_color) (struct frame *f, Emacs_Color *bgcolor);
 
-#if defined (HAVE_X_WINDOWS) || defined (HAVE_NTGUI) || defined (HAVE_PGTK) \
-  || defined (HAVE_ANDROID)
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_PGTK) || defined (HAVE_ANDROID)
   /* On frame F, translate pixel colors to RGB values for the NCOLORS
      colors in COLORS.  Use cached information, if available.  */
 
@@ -905,26 +898,19 @@ extern struct terminal *terminal_list;
 
 /* Return true if the terminal device is not suspended.  */
 #define TERMINAL_ACTIVE_P(d)						\
-  (((d)->type != output_termcap && (d)->type != output_msdos_raw)	\
-   || (d)->display_info.tty->input)
+  ((d)->type != output_termcap || (d)->display_info.tty->input)
 
 /* Return font cache data for the specified terminal.  The historical
    name is grossly misleading, actually it is (NAME . FONT-LIST-CACHE).  */
 #if defined (HAVE_X_WINDOWS)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_x_window ? t->display_info.x->name_list_element : Qnil)
-#elif defined (HAVE_NTGUI)
-#define TERMINAL_FONT_CACHE(t)						\
-  (t->type == output_w32 ? t->display_info.w32->name_list_element : Qnil)
 #elif defined (HAVE_NS)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_ns ? t->display_info.ns->name_list_element : Qnil)
 #elif defined (HAVE_PGTK)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_pgtk ? t->display_info.pgtk->name_list_element : Qnil)
-#elif defined (HAVE_HAIKU)
-#define TERMINAL_FONT_CACHE(t)						\
-  (t->type == output_haiku ? t->display_info.haiku->name_list_element : Qnil)
 #elif defined (HAVE_ANDROID)
 #define TERMINAL_FONT_CACHE(t)						\
   (t->type == output_android ? t->display_info.android->name_list_element : Qnil)

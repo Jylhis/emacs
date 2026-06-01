@@ -26,14 +26,14 @@ runs:
   using: composite
   steps:
     - name: Install Nix
-      uses: cachix/install-nix-action@v31
+      uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3  # v31
       with:
         extra_nix_config: |
           accept-flake-config = true
           experimental-features = nix-command flakes
 
     - name: Set up Cachix (pull jylhis + devenv)
-      uses: cachix/cachix-action@v16
+      uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1  # v16
       with:
         name: jylhis
         extraPullNames: devenv
@@ -64,11 +64,14 @@ runs:
         declare -px
         DUMP
         chmod +x /tmp/devenv-dump.sh
-        devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.sh
+        devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.raw
+        grep -E '^declare -x ' /tmp/devenv-env.raw > /tmp/devenv-env.sh || true
         lines=$(wc -l < /tmp/devenv-env.sh)
         echo "Captured $lines lines of export statements"
         if [ "$lines" -lt 20 ]; then
           echo "::error::devenv shell produced suspiciously little env ($lines lines)"
+          echo "Raw devenv shell output:"
+          cat /tmp/devenv-env.raw || true
           cat /tmp/devenv-env.sh || true
           exit 1
         fi
@@ -79,3 +82,28 @@ runs:
         mv /tmp/devenv-env-filtered.sh /tmp/devenv-env.sh
         echo "After filtering: $(wc -l < /tmp/devenv-env.sh) lines"
         echo "BASH_ENV=/tmp/devenv-env.sh" >> "$GITHUB_ENV"
+
+        # Hoist the nix-store bin dirs from the devenv PATH into
+        # GITHUB_PATH so non-bash steps (JS-based GitHub Actions like
+        # hendrikmuhs/ccache-action) can find ccache, meson, etc.
+        # $BASH_ENV only affects bash invocations; Node child
+        # processes use the raw runner PATH.  We only forward
+        # /nix/store/*/bin entries to keep the runner's standard PATH
+        # ordering intact for non-nix tools.
+        devenv_path=$(grep -E '^declare -[arx]+ PATH=' /tmp/devenv-env.sh \
+                        | head -1 \
+                        | sed -E 's/^[^"]*"//; s/"$//' || true)
+        if [ -n "$devenv_path" ]; then
+          nix_dirs=0
+          while IFS= read -r d; do
+            case "$d" in
+              /nix/store/*/bin)
+                echo "$d" >> "$GITHUB_PATH"
+                nix_dirs=$((nix_dirs + 1))
+                ;;
+            esac
+          done < <(printf '%s\n' "$devenv_path" | tr ':' '\n')
+          echo "Added $nix_dirs nix-store bin dirs to GITHUB_PATH"
+        else
+          echo "::warning::could not extract PATH from devenv env dump"
+        fi

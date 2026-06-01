@@ -216,11 +216,10 @@ If PROGRESS is nil, remove the progress indicator."
 
 (defun system-taskbar--set-back-end ()
   "Determine taskbar host system type."
-  ;; Order matters to accommodate the cases where an NS or MS-Windows
-  ;; build have the dbus feature.
+  ;; Order matters to accommodate the case where an NS build has the
+  ;; dbus feature.
   (setq system-taskbar--back-end
         (cond ((boundp 'ns-version-string) 'ns)
-              ((bound-and-true-p w32-initialized) 'w32)
               ((and (featurep 'dbusbind)
                     (require 'dbus)
                     (member "org.freedesktop.login1"
@@ -445,103 +444,6 @@ The attention indicator will be cleared after TIMEOUT seconds."
 PROGRESS is a float in the range 0.0 to 1.0.
 If PROGRESS is nil, remove the progress bar."
   (ns-progress-indicator (system-taskbar--validate-progress progress)))
-
-
-;; MS-Windows support.
-
-(declare-function w32-badge "w32fns.c")
-(declare-function w32-request-user-attention "w32fns.c")
-(declare-function w32-progress-indicator "w32fns.c")
-
-;; The background color should be similar to the color of the Emacs icon
-;; shown on the taskbar, as that seems to be the convention on
-;; MS-Windows.
-(defvar system-taskbar-w32-badge-background "#ab82ff" ; MediumPurple1
-  "w32 badge background RGB triple string.")
-
-;; It looks like the convention is to use the black foreground.
-(defvar system-taskbar-w32-badge-foreground "#000000" ; black
-  "w32 badge foreground RGB triple string.")
-
-(defun system-taskbar--w32-clear-frame-indicators (frame)
-  ;; NOTE: Update the below if adding new w32 system taskbar functions.
-  (with-selected-frame frame
-    (system-taskbar-badge nil)
-    (system-taskbar-attention nil)
-    (system-taskbar-progress nil)))
-
-(cl-defmethod system-taskbar--enable (&context
-                                      (system-taskbar--back-end (eql 'w32)))
-  ;; Clear system taskbar indicators for a frame when it is deleted.
-  (add-hook 'delete-frame-functions
-            #'system-taskbar--w32-clear-frame-indicators)
-  t)
-
-(cl-defmethod system-taskbar--disable (&context
-                                       (system-taskbar--back-end (eql 'w32)))
-  (remove-hook 'delete-frame-functions
-               #'system-taskbar--w32-clear-frame-indicators))
-
-(cl-defmethod system-taskbar--badge (&context
-                                     (system-taskbar--back-end (eql 'w32))
-                                     &optional count)
-  "Display a COUNT overlay on the system taskbar icon.
-The taskbar icon target is associated with the selected frame.
-
-If COUNT is an integer or a non-empty string, display that.  If COUNT is
-nil or an empty string, clear the badge.
-
-Due to MS-Windows icon overlay size limitations, if COUNT is an integer
-and is outside the range -99 to 99, display \"-99\" and \"99+\",
-respectively, if COUNT is a string longer than 2 characters truncate it
-using `truncate-string-to-width'.
-
-Consult `system-taskbar-w32-badge-background' and
-`system-taskbar-w32-badge-foreground' for the background and foreground
-colors for the painted overlay."
-  (cond ((stringp count)
-         (if (string-empty-p count)
-             (setq count nil)
-           (when (length> count 2)
-             (setq count (truncate-string-to-width count 3 0 nil t)))))
-        ((integerp count)
-         (if (and (> count -100)
-                  (< count 100))
-             (setq count (number-to-string count))
-           (if (< count 0)
-               (setq count "-99")
-             (setq count "99+"))))
-        (t (setq count nil)))
-  (w32-badge count
-             system-taskbar-w32-badge-background
-             system-taskbar-w32-badge-foreground))
-
-(cl-defmethod system-taskbar--attention (&context
-                                         (system-taskbar--back-end (eql 'w32))
-                                         &optional urgency timeout)
-  "Request URGENCY user attention on the system taskbar icon.
-Indicate the icon associated with the selected frame.
-If URGENCY is the symbol `informational', flash the taskbar icon.
-If URGENCY is the symbol `critical', flash the taskbar icon and the
-MS-Windows window frame.
-Clear attention indicator after TIMEOUT seconds.  If TIMEOUT is nil,
-default to MS-Windows default behavior."
-  (w32-request-user-attention urgency)
-  (when (and urgency timeout)
-    (run-with-timer
-     timeout
-     nil
-     #'system-taskbar-attention nil)))
-
-(cl-defmethod system-taskbar--progress (&context
-                                        (system-taskbar--back-end (eql 'w32))
-                                        &optional progress)
-  "Display a progress bar on the system taskbar icon.
-PROGRESS is a float in the range 0.0 to 1.0.
-If PROGRESS is nil, remove the progress bar."
-  (w32-progress-indicator (system-taskbar--validate-progress progress)))
-
-
 
 (provide 'system-taskbar)
 

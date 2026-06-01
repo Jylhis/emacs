@@ -35,12 +35,6 @@
 ;; automatically in most cases.  If it doesn't work in your
 ;; environment, customize the user options `wallpaper-command' and
 ;; `wallpaper-command-args'.
-;;
-;; On MS-Windows, it uses the `w32-set-wallpaper' function, and on
-;; Haiku the `haiku-set-wallpaper' function, neither of which relies
-;; on any external commands.  The value of `wallpaper-command' and
-;; `wallpaper-command-args' are ignored on such systems.
-;;
 ;; On macOS, the "osascript" command is used.  You might need to
 ;; disable the option "Change picture" in the "Desktop & Screensaver"
 ;; preferences for this to work (this was seen with macOS 10.13).
@@ -68,12 +62,7 @@
            (cdr args))))
 
 (defvar wallpaper-set-function
-  (cond ((fboundp 'w32-set-wallpaper)
-         #'w32-set-wallpaper)
-        ((and (fboundp 'haiku-set-wallpaper)
-              (featurep 'haiku))
-         'haiku-set-wallpaper)
-        (#'wallpaper-default-set-function))
+  #'wallpaper-default-set-function
   "Function used by `wallpaper-set' to set the wallpaper.
 The function takes one argument, FILE, which is the file name of
 the image file to set the wallpaper to.")
@@ -336,8 +325,7 @@ automatically updated to match.  If you need to change this to an
 unsupported command, you will want to manually customize
 `wallpaper-command-args' to match.
 
-The value of this variable is ignored on MS-Windows and Haiku
-systems, where a native API is used instead."
+The value of this variable is used by `wallpaper-set'."
   :type
   '(choice
     (radio
@@ -388,8 +376,7 @@ In each command line argument, these specifiers will be replaced:
 If `wallpaper-set' is run from a TTY frame, instead prompt for a
 height and width to use for %h and %w.
 
-The value of this variable is ignored on MS-Windows and Haiku
-systems, where a native API is used instead."
+The value of this variable is used by `wallpaper-set'."
   :type '(choice (repeat string)
                  function)
   :group 'image
@@ -563,8 +550,7 @@ external command.  Which command to use is automatically detected
 in most cases, but can be manually customized with the user
 options `wallpaper-command' and `wallpaper-command-args'.
 
-On MS-Windows and Haiku systems, no external command is needed,
-so the value of `wallpaper-commands' is ignored."
+The selected command can be customized with `wallpaper-command'."
   (interactive
    (let ((default (wallpaper--get-default-file)))
      (list (read-file-name (format-prompt "Set desktop background to" default)

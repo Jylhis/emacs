@@ -95,7 +95,7 @@ int popup_activated_flag;
 
 
 
-#if defined USE_GTK || defined USE_MOTIF
+#ifdef USE_GTK
 
 /* Set menu_items_inuse so no other popup menu or dialog is created.  */
 
@@ -1296,23 +1296,6 @@ pop_down_menu (int id)
   popup_activated_flag = 0;
 }
 
-#if defined HAVE_XINPUT2 && defined USE_MOTIF
-static Bool
-server_timestamp_predicate (Display *display,
-			    XEvent *xevent,
-			    XPointer arg)
-{
-  XID *args = (XID *) arg;
-
-  if (xevent->type == PropertyNotify
-      && xevent->xproperty.window == args[0]
-      && xevent->xproperty.atom == args[1])
-    return True;
-
-  return False;
-}
-#endif
-
 /* Pop up the menu for frame F defined by FIRST_WV at X/Y and loop until the
    menu pops down.
    menu_item_selection will be set to the selection.  */
@@ -1327,10 +1310,6 @@ create_and_show_popup_menu (struct frame *f, widget_value *first_wv,
   XButtonPressedEvent *event = &(dummy.xbutton);
   LWLIB_ID menu_id;
   Widget menu;
-#if defined HAVE_XINPUT2 && defined USE_MOTIF
-  XEvent property_dummy;
-  Atom property_atom;
-#endif
 
   eassert (FRAME_X_P (f));
 
@@ -2120,7 +2099,7 @@ x_menu_show (struct frame *f, int x, int y, int menuflags,
   unsigned int dummy_uint;
   specpdl_ref specpdl_count = SPECPDL_INDEX ();
 
-  eassert (FRAME_X_P (f) || FRAME_MSDOS_P (f));
+  eassert (FRAME_X_P (f));
 
   *error_name = 0;
   if (menu_items_n_panes == 0)
@@ -2155,10 +2134,6 @@ x_menu_show (struct frame *f, int x, int y, int menuflags,
 
 #ifdef HAVE_X_WINDOWS
   x_translate_coordinates_to_root (f, x, y, &x, &y);
-#else
-  /* MSDOS without X support.  */
-  x += f->left_pos;
-  y += f->top_pos;
 #endif
 
   /* Create all the necessary panes and their items.  */
@@ -2420,8 +2395,7 @@ x_menu_show (struct frame *f, int x, int y, int menuflags,
 
 #endif /* not USE_X_TOOLKIT && not USE_GTK */
 
-/* Detect if a dialog or menu has been posted.  MSDOS has its own
-   implementation on msdos.c.  */
+/* Detect if a dialog or menu has been posted.  */
 
 int
 popup_activated (void)

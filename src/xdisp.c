@@ -17400,7 +17400,7 @@ redisplay_internal (void)
 	     area, displaying a different frame means redisplay the
 	     whole thing.  */
 	  SET_FRAME_GARBAGED (sf);
-#if !defined MSDOS && !defined HAVE_ANDROID
+#ifndef HAVE_ANDROID
 	  set_tty_color_mode (FRAME_TTY (sf), sf);
 #endif
 	}
@@ -19848,7 +19848,7 @@ try_cursor_movement (Lisp_Object window, struct text_pos startp,
       && !(!NILP (Vdisplay_line_numbers)
 	   && NILP (Finternal_lisp_face_equal_p (Qline_number,
 						 Qline_number_current_line,
-						 w->frame)))
+						 w->frame, Qt)))
       /* This code is not used for mini-buffer for the sake of the case
 	 of redisplaying to replace an echo area message; since in
 	 that case the mini-buffer contents per se are usually
@@ -22645,7 +22645,7 @@ try_window_id (struct window *w)
       || (!NILP (Vdisplay_line_numbers)
 	  && NILP (Finternal_lisp_face_equal_p (Qline_number,
 						Qline_number_current_line,
-						w->frame))))
+						w->frame, Qt))))
     GIVE_UP (24);
 
   /* composition-break-at-point is incompatible with the optimizations
@@ -35190,8 +35190,7 @@ gui_clear_cursor (struct window *w)
 
 #endif /* HAVE_WINDOW_SYSTEM */
 
-/* Implementation of draw_row_with_mouse_face for GUI sessions, GPM,
-   and MSDOS.  */
+/* Implementation of draw_row_with_mouse_face for GUI sessions and GPM.  */
 static void
 draw_row_with_mouse_face (struct window *w, int start_x, struct glyph_row *row,
 			  int start_hpos, int end_hpos,
@@ -36696,11 +36695,10 @@ note_fringe_highlight (struct frame *f, Lisp_Object window, int x, int y,
     return;
 
   /* When a menu is active, don't highlight because this looks odd.  */
-#if defined (HAVE_X_WINDOWS) || defined (HAVE_NS) || defined (MSDOS) \
-  || defined (HAVE_ANDROID)
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_NS) || defined (HAVE_ANDROID)
   if (popup_activated ())
     return;
-#endif /* HAVE_X_WINDOWS || HAVE_NS || MSDOS || HAVE_ANDROID */
+#endif /* HAVE_X_WINDOWS || HAVE_NS || HAVE_ANDROID */
 
 
   /* Find a message to display through the help-echo mechanism whenever
@@ -36779,8 +36777,7 @@ note_mouse_highlight (struct frame *f, int x, int y)
   struct buffer *b;
 
   /* When a menu is active, don't highlight because this looks odd.  */
-#if defined (HAVE_X_WINDOWS) || defined (HAVE_NS) || defined (MSDOS) \
-  || defined (HAVE_ANDROID)
+#if defined (HAVE_X_WINDOWS) || defined (HAVE_NS) || defined (HAVE_ANDROID)
   if (popup_activated ())
     return;
 #endif

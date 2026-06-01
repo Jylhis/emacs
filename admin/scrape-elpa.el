@@ -27,6 +27,17 @@
 
 (require 'rx)
 
+(defun scrape-elpa--safe-rx-p (exp)
+  "Return non-nil if EXP is safe to pass to `rx-to-string'."
+  (cond
+   ((atom exp) t)
+   ((eq (car exp) 'eval) nil)
+   (t (let ((safe t))
+        (while (and safe exp)
+          (setq safe (scrape-elpa--safe-rx-p (car exp))
+                exp (cdr exp)))
+        safe))))
+
 (defun scrape-elpa--safe-eval (exp &optional vars)
   "Manually evaluate EXP without potentially dangerous side-effects.
 The optional argument VARS may be an alist mapping symbols to values,
@@ -35,7 +46,10 @@ be comprehensive, but just to handle the kinds of expressions that
 `scrape-elpa' expects to encounter."
   (pcase-exhaustive exp
     ;; special handling for macros
-    (`(rx . ,body) (rx-to-string `(: . ,body) t))
+    (`(rx . ,body)
+     (if (scrape-elpa--safe-rx-p body)
+         (rx-to-string `(: . ,body) t)
+       (error "Unsafe rx form")))
     ;; quoting and quasi-quoting
     (`',x x)
     (`(purecopy ,x) x)
@@ -43,9 +57,12 @@ be comprehensive, but just to handle the kinds of expressions that
      (cons
       (if (eq (car-safe car) '\,) (scrape-elpa--safe-eval (cadr car) vars) car)
       (if (eq (car-safe cdr) '\,) (scrape-elpa--safe-eval (cadr cdr) vars) cdr)))
-    ;; allow calling `side-effect-free' functions
-    (`(,(and (pred symbolp) (pred (get _ 'side-effect-free)) fn) . ,args)
-     (apply fn (mapcar #'scrape-elpa--safe-eval args)))
+    ;; allow only the known-safe constructors we need here
+    (`(cons ,a ,b)
+     (cons (scrape-elpa--safe-eval a vars)
+           (scrape-elpa--safe-eval b vars)))
+    (`(concat . ,args)
+     (apply #'concat (mapcar #'scrape-elpa--safe-eval args)))
     ;; self-evaluating forms
     ((pred macroexp-const-p) exp)
     ;; variable evaluation

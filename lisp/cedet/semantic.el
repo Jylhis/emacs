@@ -45,26 +45,15 @@
   "Current version of Semantic.")
 (make-obsolete-variable 'semantic-version 'emacs-version "29.1")
 
-(declare-function inversion-test "inversion")
 (declare-function semanticdb-load-ebrowse-caches "semantic/db-ebrowse")
 
-(defun semantic-require-version (major minor &optional beta)
+(defun semantic-require-version (_major _minor &optional _beta)
   "Non-nil if this version of Semantic does not satisfy a specific version.
-Arguments can be:
-
-  (MAJOR MINOR &optional BETA)
-
-  Values MAJOR and MINOR must be integers.  BETA can be an integer, or
-excluded if a released version is required.
-
-It is assumed that if the current version is newer than that specified,
-everything passes.  Exceptions occur when known incompatibilities are
-introduced."
+This used to delegate to the inversion library, which has been
+removed.  The function is retained as an obsolete stub that
+always returns nil."
   (declare (obsolete emacs-version "28.1"))
-  (require 'inversion)
-  (inversion-test 'semantic
-		  (concat major "." minor
-			  (when beta (concat "beta" beta)))))
+  nil)
 
 (defgroup semantic nil
   "Parser Generator and parser framework."

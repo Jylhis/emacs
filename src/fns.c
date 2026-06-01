@@ -627,7 +627,7 @@ locale environments or at all).  Then, this functions falls back to
 case-sensitive `string-lessp' and IGNORE-CASE argument is ignored.  */)
   (Lisp_Object s1, Lisp_Object s2, Lisp_Object locale, Lisp_Object ignore_case)
 {
-#if defined __STDC_ISO_10646__ || defined WINDOWSNT
+#ifdef __STDC_ISO_10646__
   /* Check parameters.  */
   if (SYMBOLP (s1))
     s1 = SYMBOL_NAME (s1);
@@ -640,9 +640,9 @@ case-sensitive `string-lessp' and IGNORE-CASE argument is ignored.  */)
 
   return (str_collate (s1, s2, locale, ignore_case) < 0) ? Qt : Qnil;
 
-#else  /* !__STDC_ISO_10646__, !WINDOWSNT */
+#else  /* !__STDC_ISO_10646__ */
   return Fstring_lessp (s1, s2);
-#endif /* !__STDC_ISO_10646__, !WINDOWSNT */
+#endif /* !__STDC_ISO_10646__ */
 }
 
 DEFUN ("string-collate-equalp", Fstring_collate_equalp, Sstring_collate_equalp, 2, 4, 0,
@@ -660,14 +660,10 @@ accent Unicode characters:
 The optional argument LOCALE, a string, overrides the setting of your
 current locale identifier for collation.  The value is system
 dependent; a LOCALE \"en_US.UTF-8\" is applicable on POSIX systems,
-while it would be \"enu_USA.1252\" on MS Windows systems.
+while the format can differ between operating systems.
 
 If IGNORE-CASE is non-nil, characters are converted to lower-case
 before comparing them.
-
-To emulate Unicode-compliant collation on MS-Windows systems,
-bind `w32-collate-ignore-punctuation' to a non-nil value, since
-the codeset part of the locale cannot be \"UTF-8\" on MS-Windows.
 
 If your system does not support a locale environment, this function
 behaves like `string-equal', and in that case the IGNORE-CASE argument
@@ -676,7 +672,7 @@ is ignored.
 Do NOT use this function to compare file names for equality.  */)
   (Lisp_Object s1, Lisp_Object s2, Lisp_Object locale, Lisp_Object ignore_case)
 {
-#if defined __STDC_ISO_10646__ || defined WINDOWSNT
+#ifdef __STDC_ISO_10646__
   /* Check parameters.  */
   if (SYMBOLP (s1))
     s1 = SYMBOL_NAME (s1);
@@ -689,9 +685,9 @@ Do NOT use this function to compare file names for equality.  */)
 
   return (str_collate (s1, s2, locale, ignore_case) == 0) ? Qt : Qnil;
 
-#else  /* !__STDC_ISO_10646__, !WINDOWSNT */
+#else  /* !__STDC_ISO_10646__ */
   return Fstring_equal (s1, s2);
-#endif /* !__STDC_ISO_10646__, !WINDOWSNT */
+#endif /* !__STDC_ISO_10646__ */
 }
 
 static Lisp_Object concat_to_list (ptrdiff_t nargs, Lisp_Object *args,
@@ -902,7 +898,7 @@ concat_to_string (ptrdiff_t nargs, Lisp_Object *args)
 
       result_len += len;
       if (MOST_POSITIVE_FIXNUM < result_len)
-	memory_full (SIZE_MAX);
+	memory_full_up ();
     }
 
   if (dest_multibyte && some_unibyte)
@@ -1122,7 +1118,7 @@ concat_to_vector (ptrdiff_t nargs, Lisp_Object *args)
       EMACS_INT len = XFIXNAT (Flength (arg));
       result_len += len;
       if (MOST_POSITIVE_FIXNUM < result_len)
-	memory_full (SIZE_MAX);
+	memory_full_up ();
     }
 
   /* Create the output vector.  */
@@ -4672,7 +4668,7 @@ larger_vector (Lisp_Object vec, ptrdiff_t incr_min, ptrdiff_t nitems_max)
   incr_max = n_max - old_size;
   incr = max (incr_min, min (old_size >> 1, incr_max));
   if (incr_max < incr)
-    memory_full (SIZE_MAX);
+    memory_full_up ();
   new_size = old_size + incr;
   v = allocate_vector (new_size);
   memcpy (v->contents, XVECTOR (vec)->contents, old_size * sizeof *v->contents);
@@ -5480,10 +5476,10 @@ static EMACS_UINT
 sxhash_bignum (Lisp_Object bignum)
 {
   mpz_t const *n = xbignum_val (bignum);
-  size_t i, nlimbs = mpz_size (*n);
-  EMACS_UINT hash = mpz_sgn(*n) < 0;
+  ptrdiff_t nlimbs = mpz_size (*n);
+  EMACS_UINT hash = mpz_sgn (*n) < 0;
 
-  for (i = 0; i < nlimbs; ++i)
+  for (ptrdiff_t i = 0; i < nlimbs; i++)
     hash = sxhash_combine (hash, mpz_getlimbn (*n, i));
 
   return hash;
@@ -5996,7 +5992,7 @@ DEFUN ("internal--hash-table-histogram",
 {
   struct Lisp_Hash_Table *h = check_hash_table (hash_table);
   ptrdiff_t size = HASH_TABLE_SIZE (h);
-  ptrdiff_t *freq = xzalloc (size * sizeof *freq);
+  ptrdiff_t *freq = xcalloc (size, sizeof *freq);
   ptrdiff_t index_size = hash_table_index_size (h);
   for (ptrdiff_t i = 0; i < index_size; i++)
     {
@@ -6054,11 +6050,7 @@ DEFUN ("internal--hash-table-index-size",
 			MD5, SHA-1, SHA-2, and SHA-3
  ************************************************************************/
 
-#include "md5.h"
-#include "sha1.h"
-#include "sha256.h"
-#include "sha512.h"
-#include "sha3.h"
+#include "emacs-hash.h"
 
 /* Store into HEXBUF an unterminated hexadecimal character string
    representing DIGEST, which is binary data of size DIGEST_SIZE bytes.

@@ -24,6 +24,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind a stale build.
 concurrency:
@@ -44,7 +47,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0
 
@@ -69,7 +72,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           fetch-depth: 0   # full history for git diff
 
@@ -187,7 +190,9 @@ jobs:
       # regex.c contains a full POSIX regex engine that on glibc
       # conflicts with the system regex, causing SIGSEGV at bootstrap.
       # It must only be compiled when the system lacks re_compile_pattern
-      # (see lib/meson.build conditional and m4/regex.m4).
+      # (see lib/meson.build conditional; the matching gnulib upstream
+      # autoconf probe lived in m4/regex.m4 before the m4/ tree was
+      # removed).
       - name: Check for unconditional gnulib regex in Meson build
         if: needs.classify.outputs.meson_guard == 'true'
         run: |
@@ -223,6 +228,9 @@ jobs:
     if: needs.classify.outputs.linux_meson == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    permissions:
+      contents: read
+      issues: write
     strategy:
       # Don't fast-fail the gtk3 variant when no-X variant breaks (or
       # vice versa); the parity audit tracks each independently.
@@ -246,7 +254,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -280,6 +288,25 @@ jobs:
           cc /tmp/sanity.c -o /tmp/sanity -D_FILE_OFFSET_BITS=64
           /tmp/sanity
           echo "Toolchain sanity check passed."
+
+      # ---- Compiler cache --------------------------------------------
+      # ccache wraps the Nix-wrapped cc.  devenv.nix exports
+      # CC="ccache <wrapped-cc>", so meson picks it up as a launcher
+      # automatically; the meson setup step below re-asserts the prefix
+      # as defence in depth.  The action restores ~/.cache/ccache from
+      # actions/cache before meson setup and saves it at job end; the
+      # save step is also gated to push branches to keep PR cache
+      # writes bounded.  500 MB is sized for the ~1500 C objects of
+      # src/+lib/+lib-src/ with headroom.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03  # v1.2.23
+        with:
+          key: ccache-${{ runner.os }}-${{ matrix.label }}
+          max-size: 500M
+          verbose: 1
+          # The devenv shell already provides ccache from nixpkgs; this
+          # avoids the action installing a second copy via apt/brew.
+          install: 'no'
 
       # ---- Build cache ------------------------------------------------
       # Bump the version suffix (currently `-v2`) whenever a change to a
@@ -321,6 +348,11 @@ jobs:
         env:
           SETUP_ARGS: ${{ matrix.setup-args }}
         run: |
+          # Defence in depth: devenv.nix already sets
+          # CC="ccache <wrapped-cc>", but if that regressed for any
+          # reason the prefix is added here.  Idempotent.
+          case "$CC"  in *ccache*) ;; *) export CC="ccache $CC"   ;; esac
+          case "$CXX" in *ccache*) ;; *) export CXX="ccache $CXX" ;; esac
           # If the cache restored a complete build dir, `meson setup
           # --wipe build` keeps the .o cache but rewrites
           # meson-private/ + build.ninja from scratch -- the right
@@ -364,6 +396,10 @@ jobs:
             charsets-stamp charscript.el emoji-zwj.el \
             2>&1 | tee build/compile.log
 
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats --verbose || true
+
       - name: Dump build diagnostics on failure
         if: failure()
         run: |
@@ -376,7 +412,7 @@ jobs:
       # visible without admin-rights log access.  Only fires on PRs.
       - name: Post build failure as PR comment
         if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9
         with:
           script: |
             const fs = await import('node:fs');
@@ -442,8 +478,12 @@ jobs:
           fi
 
       - name: Smoke test full emacs (factorial)
+        # Guarded by `if [ -f build/lisp/emacs.pdmp ]`, so a missing
+        # pdmp from the upstream flaky compile chain doesn't fail
+        # this step.  Removed `continue-on-error: true` (F-04/F-05)
+        # so a present pdmp that evaluates wrong actually turns CI
+        # red instead of silently passing.
         if: success()
-        continue-on-error: true
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
             EMACSDATA="$PWD/etc" EMACSDOC="$PWD/etc" EMACSLOADPATH="$PWD/lisp" \
@@ -465,8 +505,10 @@ jobs:
           build/lib-src/etags --version | head -1
 
       # ---- ERT test suites ---------------------------------------------
+      # Smoke tests are deterministic by design (three files, fixed
+      # timeout).  Hard-fail on failure (F-04/F-05); guard handles
+      # missing pdmp.
       - name: ERT smoke tests (meson)
-        continue-on-error: true
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
             meson test -C build --suite smoke --print-errorlogs
@@ -474,6 +516,9 @@ jobs:
             echo "emacs.pdmp not produced; skipping ERT smoke tests"
           fi
 
+      # ERT normal-suite still tolerates failure: it covers the full
+      # ~150-file lisp test surface, some of which is genuinely
+      # flaky.  Tighten this once the flaky long-tail is triaged.
       - name: ERT normal tests (excludes expensive/unstable)
         continue-on-error: true
         run: |
@@ -488,8 +533,15 @@ jobs:
       # Verifies that meson install lays out a tree that matches what
       # autotools `make install` used to produce.  Catches regressions
       # in build_by_default flips and meson_install.py walks.
+      #
+      # All four steps below are guarded by `if [ -f ... ]` / `if [ -x
+      # ... ]`, so a missing pdmp from the upstream flaky compile
+      # chain produces an "echo skipping" and exits 0.  Removed
+      # `continue-on-error: true` from each (F-04/F-05) so a present
+      # pdmp that produces a broken install / parity drift / eval
+      # failure / byte-compile segfault turns CI red instead of
+      # passing silently.
       - name: meson install (staged)
-        continue-on-error: true
         if: success()
         run: |
           if [ -f build/lisp/emacs.pdmp ]; then
@@ -499,7 +551,6 @@ jobs:
           fi
 
       - name: Check installed-tree parity
-        continue-on-error: true
         if: success()
         run: |
           if [ -d stage/usr/local ]; then
@@ -510,7 +561,6 @@ jobs:
           fi
 
       - name: Smoke test installed Emacs (batch eval)
-        continue-on-error: true
         if: success()
         run: |
           bin=stage/usr/local/bin/emacs
@@ -526,7 +576,6 @@ jobs:
           fi
 
       - name: Avy byte-compile reproducer (downstream segfault gate)
-        continue-on-error: true
         if: success()
         run: |
           # Heavy byte-compile workload that segfaulted under the
@@ -553,7 +602,7 @@ jobs:
       # (upload-artifact@v7 returns 409 Conflict on duplicates).
       - name: Upload Meson logs
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: meson-logs-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
@@ -562,7 +611,7 @@ jobs:
 
       - name: Upload pdumper images
         if: success()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: pdumper-images-${{ matrix.label == 'Linux/GTK3' && 'linux-gtk3' || 'linux-no-x' }}
           path: |
@@ -585,7 +634,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -606,23 +655,55 @@ jobs:
           /tmp/sanity
           echo "Toolchain sanity check passed."
 
-      - name: meson setup (terminal-only)
+      # See the matching block in build-and-test for rationale.
+      - name: Set up ccache
+        uses: hendrikmuhs/ccache-action@d62db5f07c26379fc4b4e0916f098a92573c3b03  # v1.2.23
+        with:
+          key: ccache-macos-14-terminal
+          max-size: 500M
+          verbose: 1
+          install: 'no'
+
+      - name: meson setup (terminal-only, jotain profile)
         run: |
+          # Mirrors jotain/emacs-jylhis.nix mesonFlags exactly so this
+          # job catches install / runtime regressions against the
+          # downstream Nix packager configuration.  Eager defaults are
+          # intentional: features the packager cannot satisfy must be
+          # opted out explicitly here, not auto-disabled.
+          case "$CC"  in *ccache*) ;; *) export CC="ccache $CC"   ;; esac
+          case "$CXX" in *ccache*) ;; *) export CXX="ccache $CXX" ;; esac
           meson setup build \
             -Dtoolkit=none \
+            -Dpgtk=disabled \
+            -Dns=disabled \
             -Dnative-compilation=no \
+            -Dtree-sitter=enabled \
+            -Dsqlite3=enabled \
+            -Dwebp=enabled \
+            -Dimagemagick=disabled \
+            -Dcairo=disabled \
             -Dxft=disabled \
             -Dxpm=disabled \
             -Dxinput2=disabled \
             -Dxdbe=disabled \
-            -Dgpm=disabled \
-            -Dselinux=disabled \
+            -Dtoolkit-scroll-bars=disabled \
             -Dlibotf=disabled \
             -Dm17n-flt=disabled \
-            -Dgsettings=disabled
+            -Ddbus=disabled \
+            -Dlibsystemd=disabled \
+            -Dgsettings=disabled \
+            -Dgpm=disabled \
+            -Dselinux=disabled \
+            -Dmailutils=disabled \
+            -Dcompress-install=true
 
       - name: meson compile
         run: meson compile -C build --verbose 2>&1 | tee build/compile.log
+
+      - name: ccache stats
+        if: always()
+        run: ccache --show-stats --verbose || true
 
       - name: Dump build diagnostics on failure
         if: failure()
@@ -668,7 +749,7 @@ jobs:
 
       - name: Upload Meson logs
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: macos-meson-logs
           path: |
@@ -676,3 +757,47 @@ jobs:
             build/compile.log
           retention-days: 14
           if-no-files-found: ignore
+
+  required:
+    name: meson required
+    needs: [classify, lint, build-and-test, macos-build-and-test]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check required Meson jobs
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          LINUX_RESULT: ${{ needs.build-and-test.result }}
+          MACOS_RESULT: ${{ needs.macos-build-and-test.result }}
+        run: |
+          status=0
+
+          require_success () {
+            name=$1
+            result=$2
+            if [ "$result" != success ]; then
+              echo "::error::$name finished with result: $result"
+              status=1
+            fi
+          }
+
+          allow_success_or_skip () {
+            name=$1
+            result=$2
+            case "$result" in
+              success|skipped) ;;
+              *)
+                echo "::error::$name finished with result: $result"
+                status=1 ;;
+            esac
+          }
+
+          require_success classify "$CLASSIFY_RESULT"
+          require_success lint "$LINT_RESULT"
+          allow_success_or_skip "Linux Meson matrix" "$LINUX_RESULT"
+          allow_success_or_skip "macOS Meson build" "$MACOS_RESULT"
+
+          exit "$status"

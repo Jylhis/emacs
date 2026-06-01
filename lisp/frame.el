@@ -477,8 +477,7 @@ there (in decreasing order of priority)."
 
     (when (and frame-notice-user-settings
 	       (null frame-initial-frame))
-      ;; This case happens when we don't have a window system, and
-      ;; also for MS-DOS frames.
+      ;; This case happens when we don't have a window system.
       (let ((parms (frame-parameters)))
 	;; Don't change the frame names.
 	(setq parms (delq (assq 'name parms) parms))
@@ -488,8 +487,6 @@ there (in decreasing order of priority)."
 	 nil
 	 (if initial-window-system
 	     parms
-	   ;; initial-frame-alist and default-frame-alist were already
-	   ;; applied in pc-win.el.
 	   (setq parms (append initial-frame-alist window-system-frame-alist
 			       default-frame-alist parms nil))
 	   ;; Don't enable tab-bar in daemon's initial frame.
@@ -497,7 +494,7 @@ there (in decreasing order of priority)."
 	   (when (and (daemonp) (eq (selected-frame) terminal-frame))
 	     (setq parms (delq (assq 'tab-bar-lines parms) parms)))
 	   parms))
-	(if (null initial-window-system) ;; MS-DOS does this differently in pc-win.el
+	(if (null initial-window-system)
 	    (let ((newparms (frame-parameters))
 		  (frame (selected-frame)))
 	      (tty-handle-reverse-video frame newparms)
@@ -614,9 +611,6 @@ there (in decreasing order of priority)."
       (if (not (eq minibuffer t))
 	  ;; Create the new frame.
 	  (let (parms new)
-	    ;; MS-Windows needs this to avoid inflooping below.
-	    (if (eq system-type 'windows-nt)
-		(sit-for 0 t))
 	    ;; If the frame isn't visible yet, wait till it is.
 	    ;; If the user has to position the window,
 	    ;; Emacs doesn't know its real position until
@@ -841,15 +835,10 @@ is not considered (see `next-frame')."
 (defun window-system-for-display (display)
   "Return the window system for DISPLAY.
 Return nil if we don't know how to interpret DISPLAY."
-  ;; MS-Windows doesn't know how to create a GUI frame in a -nw session.
-  (if (and (eq system-type 'windows-nt)
-	   (null (window-system))
-	   (not (daemonp)))
-      nil
-    (cl-loop for descriptor in display-format-alist
-	     for pattern = (car descriptor)
-	     for system = (cdr descriptor)
-	     when (string-match-p pattern display) return system)))
+  (cl-loop for descriptor in display-format-alist
+           for pattern = (car descriptor)
+           for system = (cdr descriptor)
+           when (string-match-p pattern display) return system))
 
 (defun make-frame-on-display (display &optional parameters)
   "Make a frame on display DISPLAY.
@@ -2158,10 +2147,8 @@ live frame and defaults to the selected one."
     (cons vertical (and horizontal 'bottom))))
 
 (declare-function x-frame-geometry "xfns.c" (&optional frame))
-(declare-function w32-frame-geometry "w32fns.c" (&optional frame))
 (declare-function ns-frame-geometry "nsfns.m" (&optional frame))
 (declare-function pgtk-frame-geometry "pgtkfns.c" (&optional frame))
-(declare-function haiku-frame-geometry "haikufns.c" (&optional frame))
 (declare-function android-frame-geometry "androidfns.c" (&optional frame))
 (declare-function tty-frame-geometry "term.c" (&optional frame))
 
@@ -2209,14 +2196,10 @@ and width values are in pixels.
     (cond
      ((eq frame-type 'x)
       (x-frame-geometry frame))
-     ((eq frame-type 'w32)
-      (w32-frame-geometry frame))
      ((eq frame-type 'ns)
       (ns-frame-geometry frame))
      ((eq frame-type 'pgtk)
       (pgtk-frame-geometry frame))
-     ((eq frame-type 'haiku)
-      (haiku-frame-geometry frame))
      ((eq frame-type 'android)
       (android-frame-geometry frame))
      (t
@@ -2324,10 +2307,8 @@ of frames like calls to map a frame or change its visibility."
           (insert "\n")))))))
 
 (declare-function x-frame-edges "xfns.c" (&optional frame type))
-(declare-function w32-frame-edges "w32fns.c" (&optional frame type))
 (declare-function ns-frame-edges "nsfns.m" (&optional frame type))
 (declare-function pgtk-frame-edges "pgtkfns.c" (&optional frame type))
-(declare-function haiku-frame-edges "haikufns.c" (&optional frame type))
 (declare-function android-frame-edges "androidfns.c" (&optional frame type))
 (declare-function tty-frame-edges "term.c" (&optional frame type))
 
@@ -2349,24 +2330,18 @@ FRAME."
     (cond
      ((eq frame-type 'x)
       (x-frame-edges frame type))
-     ((eq frame-type 'w32)
-      (w32-frame-edges frame type))
      ((eq frame-type 'ns)
       (ns-frame-edges frame type))
      ((eq frame-type 'pgtk)
       (pgtk-frame-edges frame type))
-     ((eq frame-type 'haiku)
-      (haiku-frame-edges frame type))
      ((eq frame-type 'android)
       (android-frame-edges frame type))
      (t
       (tty-frame-edges frame type)))))
 
-(declare-function w32-mouse-absolute-pixel-position "w32fns.c")
 (declare-function x-mouse-absolute-pixel-position "xfns.c")
 (declare-function ns-mouse-absolute-pixel-position "nsfns.m")
 (declare-function pgtk-mouse-absolute-pixel-position "pgtkfns.c")
-(declare-function haiku-mouse-absolute-pixel-position "haikufns.c")
 (declare-function android-mouse-absolute-pixel-position "androidfns.c")
 
 (defun mouse-absolute-pixel-position ()
@@ -2378,14 +2353,10 @@ position (0, 0) of the selected frame's terminal."
     (cond
      ((eq frame-type 'x)
       (x-mouse-absolute-pixel-position))
-     ((eq frame-type 'w32)
-      (w32-mouse-absolute-pixel-position))
      ((eq frame-type 'ns)
       (ns-mouse-absolute-pixel-position))
      ((eq frame-type 'pgtk)
       (pgtk-mouse-absolute-pixel-position))
-     ((eq frame-type 'haiku)
-      (haiku-mouse-absolute-pixel-position))
      ((eq frame-type 'android)
       (android-mouse-absolute-pixel-position))
      (t
@@ -2393,9 +2364,7 @@ position (0, 0) of the selected frame's terminal."
 
 (declare-function pgtk-set-mouse-absolute-pixel-position "pgtkfns.c" (x y))
 (declare-function ns-set-mouse-absolute-pixel-position "nsfns.m" (x y))
-(declare-function w32-set-mouse-absolute-pixel-position "w32fns.c" (x y))
 (declare-function x-set-mouse-absolute-pixel-position "xfns.c" (x y))
-(declare-function haiku-set-mouse-absolute-pixel-position "haikufns.c" (x y))
 (declare-function android-set-mouse-absolute-pixel-position
                   "androidfns.c" (x y))
 
@@ -2411,10 +2380,6 @@ position (0, 0) of the selected frame's terminal."
       (ns-set-mouse-absolute-pixel-position x y))
      ((eq frame-type 'x)
       (x-set-mouse-absolute-pixel-position x y))
-     ((eq frame-type 'w32)
-      (w32-set-mouse-absolute-pixel-position x y))
-     ((eq frame-type 'haiku)
-      (haiku-set-mouse-absolute-pixel-position x y))
      ((eq frame-type 'android)
       (android-set-mouse-absolute-pixel-position x y)))))
 
@@ -2507,11 +2472,9 @@ workarea attribute."
   (frame-monitor-attribute 'workarea frame x y))
 
 (declare-function x-frame-list-z-order "xfns.c" (&optional display))
-(declare-function w32-frame-list-z-order "w32fns.c" (&optional display))
 (declare-function ns-frame-list-z-order "nsfns.m" (&optional display))
 ;; TODO: implement this on PGTK.
 ;; (declare-function pgtk-frame-list-z-order "pgtkfns.c" (&optional display))
-(declare-function haiku-frame-list-z-order "haikufns.c" (&optional display))
 (declare-function android-frame-list-z-order "androidfns.c" (&optional display))
 (declare-function tty-frame-list-z-order "term.c" (&optional display))
 
@@ -2530,26 +2493,20 @@ Return nil if DISPLAY contains no Emacs frame."
     (cond
      ((eq frame-type 'x)
       (x-frame-list-z-order display))
-     ((eq frame-type 'w32)
-      (w32-frame-list-z-order display))
      ((eq frame-type 'ns)
       (ns-frame-list-z-order display))
      ((eq frame-type 'pgtk)
       ;; This is currently not supported on PGTK.
       ;; (pgtk-frame-list-z-order display)
       nil)
-     ((eq frame-type 'haiku)
-      (haiku-frame-list-z-order display))
      ((eq frame-type 'android)
       (android-frame-list-z-order display))
      (t
       (tty-frame-list-z-order display)))))
 
 (declare-function x-frame-restack "xfns.c" (frame1 frame2 &optional above))
-(declare-function w32-frame-restack "w32fns.c" (frame1 frame2 &optional above))
 (declare-function ns-frame-restack "nsfns.m" (frame1 frame2 &optional above))
 (declare-function pgtk-frame-restack "pgtkfns.c" (frame1 frame2 &optional above))
-(declare-function haiku-frame-restack "haikufns.c" (frame1 frame2 &optional above))
 (declare-function android-frame-restack "androidfns.c" (frame1 frame2
                                                                &optional above))
 (declare-function tty-frame-restack "term.c" (frame1 frame2 &optional above))
@@ -2579,12 +2536,8 @@ Some window managers may refuse to restack windows."
         (cond
          ((eq frame-type 'x)
           (x-frame-restack frame1 frame2 above))
-         ((eq frame-type 'w32)
-          (w32-frame-restack frame1 frame2 above))
          ((eq frame-type 'ns)
           (ns-frame-restack frame1 frame2 above))
-         ((eq frame-type 'haiku)
-          (haiku-frame-restack frame1 frame2 above))
          ((eq frame-type 'pgtk)
           (pgtk-frame-restack frame1 frame2 above))
          ((eq frame-type 'android)
@@ -2696,7 +2649,6 @@ Any other value means consider all frames."
 ;; https://lists.gnu.org/archive/html/bug-gnu-emacs/2019-04/msg00004.html
 ;; or in https://debbugs.gnu.org/cgi/bugreport.cgi?bug=35058#17.
 
-(declare-function msdos-mouse-p "dosfns.c")
 (declare-function android-detect-mouse "androidfns.c")
 
 (defun display-mouse-p (&optional display)
@@ -2705,13 +2657,8 @@ DISPLAY can be a display name, a frame, or nil (meaning the selected
 frame's display)."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((eq frame-type 'pc)
-      (msdos-mouse-p))
-     ((eq frame-type 'w32)
-      (with-no-warnings
-       (> w32-num-mouse-buttons 0)))
-     ((memq frame-type '(x ns haiku pgtk))
-      t)    ;; We assume X, NeXTstep, GTK, and Haiku *always* have a pointing device
+     ((memq frame-type '(x ns pgtk))
+      t)    ;; We assume X, NeXTstep, and GTK always have a pointing device.
      ((eq frame-type 'android)
       (android-detect-mouse))
      (t
@@ -2720,10 +2667,7 @@ frame's display)."
 	  ;; t-mouse is distributed with the GPM package.  It doesn't have
 	  ;; a toggle.
 	  (featurep 't-mouse)
-	  ;; No way to check whether a w32 console has a mouse, assume
-	  ;; it always does, except in batch invocations.
-          (and (not noninteractive)
-	       (boundp 'w32-use-full-screen-buffer)))))))
+          nil)))))
 
 (defun display-popup-menus-p (&optional display)
   "Return non-nil if popup menus are supported on DISPLAY.
@@ -2743,8 +2687,7 @@ frames and several different fonts at once.  This is true for displays
 that use a window system such as X, and false for text-only terminals.
 DISPLAY can be a display name, a frame, or nil (meaning the selected
 frame's display)."
-  (not (null (memq (framep-on-display display) '(x w32 ns pgtk haiku
-                                                   android)))))
+  (not (null (memq (framep-on-display display) '(x ns pgtk android)))))
 
 (defun display-images-p (&optional display)
   "Return non-nil if DISPLAY can display images.
@@ -2778,12 +2721,7 @@ DISPLAY can be a display name, a frame, or nil (meaning the selected
 frame's display)."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((eq frame-type 'pc)
-      ;; MS-DOS frames support selections when Emacs runs inside
-      ;; a Windows DOS Box.
-      (with-no-warnings
-       (not (null dos-windows-version))))
-     ((memq frame-type '(x w32 ns pgtk))
+     ((memq frame-type '(x ns pgtk))
       t)
      ((and tty-select-active-regions
            (terminal-parameter nil 'xterm--set-selection))
@@ -2796,10 +2734,7 @@ frame's display)."
 This means that, for example, DISPLAY can differentiate between
 the keybinding RET and [return]."
   (let ((frame-type (framep-on-display display)))
-    (or (memq frame-type '(x w32 ns pc pgtk haiku android))
-        ;; MS-DOS and MS-Windows terminals have built-in support for
-        ;; function (symbol) keys
-        (memq system-type '(ms-dos windows-nt)))))
+    (memq frame-type '(x ns pgtk android))))
 
 (declare-function x-display-screens "xfns.c" (&optional terminal))
 
@@ -2809,7 +2744,7 @@ DISPLAY should be either a frame or a display name (a string).
 If DISPLAY is omitted or nil, it defaults to the selected frame's display."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-screens display))
      (t
       1))))
@@ -2830,7 +2765,7 @@ with DISPLAY.  To get information for each physical monitor, use
 `display-monitor-attributes-list'."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-pixel-height display))
      (t
       (tty-display-pixel-height display)))))
@@ -2851,7 +2786,7 @@ with DISPLAY.  To get information for each physical monitor, use
 `display-monitor-attributes-list'."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-pixel-width display))
      (t
       (tty-display-pixel-width display)))))
@@ -2889,7 +2824,7 @@ For graphical terminals, note that on \"multi-monitor\" setups this
 refers to the height in millimeters for all physical monitors
 associated with DISPLAY.  To get information for each physical
 monitor, use `display-monitor-attributes-list'."
-  (and (memq (framep-on-display display) '(x w32 ns haiku pgtk android))
+  (and (memq (framep-on-display display) '(x ns pgtk android))
        (or (cddr (assoc (or display (frame-parameter nil 'display))
 			display-mm-dimensions-alist))
 	   (cddr (assoc t display-mm-dimensions-alist))
@@ -2910,7 +2845,7 @@ For graphical terminals, note that on \"multi-monitor\" setups this
 refers to the width in millimeters for all physical monitors
 associated with DISPLAY.  To get information for each physical
 monitor, use `display-monitor-attributes-list'."
-  (and (memq (framep-on-display display) '(x w32 ns haiku pgtk android))
+  (and (memq (framep-on-display display) '(x ns pgtk android))
        (or (cadr (assoc (or display (frame-parameter nil 'display))
 			display-mm-dimensions-alist))
 	   (cadr (assoc t display-mm-dimensions-alist))
@@ -2928,7 +2863,7 @@ DISPLAY can be a display name or a frame.
 If DISPLAY is omitted or nil, it defaults to the selected frame's display."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-backing-store display))
      (t
       'not-useful))))
@@ -2941,7 +2876,7 @@ DISPLAY can be a display name or a frame.
 If DISPLAY is omitted or nil, it defaults to the selected frame's display."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-save-under display))
      (t
       'not-useful))))
@@ -2954,10 +2889,8 @@ DISPLAY can be a display name or a frame.
 If DISPLAY is omitted or nil, it defaults to the selected frame's display."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-planes display))
-     ((eq frame-type 'pc)
-      4)
      (t
       (logb (length (tty-color-alist)))))))
 
@@ -2969,10 +2902,8 @@ DISPLAY can be a display name or a frame.
 If DISPLAY is omitted or nil, it defaults to the selected frame's display."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-color-cells display))
-     ((eq frame-type 'pc)
-      16)
      (t
       (tty-display-color-cells display)))))
 
@@ -2986,7 +2917,7 @@ DISPLAY can be a display name or a frame.
 If DISPLAY is omitted or nil, it defaults to the selected frame's display."
   (let ((frame-type (framep-on-display display)))
     (cond
-     ((memq frame-type '(x w32 ns haiku pgtk android))
+     ((memq frame-type '(x ns pgtk android))
       (x-display-visual-class display))
      ((and (memq frame-type '(pc t))
 	   (tty-display-color-p display))
@@ -2996,13 +2927,9 @@ If DISPLAY is omitted or nil, it defaults to the selected frame's display."
 
 (declare-function x-display-monitor-attributes-list "xfns.c"
 		  (&optional terminal))
-(declare-function w32-display-monitor-attributes-list "w32fns.c"
-		  (&optional display))
 (declare-function ns-display-monitor-attributes-list "nsfns.m"
 		  (&optional terminal))
 (declare-function pgtk-display-monitor-attributes-list "pgtkfns.c"
-		  (&optional terminal))
-(declare-function haiku-display-monitor-attributes-list "haikufns.c"
 		  (&optional terminal))
 (declare-function android-display-monitor-attributes-list "androidfns.c"
                   (&optional terminal))
@@ -3055,14 +2982,10 @@ monitors."
     (cond
      ((eq frame-type 'x)
       (x-display-monitor-attributes-list display))
-     ((eq frame-type 'w32)
-      (w32-display-monitor-attributes-list display))
      ((eq frame-type 'ns)
       (ns-display-monitor-attributes-list display))
      ((eq frame-type 'pgtk)
       (pgtk-display-monitor-attributes-list display))
-     ((eq frame-type 'haiku)
-      (haiku-display-monitor-attributes-list display))
      ((eq frame-type 'android)
       (android-display-monitor-attributes-list display))
      (t
@@ -3567,11 +3490,7 @@ command starts, by installing a pre-command hook."
 (defun blink-cursor-timer-function ()
   "Timer function of timer `blink-cursor-timer'."
   (internal-show-cursor nil (not (internal-show-cursor-p)))
-  ;; Suspend counting blinks when the w32 menu-bar menu is displayed,
-  ;; since otherwise menu tooltips will behave erratically.
-  (or (and (fboundp 'w32--menu-bar-in-use)
-	   (w32--menu-bar-in-use))
-      (setq blink-cursor-blinks-done (1+ blink-cursor-blinks-done)))
+  (setq blink-cursor-blinks-done (1+ blink-cursor-blinks-done))
   ;; Each blink is two calls to this function.
   (when (and (> blink-cursor-blinks 0)
              (<= (* 2 blink-cursor-blinks) blink-cursor-blinks-done))
@@ -3639,9 +3558,7 @@ See also `blink-cursor-interval' and `blink-cursor-delay'.
 
 This command is effective only on graphical frames.  On text-only
 terminals, cursor blinking is controlled by the terminal."
-  :init-value (not (or noninteractive
-		       no-blinking-cursor
-		       (eq system-type 'ms-dos)))
+  :init-value (not (or noninteractive no-blinking-cursor))
   :initialize #'custom-initialize-delay
   :group 'cursor
   :global t

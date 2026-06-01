@@ -104,7 +104,7 @@ mergiraf_resolved_files() {
 while IFS=$'\t' read -r SHA BUCKET REASON LINES FILES; do
     [ -z "$SHA" ] && continue
     case "$BUCKET" in
-        autotools|merge-noise|admin|release-branch|review)
+        autotools|merge-noise|admin|release-branch|removed-area|review)
             continue ;;
         doc-only|test-only|lisp-bugfix|lisp-doc-style|small-src|lisp+news-bug)
             ;;

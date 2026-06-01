@@ -259,10 +259,11 @@ def main() -> int:
     run_mapconv(charsets_dir, glibc / "GB18030.gz",
                 r'/^<.*[ \t]\/x..\/x..[ \t]/', "GLIBC-2",
                 gb180302, out_dir / "GB180302.map")
-    with (out_dir / "GB180304.map").open("w") as fp:
+    with (out_dir / "GB180304.map").open("w") as fp, \
+         (out_dir / "GB180302.map").open("r") as stdin_fp:
         subprocess.run(
             ["awk", "-f", str(gb180304)],
-            stdin=(out_dir / "GB180302.map").open("r"), stdout=fp,
+            stdin=stdin_fp, stdout=fp,
         )
 
     # JISX0201.
@@ -333,10 +334,10 @@ def main() -> int:
 
     # cp51932.el and eucjp-ms.el (in lisp/international/).
     lispint_dir.mkdir(parents=True, exist_ok=True)
-    with (lispint_dir / "cp51932.el").open("w") as fp:
+    with (lispint_dir / "cp51932.el").open("w") as fp, \
+         (out_dir / "CP932-2BYTE.map").open("r") as stdin_fp:
         subprocess.run(["awk", "-f", str(cp51932)],
-                       stdin=(out_dir / "CP932-2BYTE.map").open("r"),
-                       stdout=fp)
+                       stdin=stdin_fp, stdout=fp)
     with (lispint_dir / "eucjp-ms.el").open("w") as fp:
         gunz = subprocess.run(["gunzip", "-c", str(glibc / "EUC-JP-MS.gz")],
                               capture_output=True).stdout

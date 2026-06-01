@@ -1,6 +1,83 @@
 {
   "_doc": "Baseline SHA-256 hashes for tracked patch files; updated by patch_sources.py --update-baseline. Schema: { sources: { <name>: { <path>: { sha256, verdict, note } } } }. Verdicts: absorb-now | verify-then-absorb | defer | not-applicable | unreviewed.",
   "sources": {
+    "homebrew-emacs-head": {
+      "patches/0001-No-frame-refocus-cocoa.patch": {
+        "sha256": "f004e6e65b969bbe83f5d6d53e4ba0e020631959da9ef9682479f7eeb09becd1",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0002-Patch-multicolor-font.patch": {
+        "sha256": "5af2587e986db70999d1a791fca58df027ccbabd75f45e4a2af1602c75511a8c",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0003-Pdumper-size-increase.patch": {
+        "sha256": "38440720948f5144399cc700da5e40872cf0011cf2654fbb571684429d2162a1",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0004-Xwidgets-webkit-in-cocoa-27.patch": {
+        "sha256": "56406c03cbcea0d6d4c893074935404937cdae03259b8120b1b913971a948476",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0005-System-appearance-27.patch": {
+        "sha256": "d774e9da082352999fe3e9d2daa1065ea9bdaa670267caeebf86e01a77dc1d40",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0005-System-appearance-28-29.patch": {
+        "sha256": "d6ee159839b38b6af539d7b9bdff231263e451c1fd42eec0d125318c9db8cd92",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0005-System-appearance-30.patch": {
+        "sha256": "9eb3ce80640025bff96ebaeb5893430116368d6349f4eb0cb4ef8b3d58477db6",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0005-System-appearance.patch": {
+        "sha256": "964d88c723b1ed8f3ef37bb75110bf6e71ee0cd4fb2d835adfa9bac3a29cc1c0",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0006-Fix-unexec.patch": {
+        "sha256": "a1fcfe8020301733a3846cf85b072b461b66e26d15b0154b978afb7a4ec3346b",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0007-Ligatures-freeze-fix-27.patch": {
+        "sha256": "9f81669cba1dedb2733e95d49b8ebe82df3455bf258f130749665cc6adf2afa9",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0008-Fix-window-role.patch": {
+        "sha256": "1f8423ea7e6e66c9ac6dd8e37b119972daa1264de00172a24a79a710efcb8130",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0010-Arm.patch": {
+        "sha256": "344fee330fec4071e29c900093fdf1e2d8a7328df1c75b17e6e9d9a954835741",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0012-BLOCK_ALIGN-30.patch": {
+        "sha256": "f2cc1832f260e86707dc2470c08e8f12c038db06b1f028769a26ebbece11a49e",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0013-Native-sharing.patch": {
+        "sha256": "9da832d581d2e3ba26c7f8a9a3bca97511480986c2a7038da29a60659069a1a7",
+        "verdict": "unreviewed",
+        "note": ""
+      },
+      "patches/0014-Skip_ns_color_initialization_in_batch_mode.patch": {
+        "sha256": "eae3f6d1442b3c9831046799cb72fb984e1653ba2537d236a8f58a1764807137",
+        "verdict": "unreviewed",
+        "note": ""
+      }
+    },
     "homebrew-emacs-plus": {
       "patches/emacs-31/fix-ns-x-colors.patch": {
         "sha256": "9e5d3e26a8d388d3a000b697d582769645ca93ad597b4113744deba4b89a8b9e",
@@ -16,6 +93,13 @@
         "sha256": "53283503db5ed2887e9d733baaaf80f2c810e668e782e988bda5855a0b1ebeb4",
         "verdict": "absorb-now",
         "note": "Adds ns-system-appearance + change hook; most-requested macOS feature; not in upstream or this fork."
+      }
+    },
+    "jimeh-build-emacs-for-macos": {
+      "patches/emacs-29/ns-alpha-background.patch": {
+        "sha256": "de8fa30ca3efa066fe82f1619a3f5da9a3112f6d972017119009702cbdfc69c4",
+        "verdict": "verify-then-absorb",
+        "note": "Bug#65198 \u2014 plumbs alpha-background frame parameter through NS (src/nsfns.m, src/nsterm.m, src/macfont.m). Check whether already in this fork before absorbing."
       }
     },
     "macports-emacs": {
@@ -67,6 +151,33 @@
         "sha256": "53283503db5ed2887e9d733baaaf80f2c810e668e782e988bda5855a0b1ebeb4",
         "verdict": "absorb-now",
         "note": "Re-host of emacs-plus system-appearance; same SHA, see homebrew-emacs-plus row."
+      },
+      "overlays/patches-unstable/adjust-ns-init-colors.patch": {
+        "sha256": "e49a6783b5aa1665df377093402c02b563ca2cb68317ccd20fa5e89a0cacb443",
+        "verdict": "not-applicable",
+        "note": "NS init-colors adjustment; bug#80377/#80752 \u2014 already absorbed via earlier cherry-pick; see fork-nix-darwin-emacs.md."
+      },
+      "overlays/patches-unstable/round-undecorated-frame.patch": {
+        "sha256": "f37661f616053780fcb233bb49a0205191bfe89209d4089fc2e68ec532abca88",
+        "verdict": "absorb-now",
+        "note": "Re-host of emacs-plus round-undecorated-frame; same SHA-class content as the patches-31 entry of the same name."
+      },
+      "overlays/patches-unstable/system-appearance.patch": {
+        "sha256": "644796fc46ee3eb64fae8a8a7ccd358d2d7a1ad492782de333e11f137ddfbcda",
+        "verdict": "absorb-now",
+        "note": "Re-host of emacs-plus system-appearance; same SHA-class content as the patches-31 entry of the same name."
+      }
+    },
+    "nixpkgs-emacs": {
+      "pkgs/applications/editors/emacs/inhibit-lexical-cookie-warning-67916-30.patch": {
+        "sha256": "5a37a127071db0a500281d13f7feae624ed6a93a2f66a73b565d7d39bdca0a16",
+        "verdict": "not-applicable",
+        "note": "Bug#67916 already absorbed upstream; nixpkgs slated to remove this when its pinned Emacs rolls forward."
+      },
+      "pkgs/applications/editors/emacs/native-comp-driver-options-30.patch": {
+        "sha256": "9e0e64f353ac477acfc0e9a6957849cde78b0d7b5a75306b86137be8111ea96e",
+        "verdict": "not-applicable",
+        "note": "Injects Nix store paths into native-comp-driver-options so libgccjit finds linker/SDK/libs inside the sandbox; non-Nix builds use system paths."
       }
     }
   }

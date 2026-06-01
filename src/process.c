@@ -468,6 +468,43 @@ clear_fd_callback_data (struct fd_callback_data* elem)
   elem->waiting_thread = NULL;
 }
 
+/* If FD is out of range, close it and return -1, setting errno to
+   EMFILE.  Otherwise, return FD.  This module routinely does this for
+   file descriptors so that fd_set-based primitives work even on
+   platforms lacking setrlimit (RLIMIT_NOFILE, ...) or if some Emacs
+   module or even some other process raises Emacs's RLIMIT_NOFILE limit.  */
+static int
+inrange_fd (int fd)
+{
+  if (fd < FD_SETSIZE)
+    return fd;
+  emacs_close (fd);
+  errno = EMFILE;
+  return -1;
+}
+
+/* Create a pipe into FD[0] and fd[1], refusing to create file
+   descriptors out of range.  */
+static int
+inrange_pipe (int fd[2])
+{
+  int pipefd[2];
+  int result = emacs_pipe (pipefd);
+  if (result < 0)
+    return result;
+  else if (pipefd[0] < FD_SETSIZE && pipefd[1] < FD_SETSIZE)
+    {
+      fd[0] = pipefd[0];
+      fd[1] = pipefd[1];
+      return result;
+    }
+  else
+    {
+      inrange_fd (pipefd[0]);
+      inrange_fd (pipefd[1]);
+      return -1;
+    }
+}
 
 /* Add a file descriptor FD to be monitored for when read is possible.
    When read is possible, call FUNC with argument DATA.  */
@@ -485,7 +522,7 @@ add_read_fd (int fd, fd_callback func, void *data)
 void
 add_non_keyboard_read_fd (int fd, fd_callback func, void *data)
 {
-  add_read_fd(fd, func, data);
+  add_read_fd (fd, func, data);
   fd_callback_info[fd].flags &= ~KEYBOARD_FD;
 }
 
@@ -855,6 +892,8 @@ allocate_pty (char pty_name[PTY_NAME_SIZE])
 	fd = emacs_open (pty_name, O_RDWR | O_NONBLOCK, 0);
 #endif /* no PTY_OPEN */
 
+	fd = inrange_fd (fd);
+
 	if (fd >= 0)
 	  {
 #ifdef PTY_TTY_NAME_SPRINTF
@@ -884,6 +923,8 @@ allocate_pty (char pty_name[PTY_NAME_SIZE])
 	    setup_pty (fd);
 	    return fd;
 	  }
+	else if (errno == EMFILE)
+	  return fd;
       }
 #endif /* HAVE_PTYS */
   return -1;
@@ -2176,7 +2217,7 @@ create_process (Lisp_Object process, char **new_argv, Lisp_Object current_dir)
 	 then close it and reopen it in the child.  */
       /* Don't let this terminal become our controlling terminal
 	 (in case we don't have one).  */
-      pty_tty = emacs_open (pty_name, O_RDWR | O_NOCTTY, 0);
+      pty_tty = inrange_fd (emacs_open (pty_name, O_RDWR | O_NOCTTY, 0));
       if (pty_tty < 0)
 	report_file_error ("Opening pty", Qnil);
 #endif /* not USG, or USG_SUBTTY_WORKS */
@@ -2193,7 +2234,7 @@ create_process (Lisp_Object process, char **new_argv, Lisp_Object current_dir)
     }
   else
     {
-      if (emacs_pipe (p->open_fd + SUBPROCESS_STDIN) != 0)
+      if (inrange_pipe (p->open_fd + SUBPROCESS_STDIN) < 0)
 	report_file_error ("Creating pipe", Qnil);
       forkin = p->open_fd[SUBPROCESS_STDIN];
       outchannel = p->open_fd[WRITE_TO_SUBPROCESS];
@@ -2207,7 +2248,7 @@ create_process (Lisp_Object process, char **new_argv, Lisp_Object current_dir)
     }
   else
     {
-      if (emacs_pipe (p->open_fd + READ_FROM_SUBPROCESS) != 0)
+      if (inrange_pipe (p->open_fd + READ_FROM_SUBPROCESS) < 0)
 	report_file_error ("Creating pipe", Qnil);
       inchannel = p->open_fd[READ_FROM_SUBPROCESS];
       forkout = p->open_fd[SUBPROCESS_STDOUT];
@@ -2231,10 +2272,7 @@ create_process (Lisp_Object process, char **new_argv, Lisp_Object current_dir)
       close_process_fd (&pp->open_fd[SUBPROCESS_STDIN]);
     }
 
-  if (FD_SETSIZE <= inchannel || FD_SETSIZE <= outchannel)
-    report_file_errno ("Creating pipe", Qnil, EMFILE);
-
-  if (emacs_pipe (p->open_fd + READ_FROM_EXEC_MONITOR) != 0)
+  if (inrange_pipe (p->open_fd + READ_FROM_EXEC_MONITOR) < 0)
     report_file_error ("Creating pipe", Qnil);
 
   fcntl (inchannel, F_SETFL, O_NONBLOCK);
@@ -2336,14 +2374,12 @@ create_pty (Lisp_Object process)
   if (pty_fd >= 0)
     {
       p->open_fd[SUBPROCESS_STDIN] = pty_fd;
-      if (FD_SETSIZE <= pty_fd)
-	report_file_errno ("Opening pty", Qnil, EMFILE);
 #if ! defined (USG) || defined (USG_SUBTTY_WORKS)
       /* On most USG systems it does not work to open the pty's tty here,
 	 then close it and reopen it in the child.  */
       /* Don't let this terminal become our controlling terminal
 	 (in case we don't have one).  */
-      int forkout = emacs_open (pty_name, O_RDWR | O_NOCTTY, 0);
+      int forkout = inrange_fd (emacs_open (pty_name, O_RDWR | O_NOCTTY, 0));
       if (forkout < 0)
 	report_file_error ("Opening pty", Qnil);
       p->open_fd[WRITE_TO_SUBPROCESS] = forkout;
@@ -2440,15 +2476,11 @@ usage:  (make-pipe-process &rest ARGS)  */)
   record_unwind_protect (remove_process, proc);
   p = XPROCESS (proc);
 
-  if (emacs_pipe (p->open_fd + SUBPROCESS_STDIN) != 0
-      || emacs_pipe (p->open_fd + READ_FROM_SUBPROCESS) != 0)
+  if (inrange_pipe (p->open_fd + SUBPROCESS_STDIN) < 0
+      || inrange_pipe (p->open_fd + READ_FROM_SUBPROCESS) < 0)
     report_file_error ("Creating pipe", Qnil);
   outchannel = p->open_fd[WRITE_TO_SUBPROCESS];
   inchannel = p->open_fd[READ_FROM_SUBPROCESS];
-
-  if (FD_SETSIZE <= inchannel || FD_SETSIZE <= outchannel)
-    report_file_errno ("Creating pipe", Qnil, EMFILE);
-
   fcntl (inchannel, F_SETFL, O_NONBLOCK);
   fcntl (outchannel, F_SETFL, O_NONBLOCK);
 
@@ -3191,10 +3223,10 @@ usage:  (make-serial-process &rest ARGS)  */)
   record_unwind_protect (remove_process, proc);
   p = XPROCESS (proc);
 
-  fd = serial_open (port);
+  fd = inrange_fd (serial_open (port));
+  if (fd < 0)
+    report_file_error ("Opening serial port", port);
   p->open_fd[SUBPROCESS_STDIN] = fd;
-  if (FD_SETSIZE <= fd)
-    report_file_errno ("Opening serial port", port, EMFILE);
   p->infd = fd;
   p->outfd = fd;
   if (fd > max_desc)
@@ -3450,18 +3482,10 @@ connect_network_socket (Lisp_Object proc, Lisp_Object addrinfos,
 	  int socktype = p->socktype | SOCK_CLOEXEC;
 	  if (p->is_non_blocking_client)
 	    socktype |= SOCK_NONBLOCK;
-	  s = socket (family, socktype, protocol);
+	  s = inrange_fd (socket (family, socktype, protocol));
 	  if (s < 0)
 	    {
 	      xerrno = errno;
-	      continue;
-	    }
-	  /* Reject file descriptors that would be too large.  */
-	  if (FD_SETSIZE <= s)
-	    {
-	      emacs_close (s);
-	      s = -1;
-	      xerrno = EMFILE;
 	      continue;
 	    }
 	}
@@ -4373,6 +4397,7 @@ network_interface_list (bool full, unsigned short match)
 #ifdef HAVE_NET_IF_H
 #if defined (SIOCGIFADDR) || defined (SIOCGIFHWADDR) || defined (SIOCGIFFLAGS)
 
+#if defined (SIOCGIFFLAGS) && defined (HAVE_STRUCT_IFREQ_IFR_FLAGS)
 struct ifflag_def {
   int flag_bit;
   const char *flag_sym;
@@ -4449,6 +4474,7 @@ static const struct ifflag_def ifflag_table[] = {
 #endif
   { 0, 0 }
 };
+#endif
 
 static Lisp_Object
 network_interface_info (Lisp_Object ifname)
@@ -4469,7 +4495,7 @@ network_interface_info (Lisp_Object ifname)
     error ("Interface name too long");
   lispstpcpy (rq.ifr_name, ifname);
 
-  s = socket (AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+  s = inrange_fd (socket (AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0));
   if (s < 0)
     return Qnil;
   specpdl_ref count = SPECPDL_INDEX ();
@@ -4621,7 +4647,7 @@ See also `network-interface-info', which is limited to IPv4 only.
 If the information is not available, return nil.  */)
   (Lisp_Object full, Lisp_Object family)
 {
-#if defined HAVE_GETIFADDRS || defined WINDOWSNT
+#ifdef HAVE_GETIFADDRS
   unsigned short match;
   bool full_info = false;
 
@@ -4655,10 +4681,9 @@ Data that is unavailable is returned as nil.  Only returns IPv4 layer 3
 addresses, for IPv6 use `network-interface-list'.  */)
   (Lisp_Object ifname)
 {
-#if ((defined HAVE_NET_IF_H			       \
-      && (defined SIOCGIFADDR || defined SIOCGIFHWADDR \
-	  || defined SIOCGIFFLAGS))		       \
-     || defined WINDOWSNT)
+#if (defined HAVE_NET_IF_H			       \
+     && (defined SIOCGIFADDR || defined SIOCGIFHWADDR \
+	 || defined SIOCGIFFLAGS))
   return network_interface_info (ifname);
 #else
   return Qnil;
@@ -4944,14 +4969,7 @@ server_accept_connection (Lisp_Object server, int channel)
   union u_sockaddr saddr;
   socklen_t len = sizeof saddr;
 
-  s = accept4 (channel, &saddr.sa, &len, SOCK_CLOEXEC);
-
-  if (FD_SETSIZE <= s)
-    {
-      emacs_close (s);
-      s = -1;
-      errno = EMFILE;
-    }
+  s = inrange_fd (accept4 (channel, &saddr.sa, &len, SOCK_CLOEXEC));
 
   if (s < 0)
     {
@@ -5734,7 +5752,7 @@ wait_reading_process_output (intmax_t time_limit, int nsecs, int read_kbd,
 	    timeout = make_timespec (0, 0);
 #endif
 
-#if !defined USABLE_SIGIO && !defined WINDOWSNT
+#ifndef USABLE_SIGIO
 	  /* If we're polling for input, don't get stuck in select for
 	     more than 25 msec. */
 	  struct timespec short_timeout = make_timespec (0, 25000000);
@@ -6853,10 +6871,8 @@ send_process (Lisp_Object proc, const char *buf, ptrdiff_t len,
 		}
 	      else if (errno == EPIPE)
 		{
-		  p->raw_status_new = 0;
-		  pset_status (p, list2 (Qexit, make_fixnum (256)));
-		  p->tick = ++process_tick;
-		  deactivate_process (proc);
+		  close_process_fd (&p->open_fd[WRITE_TO_SUBPROCESS]);
+		  p->outfd = -1;
 		  error ("Process %s no longer connected to pipe; closed it",
 			 SDATA (p->name));
 		}
@@ -7390,11 +7406,10 @@ process has been transmitted to the serial port.  */)
     send_process (proc, "\004", 1, Qnil);
   else if (EQ (XPROCESS (proc)->type, Qserial))
     {
-#if !defined WINDOWSNT && defined HAVE_TCDRAIN
+#ifdef HAVE_TCDRAIN
       if (tcdrain (XPROCESS (proc)->outfd) != 0)
 	report_file_error ("Failed tcdrain", Qnil);
-#endif /* not WINDOWSNT && not TCDRAIN */
-      /* Do nothing on Windows because writes are blocking.  */
+#endif /* HAVE_TCDRAIN */
     }
   else
     {
@@ -7412,7 +7427,7 @@ process has been transmitted to the serial port.  */)
 	shutdown (old_outfd, 1);
 #endif
       close_process_fd (&p->open_fd[WRITE_TO_SUBPROCESS]);
-      new_outfd = emacs_open (NULL_DEVICE, O_WRONLY, 0);
+      new_outfd = inrange_fd (emacs_open (NULL_DEVICE, O_WRONLY, 0));
       if (new_outfd < 0)
 	report_file_error ("Opening null device", Qnil);
       p->open_fd[WRITE_TO_SUBPROCESS] = new_outfd;
@@ -7469,13 +7484,7 @@ process has been transmitted to the serial port.  */)
    occur if SIGCHLD is delivered outside of the 'pselect' call, in
    which case 'pselect' will not be interrupted by the signal, and
    will therefore wait on the process's output descriptor for the
-   output that will never come.
-
-   WINDOWSNT doesn't need this facility because its 'pselect'
-   emulation (see 'sys_select' in w32proc.c) waits on a subprocess
-   handle, which becomes signaled when the process exits, and also
-   because that emulation delays the delivery of the simulated SIGCHLD
-   until all the output from the subprocess has been consumed.  */
+   output that will never come.  */
 
 /* FIXME: On Unix-like systems that have a proper 'pselect'
    (HAVE_PSELECT), we should block SIGCHLD in
@@ -7494,17 +7503,8 @@ child_signal_init (void)
     return; /* already done */
 
   int fds[2];
-  if (emacs_pipe (fds) < 0)
+  if (inrange_pipe (fds) < 0)
     report_file_error ("Creating pipe for child signal", Qnil);
-  if (FD_SETSIZE <= fds[0])
-    {
-      /* Since we need to `pselect' on the read end, it has to fit
-	 into an `fd_set'.  */
-      emacs_close (fds[0]);
-      emacs_close (fds[1]);
-      report_file_errno ("Creating pipe for child signal", Qnil,
-			 EMFILE);
-    }
 
   /* We leave the file descriptors open until the Emacs process
      exits.  */
@@ -8254,7 +8254,7 @@ remove_slash_colon (Lisp_Object name)
 void
 add_keyboard_wait_descriptor (int desc)
 {
-#ifdef subprocesses /* Actually means "not MSDOS".  */
+#ifdef subprocesses
   eassert (desc >= 0 && desc < FD_SETSIZE);
   fd_callback_info[desc].flags &= ~PROCESS_FD;
   fd_callback_info[desc].flags |= (FOR_READ | KEYBOARD_FD);
@@ -8590,7 +8590,7 @@ init_process_emacs (int sockfd)
 
   inhibit_sentinels = 0;
 
-#if defined HAVE_GLIB && !defined WINDOWSNT
+#ifdef HAVE_GLIB
   /* Tickle Glib's child-handling code.  Ask Glib to install a
      watch source for Emacs itself which will initialize glib's
      private SIGCHLD handler, allowing catch_child_signal to copy
@@ -8625,7 +8625,13 @@ init_process_emacs (int sockfd)
 #endif
 
 #ifdef HAVE_SETRLIMIT
-  /* Don't allocate more than FD_SETSIZE file descriptors for Emacs itself.  */
+  /* Don't allocate more than FD_SETSIZE file descriptors for Emacs itself.
+     This is for performance, so that we needn't open file descriptors
+     only to immediately close them and fail.  The rest of this module
+     does not rely on emacs_open, accept4, socket, emacs_pipe, etc.
+     to always return values less than FD_SETSIZE, since not every
+     platform has setrlimit, and even for those that do, an Emacs
+     module or even some other process can raise Emacs's limit.  */
   if (getrlimit (RLIMIT_NOFILE, &nofile_limit) != 0)
     nofile_limit.rlim_cur = 0;
   else if (FD_SETSIZE < nofile_limit.rlim_cur)

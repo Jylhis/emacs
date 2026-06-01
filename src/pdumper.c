@@ -86,13 +86,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 # elif !defined (MAP_POPULATE)
 #  define MAP_POPULATE 0
 # endif
-#elif defined (WINDOWSNT)
-  /* Use a float infinity, to avoid compiler warnings in comparing vs
-     candidates' score.  */
-# undef INFINITY
-# define INFINITY __builtin_inff ()
-# include <windows.h>
-# define VM_SUPPORTED VM_MS_WINDOWS
 #else
 # define VM_SUPPORTED 0
 #endif
@@ -4710,10 +4703,6 @@ dump_unmap_file (void *addr, size_t size)
   (void) addr;
   (void) size;
   emacs_abort ();
-#elif defined (WINDOWSNT)
-  (void) size;
-  if (!UnmapViewOfFile (addr))
-    emacs_abort ();
 #else
   if (munmap (addr, size) < 0)
     emacs_abort ();
@@ -4877,12 +4866,7 @@ dump_mmap_release_vm (struct dump_memory_map *map)
 static bool
 needs_mmap_retry_p (void)
 {
-#if defined CYGWIN || VM_SUPPORTED == VM_MS_WINDOWS \
-  || defined _AIX
-  return true;
-#else /* !CYGWIN && VM_SUPPORTED != VM_MS_WINDOWS && !_AIX */
   return false;
-#endif /* !CYGWIN && VM_SUPPORTED != VM_MS_WINDOWS && !_AIX */
 }
 
 static bool
@@ -5372,9 +5356,9 @@ dump_do_dump_relocation (const uintptr_t dump_base,
 	Lisp_Object eln_fname;
 	char *fndata;
 
-	/* Check just once if this is a local build or Emacs was installed.  */
-	/* Can't use expand-file-name here, because we are too early
-	   in the startup, and we will crash at least on WINDOWSNT.  */
+	/* Check just once if this is a local build or Emacs was installed.
+	   Can't use expand-file-name here, because we are too early in
+	   startup.  */
 	if (installation_state == UNKNOWN)
 	  {
 	    eln_fname = make_uninit_string (execdir_len + fn1_len);

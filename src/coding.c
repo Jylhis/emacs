@@ -1472,11 +1472,9 @@ detect_coding_utf_16 (struct coding_system *coding,
     {
       /* We check the dispersion of Eth and Oth bytes where E is even and
 	 O is odd.  If both are high, we assume binary data.*/
-      unsigned char e[256], o[256];
+      unsigned char e[256] = {0}, o[256] = {0};
       unsigned e_num = 1, o_num = 1;
 
-      memset (e, 0, 256);
-      memset (o, 0, 256);
       e[c1] = 1;
       o[c2] = 1;
 
@@ -6957,7 +6955,7 @@ produce_chars (struct coding_system *coding, Lisp_Object translation_table,
 		  ptrdiff_t dst_size;
 		  if (ckd_mul (&dst_size, to_nchars, MAX_MULTIBYTE_LENGTH)
 		      || ckd_add (&dst_size, dst_size, buf_end - buf))
-		    memory_full (SIZE_MAX);
+		    memory_full_up ();
 		  dst = alloc_destination (coding, dst_size, dst);
 		  if (EQ (coding->src_object, coding->dst_object)
 		      /* Input and output are not C buffers, which are safe to
@@ -8440,7 +8438,7 @@ preferred_coding_system (void)
   return CODING_ID_NAME (id);
 }
 
-#if defined (WINDOWSNT) || defined (CYGWIN) || defined HAVE_ANDROID
+#ifdef HAVE_ANDROID
 
 Lisp_Object
 from_unicode (Lisp_Object str)
@@ -8462,19 +8460,17 @@ from_unicode_buffer (const wchar_t *wstr)
      strings are extended to 32-bit wchar_t.  */
 
   uint16_t *words;
-  size_t length, i;
-
-  length = wcslen (wstr) + 1;
+  ptrdiff_t length = wcslen (wstr);
 
   USE_SAFE_ALLOCA;
-  SAFE_NALLOCA (words, sizeof *words, length);
+  SAFE_NALLOCA (words, sizeof *words, length + 1);
 
-  for (i = 0; i < length - 1; ++i)
+  for (ptrdiff_t i = 0; i < length; i++)
     words[i] = wstr[i];
+  words[length] = '\0';
 
-  words[i] = '\0';
   AUTO_STRING_WITH_LEN (str, (char *) words,
-			(length - 1) * sizeof *words);
+			length * sizeof *words);
   return unbind_to (sa_count, from_unicode (str));
 }
 
@@ -8495,7 +8491,7 @@ to_unicode (Lisp_Object str, Lisp_Object *buf)
   return WCSDATA (*buf);
 }
 
-#endif /* WINDOWSNT || CYGWIN || HAVE_ANDROID */
+#endif /* HAVE_ANDROID */
 
 
 /*** 8. Emacs Lisp library functions ***/
@@ -10773,10 +10769,8 @@ usage: (set-coding-system-priority &rest coding-systems)  */)
   (ptrdiff_t nargs, Lisp_Object *args)
 {
   ptrdiff_t i, j;
-  bool changed[coding_category_max];
+  bool changed[coding_category_max] = {0};
   enum coding_category priorities[coding_category_max];
-
-  memset (changed, 0, sizeof changed);
 
   for (i = j = 0; i < nargs; i++)
     {
@@ -11690,7 +11684,7 @@ syms_of_coding (void)
   DEFSYM (Qutf_8_unix, "utf-8-unix");
   DEFSYM (Qutf_8_emacs, "utf-8-emacs");
 
-#if defined (WINDOWSNT) || defined (CYGWIN) || defined HAVE_ANDROID
+#ifdef HAVE_ANDROID
   /* No, not utf-16-le: that one has a BOM.  */
   DEFSYM (Qutf_16le, "utf-16le");
 #endif

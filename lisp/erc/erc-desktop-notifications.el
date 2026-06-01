@@ -54,7 +54,6 @@
 
 (defvar dbus-debug) ; used in the macroexpansion of dbus-ignore-errors
 
-(declare-function haiku-notifications-notify "haikuselect.c")
 (declare-function android-notifications-notify "androidselect.c")
 
 (defun erc-notifications-notify (nick msg &optional privp)
@@ -72,8 +71,6 @@ This will replace the last notification sent with this function."
                                                       t)))
             (funcall (cond ((featurep 'android)
                             #'android-notifications-notify)
-                           ((featurep 'haiku)
-                            #'haiku-notifications-notify)
                            (t #'notifications-notify))
                      :bus erc-notifications-bus
                      :title title

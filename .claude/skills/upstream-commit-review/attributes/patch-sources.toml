@@ -30,7 +30,10 @@ doc    = ".claude/notes/fork-homebrew-emacs-plus.md"
 name   = "nix-darwin-emacs"
 url    = "https://github.com/nix-giant/nix-darwin-emacs"
 branch = "main"
-globs  = ["overlays/patches-31/*.patch"]
+globs  = [
+    "overlays/patches-31/*.patch",
+    "overlays/patches-unstable/*.patch",
+]
 doc    = ".claude/notes/fork-nix-darwin-emacs.md"
 
 [[source]]
@@ -53,6 +56,39 @@ globs  = [
 ]
 doc    = ".claude/notes/fork-macports.md"
 
+# --- Nix mainline plumbing (low-yield but canonical) ---
+
+[[source]]
+name   = "nixpkgs-emacs"
+url    = "https://github.com/NixOS/nixpkgs"
+branch = "master"
+globs  = ["pkgs/applications/editors/emacs/*.patch"]
+doc    = ".claude/notes/fork-nixpkgs-emacs.md"
+
+# --- Mac-focused Homebrew tap (older than emacs-plus, broader patch set) ---
+
+[[source]]
+name   = "homebrew-emacs-head"
+url    = "https://github.com/daviderestivo/homebrew-emacs-head"
+branch = "master"
+globs  = ["patches/*.patch"]
+doc    = ".claude/notes/fork-homebrew-emacs-head.md"
+
+# --- NS-specific binary-builder, occasional per-version patches ---
+
+[[source]]
+name   = "jimeh-build-emacs-for-macos"
+url    = "https://github.com/jimeh/build-emacs-for-macos"
+branch = "master"
+globs  = ["patches/emacs-*/*.patch"]
+doc    = ".claude/notes/fork-jimeh-build-emacs.md"
+
+# Debian (salsa.debian.org/emacsen-team/emacs) is opted out: Salsa's
+# smart-http endpoint requires HTTP Basic auth even for public repos,
+# so an unauthenticated git-clone in the poll step fails with 401.
+# Most rows would have landed `not-applicable` (Debian branding, test
+# triage) anyway.  See fork-debian-emacs.md for a manual candidate list.
+
 # Aquamacs is opted out by default — its patch model is full-source
 # diff against Emacs 29.4, not a per-file patch set, so the SHA-
 # comparison flow would surface noise rather than actionable rows.
@@ -64,3 +100,18 @@ doc    = ".claude/notes/fork-macports.md"
 # branch = "aquamacs-4-dev"
 # globs  = ["aquamacs/src/*.patch"]
 # doc    = ".claude/notes/fork-aquamacs.md"
+
+# Intentionally NOT tracked (rationale in the corresponding fork notes
+# or, for the items below, in this comment):
+#
+# - jdtsmith/emacs-mac and railwaycat/homebrew-emacsmacport — parallel
+#   Mac Port codebase / Mac Port patches; architecturally incompatible
+#   with this fork's NS GUI.  See fork-emacs-mac-port.md.
+# - nix-community/emacs-overlay — overlay has no .patch files of its
+#   own; Nix mainline patches live in nixpkgs and are covered by the
+#   nixpkgs-emacs source above.  See fork-nix-emacs-overlay.md.
+# - Homebrew core Formula/e/emacs.rb — builds --without-ns and ships
+#   no patches.
+# - Guix gnu/packages/patches/emacs-*.patch — almost all target ELPA
+#   packages, not GNU Emacs core; the core entries are Guix-store
+#   plumbing equivalents of the nixpkgs patches.

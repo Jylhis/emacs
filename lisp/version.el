@@ -94,8 +94,6 @@ developing Emacs.")
 (defvar ns-version-string)
 (defvar cairo-version-string)
 
-(declare-function haiku-get-version-string "haikufns.c")
-
 (defun emacs-version (&optional here)
   "Display the version of Emacs that is running in this session.
 With a prefix argument, insert the Emacs version string at point
@@ -119,8 +117,6 @@ to the system configuration; look at `system-configuration' instead."
 		       ((featurep 'x-toolkit) ", X toolkit")
 		       ((featurep 'ns)
 			(format ", NS %s" ns-version-string))
-                       ((featurep 'haiku)
-                        (format ", Haiku %s" (haiku-get-version-string)))
 		       (t ""))
 		 (if (featurep 'cairo)
 		     (format ", cairo version %s" cairo-version-string)
