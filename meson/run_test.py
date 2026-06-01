@@ -34,6 +34,11 @@ def main() -> int:
     env = os.environ.copy()
     env["EMACSDATA"] = str(src_root / "etc")
     env["EMACSDOC"] = str(src_root / "etc")
+    # Mirror test/Makefile.in: tests resolve their fixtures relative to
+    # EMACS_TEST_DIRECTORY (e.g. image-file-tests, exif-tests,
+    # image-dired-tests).  Without it they fall back to the build dir's
+    # cwd and fail with file-missing on test/data/... resources.
+    env["EMACS_TEST_DIRECTORY"] = str(test_root)
     # Build load path recursively (see byte_compile_batch.py).
     # emacs-lisp must come right after lisp/ root so the core
     # 'debug feature resolves to lisp/emacs-lisp/debug, not
