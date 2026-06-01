@@ -388,7 +388,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
-      - name: Write ANDROID_STATUS.md
+      - name: Write ANDROID_STATUS doc
         env:
           ABI: ${{ matrix.abi }}
           NDK_ARCH: ${{ matrix.ndk_arch }}
@@ -456,7 +456,7 @@ jobs:
           # Sanity: at least one of each artifact class must exist.
           ls dist/emacs-*.tar.xz >/dev/null
           ls dist/Emacs-*.dmg    >/dev/null
-          ls dist/ANDROID_STATUS.md >/dev/null
+          ls dist/ANDROID_STATUS-*.md >/dev/null
 
       - name: Compose release notes
         env:
@@ -525,7 +525,7 @@ jobs:
           sed -i -e "s/VERSION/${VER}/g" -e "s/TAG/${TAG}/g" "$notes"
           # Append the Android status verbatim.
           echo "" >> "$notes"
-          cat dist/ANDROID_STATUS.md >> "$notes"
+          cat dist/ANDROID_STATUS-*.md >> "$notes"
 
       - name: Create draft release
         uses: softprops/action-gh-release@72f2c25fcb47643c292f7107632f7a47c1df5cd8  # v2.3.2
@@ -541,4 +541,4 @@ jobs:
             dist/Emacs-*.dmg
             dist/Emacs-*.dmg.sha256
             dist/nix-outputs-*.json
-            dist/ANDROID_STATUS.md
+            dist/ANDROID_STATUS-*.md
