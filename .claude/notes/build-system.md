@@ -9,6 +9,17 @@ The autotools entry points were removed at phase-10 cutover (commit
 `313f867`).  See `/root/.claude/plans/review-current-meson-based-merry-fairy.md`
 for the post-cutover parity audit and the prioritised work plan.
 
+### Phase numbering
+
+`git log --oneline --grep="Meson migration phase"` shows commits for
+phases 1, 2, 3, 4, 5, 6, 7, and 10; phase 9 lands at `2bf867f8398`
+("Phase 9: refresh top-level docs for the dropped platforms").
+Phase 8 has no matching commit title -- it was either silently
+rolled into the surrounding lib-src buildup or skipped.  The
+numbering is preserved for historical traceability rather than
+self-documentation; do not assume phase N+1 follows phase N
+strictly.
+
 ## Meson build
 
     meson setup build -Dnative-compilation=yes
