@@ -194,9 +194,6 @@ option('gc-mark-trace', type : 'boolean', value : false,
 option('profiling', type : 'boolean', value : false,
   description : 'Build for profiling (gprof).'
 )
-option('autodepend', type : 'feature', value : 'auto',
-  description : 'Auto-generate header dependency files.'
-)
 option('gtk-deprecation-warnings', type : 'boolean', value : false,
   description : 'Show GTK deprecation warnings.'
 )
@@ -231,18 +228,12 @@ option('gcc-warnings', type : 'combo',
 option('lto', type : 'boolean', value : false,
   description : 'Link-time optimisation.'
 )
-option('silent-rules', type : 'boolean', value : true,
-  description : 'Quiet build output.'
-)
 
 # ----------------------------------------------------------------------
 # Cross-compilation targets (configure.ac:593).
 # ----------------------------------------------------------------------
 option('android', type : 'feature', value : 'disabled',
   description : 'Cross-compile Android application package.'
-)
-option('android-debug', type : 'boolean', value : true,
-  description : 'Build Android package as a debug build.'
 )
 option('android-ndk', type : 'string', value : '',
   description : 'Path to the Android NDK root (r26+).  Honoured only when -Dandroid=enabled.'
