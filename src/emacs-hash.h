@@ -58,7 +58,8 @@ struct md5_ctx    { gcry_md_hd_t h; };
 struct sha1_ctx   { gcry_md_hd_t h; };
 struct sha256_ctx { gcry_md_hd_t h; };
 struct sha512_ctx { gcry_md_hd_t h; };
-struct sha3_ctx   { gcry_md_hd_t h; size_t digestlen; };
+/* SHA-3 is exposed only through the one-shot sha3_*_buffer functions
+   below; no streaming context is provided.  */
 
 /* One-shot interfaces: compute hash of LEN bytes at BUF, write the
    digest into RESBLOCK, return RESBLOCK.  */

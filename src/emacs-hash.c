@@ -210,6 +210,11 @@ ctx_finish (gcry_md_hd_t *h, size_t digest_size, void *resbuf)
       gcry_md_close (*h);
       *h = NULL;
     }
+  else
+    /* Context init failed (e.g. out of memory).  Produce a
+       deterministic all-zero digest rather than leave RESBUF holding
+       uninitialized stack memory.  */
+    memset (resbuf, 0, digest_size);
   return resbuf;
 }
 

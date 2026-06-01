@@ -522,14 +522,17 @@
       "m4/"
       "build-aux/"
     ];
-    sync = "admin/merge-gnulib";
+    sync = "frozen";
     elpa = null;
     license = null;
     notes = ''
-      GNU portability library, imported via gnulib-tool.  Module
-      license varies (LGPL-2.1-or-later or GPL-3.0-or-later); see
-      lib/COPYING and per-module headers.  After Phase 7 of the
-      removal plan the module list moves here as `modules = [ ... ]`.
+      GNU portability library.  The in-tree subset is now frozen: the
+      gnulib-tool import script (admin/merge-gnulib) was removed when
+      the MD5/SHA-1/SHA-2/SHA-3 modules were de-vendored in favor of
+      libgcrypt, leaving only the portability shims the Meson build
+      reads directly.  No automatic re-sync from upstream remains.
+      Module license varies (LGPL-2.1-or-later or GPL-3.0-or-later);
+      see lib/COPYING and per-module headers.
     '';
     src = null;
     destination = null;
