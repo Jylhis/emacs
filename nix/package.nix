@@ -33,7 +33,6 @@
   tree-sitter,
   sqlite,
   mailutils,
-  imagemagick,
 
   acl,
   dbus,
@@ -67,7 +66,6 @@
   withSqlite3 ? true,
   withMailutils ? stdenv.isLinux,
   withModules ? true,
-  withImageMagick ? false,
   withXwidgets ? false,
 
   noGui ? false,
@@ -166,7 +164,6 @@ stdenv.mkDerivation (_finalAttrs: {
   ++ optional withSqlite3 sqlite
   ++ optional withTreeSitter tree-sitter
   ++ optional withMailutils mailutils
-  ++ optional withImageMagick imagemagick
   ++ optionals stdenv.isLinux (
     [
       acl
@@ -213,7 +210,6 @@ stdenv.mkDerivation (_finalAttrs: {
     (lib.mesonEnable "modules" withModules)
     (lib.mesonEnable "toolkit-scroll-bars" (withGTK3 || withPgtk || withNS))
     (lib.mesonEnable "xwidgets" withXwidgets)
-    (lib.mesonEnable "imagemagick" withImageMagick)
     (lib.mesonEnable "dbus" stdenv.isLinux)
     (lib.mesonEnable "gpm" false)
     (lib.mesonEnable "gsettings" false)
