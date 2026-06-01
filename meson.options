@@ -244,6 +244,9 @@ option('android-sdk', type : 'string', value : '',
 option('android-api', type : 'integer', value : 29, min : 21, max : 36,
   description : 'Minimum Android API level baked into the APK.'
 )
+option('android-target-api', type : 'integer', value : 35, min : 21, max : 36,
+  description : 'Target Android API level baked into the APK (--target-sdk-version).'
+)
 option('android-host-build', type : 'string', value : '',
   description : 'Path to a completed host Meson build dir; supplies bootstrap-emacs and emacs.pdmp consumed by the APK pipeline.'
 )

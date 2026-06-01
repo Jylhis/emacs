@@ -36,9 +36,11 @@ def run(cmd, cwd: Path | None = None, env: dict | None = None) -> None:
 
 
 def find_jar(sdk: Path, api: int) -> Path:
-    # SDK ships android.jar under platforms/android-<api>/android.jar;
-    # accept the closest available API >= requested, then fall back to
-    # the highest available.
+    # SDK ships android.jar under platforms/android-<api>/android.jar.
+    # If the requested API isn't installed, fall back to the highest
+    # available but warn loudly -- a silent fallback used to produce
+    # an APK whose --target-sdk-version mismatched the bundled
+    # framework headers.
     plats = sdk / "platforms"
     candidates = sorted(plats.glob("android-*"))
     if not candidates:
@@ -46,10 +48,14 @@ def find_jar(sdk: Path, api: int) -> Path:
     exact = plats / f"android-{api}" / "android.jar"
     if exact.exists():
         return exact
-    # Highest available.
     for d in reversed(candidates):
         jar = d / "android.jar"
         if jar.exists():
+            print(f"build_android_apk: WARNING: requested android.jar for "
+                  f"API {api} not found under {plats}; "
+                  f"falling back to {jar.parent.name}.  APK target-sdk "
+                  f"may mismatch installed framework headers.",
+                  file=sys.stderr, flush=True)
             return jar
     sys.exit(f"build_android_apk: no android.jar in {plats}")
 
@@ -200,7 +206,13 @@ def main() -> int:
     p.add_argument("--assets-dir", required=True, type=Path)
     p.add_argument("--ndk", required=True, type=Path)
     p.add_argument("--sdk", required=True, type=Path)
-    p.add_argument("--api", required=True, type=int)
+    p.add_argument("--api", required=True, type=int,
+                   help="minimum API level (--min-sdk-version).")
+    p.add_argument("--target-api", type=int, default=35,
+                   help="target API level (--target-sdk-version); "
+                        "selects which platforms/android-N/android.jar "
+                        "to compile against.  Defaults to 35 to match "
+                        "the historical hard-coded value.")
     p.add_argument("--abi", required=True)
     p.add_argument("--version", required=True)
     p.add_argument("--keystore", required=True, type=Path)
@@ -219,7 +231,7 @@ def main() -> int:
         if not tool.exists():
             sys.exit(f"build_android_apk: missing SDK tool {tool}")
 
-    target_api = 35
+    target_api = args.target_api
     android_jar = find_jar(sdk, target_api)
 
     if not args.assets_stamp.exists():

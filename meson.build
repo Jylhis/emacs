@@ -1210,6 +1210,7 @@ if want_android
       '--ndk',           get_option('android-ndk'),
       '--sdk',           get_option('android-sdk'),
       '--api',           get_option('android-api').to_string(),
+      '--target-api',    get_option('android-target-api').to_string(),
       '--abi',           _abi,
       '--version',       meson.project_version(),
       '--keystore',      _keystore,
