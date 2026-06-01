@@ -22,6 +22,10 @@ Findings followed up since the audit landed:
 | F-33  | `Harden build scripts against hostile inputs (F-23, F-33, F-39)` | fixed |
 | F-39  | `Harden build scripts against hostile inputs (F-23, F-33, F-39)` | fixed |
 | F-50  | `; Note phase 8 status in build-system notes (F-50)` | fixed |
+| F-08  | `meson: produce a canonical EMACS_CONFIGURATION triple and define BINDIR` | fixed |
+| F-22  | `meson: produce a canonical EMACS_CONFIGURATION triple and define BINDIR` | fixed |
+| F-11  | `Surface failures in native-comp + sandbox install resolve (F-11, F-14)` | fixed |
+| F-14  | `Surface failures in native-comp + sandbox install resolve (F-11, F-14)` | fixed |
 | F-40  | n/a — over-flagged; the function-probe loop pattern is uniform across ~30 entries and gating one is inconsistency, not safety | rejected |
 
 Open P0s requiring larger refactors / decisions:
