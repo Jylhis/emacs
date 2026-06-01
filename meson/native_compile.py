@@ -69,18 +69,31 @@ def main() -> int:
         "--eval", "(batch-native-compile t)",
     ]
     chunk_size = args.chunk_size
-    failed = 0
+    total_chunks = (len(work) + chunk_size - 1) // chunk_size
+    failed_chunks: list[int] = []
     for i in range(0, len(work), chunk_size):
+        idx = i // chunk_size + 1
         chunk = work[i:i + chunk_size]
         cmd = base + [str(el) for el in chunk]
         rc = subprocess.run(cmd, env=env).returncode
         if rc != 0:
-            print(f"chunk {i // chunk_size + 1} rc={rc}; continuing",
-                  file=sys.stderr, flush=True)
-            failed += 1
+            print(f"chunk {idx} rc={rc}; continuing", file=sys.stderr, flush=True)
+            failed_chunks.append(idx)
 
+    # Record outcome in the stamp so a rebuild that wants to retry
+    # failed chunks can read which ones to redo.  Returning non-zero
+    # surfaces the failure to Meson so the .eln cache is not treated
+    # as a successful artefact; CI gates this step with
+    # continue-on-error today (see .github/workflows/meson.yml).
     args.stamp.parent.mkdir(parents=True, exist_ok=True)
-    args.stamp.write_text(f"ok ({failed} chunk failures)\n")
+    if failed_chunks:
+        args.stamp.write_text(
+            "failed: " + " ".join(str(c) for c in failed_chunks) + "\n"
+        )
+        print(f"{len(failed_chunks)}/{total_chunks} chunks failed",
+              file=sys.stderr, flush=True)
+        return 1
+    args.stamp.write_text("ok\n")
     return 0
 
 if __name__ == "__main__":

@@ -42,8 +42,11 @@ Note: Wayland builds use the `pgtk` toolkit (GTK 3 under the hood --
 this fork doesn't have a GTK 4 port yet).  X11 builds use the `gtk3`
 toolkit.  Lucid, Athena, and Motif have been dropped.
 
-Android APKs are not built; the Java/NDK glue is not yet ported to
-Meson.  See `.claude/notes/build-system.md` "Parked / unsupported".
+Android is supported in the release matrix as arm only (armeabi-v7a
+and arm64-v8a), but APKs are not yet built: the Java/NDK glue is not
+yet ported to Meson, and each matrix entry currently emits a per-arch
+status doc.  See `.claude/notes/build-system.md` "Supported
+platforms" for the roadmap.
 
 ## Cutting a release
 
@@ -109,8 +112,12 @@ nix run github:Jylhis/emacs/<tag>#emacs-jylhis-pgtk -- \
   `release.yml`'s `darwin-universal` job and add a
   `notarytool submit --wait` + `stapler staple` step.
 
-- **Android APK.**  Replace the `android-stub` job with a real
-  cross-compile once the Java/NDK glue is restored under Meson.
+- **Android APK.**  The `android` matrix in `release.yml` currently
+  emits a per-arch status doc.  Replace each matrix entry's status
+  step with a real NDK cross-compile (Meson `--cross-file
+  cross/meson-android.cross`, output APK signed with
+  `java/emacs.keystore`) once the Meson Android recipe lands.
+  Target arches are arm only: armeabi-v7a and arm64-v8a.
 
 - **GTK 4.**  Drop GTK 3 from the `pgtk` variant when upstream lands
   a GTK 4 port.

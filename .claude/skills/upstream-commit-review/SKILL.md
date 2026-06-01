@@ -72,7 +72,8 @@ all rules are unit-tested in `scripts/test_classify.py`.
 | 2   | merge-noise       | subject matches `^(; *)?Merge \b` or contains `gitmerge`              | SKIP       |
 | 3   | admin             | every file under `admin/`, or matches `^ChangeLog(\.[0-9]+)?$` or `^etc/MAINTAINERS$` | SKIP |
 | 3.5 | release-branch    | subject matches `^Change \w+ version for Emacs \d+ to `, `^Cut the emacs-\d+ release branch`, or `^Bump (master )?Emacs version` | SKIP |
-| —   | (missing-file)    | any file in commit not present in HEAD, **excluding** files the commit adds (`A` in `--name-status`) AND with `etc/NEWS` mapped to `etc/NEWS.31` via the fork's rename table | force REVIEW |
+| 3.6 | removed-area      | every non-added file matches `REMOVED_AREAS_RX` (`^lwlib/`, `^m4/`, `^msdos/`, `^config\.bat$`, `^admin/merge-gnulib$`, `^src/w32(proc\|term\|image)\.c$`, `^src/haiku(fns\|font\|select\|term)\.c$`, `^doc/translations/(?!en/)`) | SKIP |
+| —   | (missing-file)    | any file in commit not present in HEAD AND NOT covered by removed-area, **excluding** files the commit adds (`A` in `--name-status`) AND with `etc/NEWS` mapped to `etc/NEWS.31` via the fork's rename table | force REVIEW |
 | 4   | doc-only          | every file under `doc/`, `etc/(NEWS\|NEWS.NN\|ERC-NEWS\|HISTORY\|AUTHORS\|PROBLEMS)`, or matches `\.texi(nfo)?$`, `\.org$` | AUTO |
 | 5   | test-only         | every file under `test/`                                              | AUTO       |
 | 6   | lisp-bugfix       | **`Bug#` anywhere in subject or body** AND every file under `lisp/` or `test/` | AUTO       |
@@ -96,17 +97,31 @@ classification).
   `test/.../new-scenario.el` shouldn't be demoted just because that
   file isn't in HEAD yet — we use `git show --name-status` and
   exclude `A` entries from the missing-file check.
-- **`etc/NEWS` is rename-aware.**  Upstream's `etc/NEWS` is
-  `etc/NEWS.31` in this fork; the renamed-paths map in
-  `classify.py` (`RENAMED_TO`) covers this so commits touching
-  `etc/NEWS` are not falsely flagged.  Git's rename detection
-  routes the diff hunk during cherry-pick.
+- **`etc/NEWS` is rename-aware** (classifier side).  Upstream's
+  `etc/NEWS` maps to `etc/NEWS.31` in this fork via
+  `RENAMED_TO`, so commits touching `etc/NEWS` are not falsely
+  flagged as missing-file.  Git's rename detection routes the diff
+  hunk during cherry-pick *while upstream's `etc/NEWS` still resembles
+  ours* — once upstream cuts the next release branch (i.e. once
+  upstream's `etc/NEWS` becomes the Emacs 32.x file), rename
+  detection fails and cherry-pick fails with `deleted by us:
+  etc/NEWS`.  This requires a manual NEWS port: see the *NEWS-port
+  workflow* section below.
 - **Release-branch commits are auto-skipped.**  Version bumps and
   release-branch cuts (e.g. `Change ERC version for Emacs 31 to
   5.6.2.31.1`) live on the `emacs-NN` release branch and travel to
   master only via merge.  The standalone commit doesn't apply to
   master-tracking forks and previously had to be hand-skipped on
   every run.
+- **Removed-area commits are auto-skipped.**  Files in areas this
+  fork deleted (lwlib, m4, msdos, w32proc/w32term/w32image,
+  haikufns/haikufont/haikuselect/haikuterm, config.bat,
+  admin/merge-gnulib, non-English `doc/translations/*`) repeat as
+  missing-file REVIEW rows on every run if not skipped.  When a
+  commit touches **only** those areas, it is now skipped with the
+  `removed-area` bucket.  When it touches a mix, the missing-file
+  rule still fires and the human decides whether the non-removed
+  portion is worth a partial apply.
 
 ## Cherry-pick & conflict ladder
 
@@ -120,10 +135,35 @@ classification).
    only `etc/NEWS`, retry with `-X theirs`.  Git's rename-detection
    has already routed the upstream hunk; the report's range-diff
    section lets a human verify section ordering.
+
+   This tier handles the "minor drift" case.  Once upstream's
+   `etc/NEWS` is a different file entirely (post-release-branch
+   cut), rename detection fails and the conflict surfaces as
+   `etc/NEWS deleted by us` — see the *NEWS-port workflow* below.
 3. **Bounded `-X theirs` retry** — when conflict files are a subset
    of the drift allowlist (`src/keyboard.c,src/xdisp.c,src/coding.c,
    etc/AUTHORS` by default), retry with `-X theirs`.
 4. **Otherwise** — abort and demote to REVIEW with `conflict:<paths>`.
+
+### NEWS-port workflow (post-release-branch divergence)
+
+Once upstream's `etc/NEWS` no longer matches this fork's `etc/NEWS.31`
+closely enough for Git's rename detection, cherry-picking a NEWS-touching
+commit fails with `deleted by us: etc/NEWS`.  Resolve manually:
+
+1. `git status` confirms the only conflict is `deleted by us: etc/NEWS`;
+   other hunks are already staged.
+2. `git show <SHA> -- etc/NEWS` to view the upstream NEWS hunk.
+3. Find the matching section in `etc/NEWS.31` (typically
+   `* Changes in Emacs 31.1`, `* Lisp Changes in Emacs 31.1`, etc.).
+4. Insert the entry there.  Watch out for `^L` (form-feed) page
+   separators between top-level sections — the `Read` tool strips them,
+   so use Python or `sed` to insert safely.
+5. `git rm etc/NEWS` (drop the recreated upstream file).
+6. `git add etc/NEWS.31`.
+7. `git cherry-pick --continue`.  The commit message will reference
+   `etc/NEWS` rather than `etc/NEWS.31` — this is accepted by convention
+   in this fork (the commit-msg hook only warns).
 
 Full policy detail and the rationale ("prefer upstream" rule) live in
 `references/conflict-resolution.md`.

@@ -49,10 +49,10 @@ make_docfile = executable('make-docfile',
 )
 
 make_fingerprint = executable('make-fingerprint',
-  sources : files('make-fingerprint.c'),
+  sources : files('make-fingerprint.c', '../src/emacs-hash.c'),
   include_directories : lib_src_inc,
   c_args : lib_src_args,
-  dependencies : libgnu_dep,
+  dependencies : [libgnu_dep, gcrypt_dep],
   install : false,
 )
 

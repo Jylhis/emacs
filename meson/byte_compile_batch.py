@@ -29,7 +29,25 @@ def _load_path(lisp_root: Path) -> list[str]:
         rel = d.relative_to(lisp_root).as_posix()
         if rel in skip or any(rel.startswith(s + "/") for s in skip):
             continue
+        # cedet's sub-packages expose their files only through
+        # slash-prefixed features (e.g. `srecode/compile',
+        # `semantic/wisent/python'), which resolve via the `cedet' entry
+        # alone.  Adding the nested dirs (cedet/srecode, cedet/semantic*,
+        # cedet/ede) as flat entries would let a bare `(require 'compile)'
+        # find lisp/cedet/srecode/compile.el ahead of
+        # lisp/progmodes/compile.el -- and likewise shadow python, table,
+        # debug, etc.  Keep `cedet', drop its descendants.
+        if rel.startswith("cedet/"):
+            continue
         paths.append(str(d))
+    # obsolete/ goes LAST so its files (which often shadow a live library,
+    # e.g. obsolete/cl.el) never win over the current one, while still
+    # letting the obsolete packages resolve their intra-obsolete requires
+    # (idlwave -> idlw-help/idlw-shell, isearchb -> iswitchb).  Without it
+    # those few files fail to byte-compile with "Cannot open load file".
+    obsolete = lisp_root / "obsolete"
+    if obsolete.is_dir():
+        paths.append(str(obsolete))
     return paths
 
 def main() -> int:
@@ -108,6 +126,34 @@ def main() -> int:
         "(when (featurep 'native-compile)"
         " (setq native-comp-jit-compilation nil"
         "       native-comp-enable-subr-trampolines nil))",
+        # The bootstrap-emacs.pdmp is dumped with --temacs=pbootstrap,
+        # before loaddefs_stamp generates cl-loaddefs.el.  At dump time
+        # cl-lib.el's `(load "cl-loaddefs")' therefore fails and its
+        # fallback loads cl-macs + cl-seq but deliberately NOT cl-extra,
+        # so the cl-extra autoloads (cl-every, cl-some, cl-mapl, cl-subseq,
+        # cl-find-class, ...) are missing from the compiling image and
+        # cl-lib is already `provide'd (so a file's own (require 'cl-lib)
+        # is a no-op).  Load the now-generated cl-loaddefs here so those
+        # symbols resolve; without it ~130 files that use cl-extra
+        # functions (directly or via eieio / cl-defmethod /
+        # define-mode-local-override macro expansion, e.g. the whole
+        # cedet/ tree, css-mode, ox-html, window-tool-bar) fail to compile.
+        # 'noerror because compile-first runs before cl-loaddefs.el exists;
+        # those priority files do not use cl-extra, so a no-op load is fine.
+        "--eval",
+        "(load \"cl-loaddefs\" 'noerror 'quiet)",
+        # Likewise register the Unicode char-code properties.  bootstrap-
+        # emacs.pdmp is dumped before charprop.el exists (it is generated
+        # with that very pdmp), so loadup.el's silent (load "charprop.el"
+        # t) is a no-op there and the compile image has no char-code
+        # properties.  Files that consult them at compile time --
+        # char-fold.el's `(unicode-property-table-internal 'decomposition)',
+        # and the syntax/category tables in nxml, css-mode, mhtml, the
+        # *-ts-mode wrappers -- then fail with "char-table-p, nil".  Loading
+        # charprop registers the deferred uni-*.el tables, which
+        # uniprop_table (src/chartab.c) loads on demand from the load path.
+        "--eval",
+        "(load \"international/charprop\" 'noerror 'quiet)",
         "-f", "batch-byte-compile",
     ]
 

@@ -83,6 +83,64 @@ class ClassifyTests(unittest.TestCase):
             self.assertEqual(d.bucket, "review")
             self.assertTrue(d.reason.startswith("missing-file:"))
 
+    # ---- Removed-area SKIP --------------------------------------------------
+
+    def test_removed_area_all_lwlib_is_skipped(self):
+        c = commit("b" * 40, "Avoid a memset in lwlib", ["lwlib/lwlib.c"])
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "removed-area")
+
+    def test_removed_area_msdos_only_is_skipped(self):
+        c = commit("c" * 40, "Fix the MSDOS build",
+                   ["msdos/sedlibmk.inp", "config.bat"])
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "removed-area")
+
+    def test_removed_area_m4_only_is_skipped(self):
+        c = commit("d" * 40, "Fix overquoting in gl_SET_MAKEINFO",
+                   ["m4/texinfo.m4"])
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "removed-area")
+
+    def test_removed_area_w32proc_only_is_skipped(self):
+        c = commit("e" * 40,
+                   "Improve w32 implementations of 'signal' and 'raise'",
+                   ["src/w32proc.c"])
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "removed-area")
+
+    def test_removed_area_haiku_only_is_skipped(self):
+        c = commit("f" * 40, "Avoid memsets in haiku front-end",
+                   ["src/haikufns.c", "src/haikuterm.c"])
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "removed-area")
+
+    def test_removed_area_mixed_still_reviews(self):
+        # Commit touches a removed file AND a file we still ship; the
+        # missing-file rule should still fire (so the human decides
+        # whether the non-removed portion is worth a partial apply).
+        c = commit("a" * 40, "Cross-area cleanup",
+                   ["lwlib/lwlib.c", "src/process.c"])
+        with patch.object(os.path, "exists",
+                          side_effect=lambda p: p == "src/process.c"):
+            d = classify.classify(c)
+            self.assertEqual(d.bucket, "review")
+            self.assertTrue(d.reason.startswith("missing-file:"))
+
+    def test_removed_area_translations_skips_non_en(self):
+        c = commit("a" * 40, "; fr: Fix typos",
+                   ["doc/translations/fr/info_common.mk"])
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "removed-area")
+
+    def test_removed_area_translations_en_still_applies(self):
+        # The English translation IS shipped — don't skip those.
+        with patch.object(os.path, "exists", return_value=True):
+            c = commit("a" * 40, "; en: Improve doc",
+                       ["doc/translations/en/info_common.mk"])
+            d = classify.classify(c)
+            self.assertNotEqual(d.bucket, "removed-area")
+
     # ---- AUTO doc-only ------------------------------------------------------
 
     def test_doc_only_news_31(self):

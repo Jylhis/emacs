@@ -28,6 +28,10 @@ session.
   -- consolidated retrospective of all savannah backports and Darwin
   patch absorption to date; entry point for the per-session
   `upstream-backport-review-*.md` reports.
+- [Meson migration multi-lens review (2026-06-01)](meson-migration-multi-lens-review-2026-06-01.md)
+  -- five-lens audit (security, simplification, correctness, TDD
+  coverage, autotools parity); 7 P0 / 21 P1 / 22 P2 findings; companion
+  to the 2026-05-31 parity audit.
 
 ### External Forks and Patch Sources
 

@@ -19,8 +19,8 @@ base_obj_core = [
   'callint.c', 'callproc.c', 'casefiddle.c', 'casetab.c', 'category.c',
   'ccl.c', 'character.c', 'charset.c', 'chartab.c', 'cmds.c', 'coding.c',
   'composite.c', 'comp.c', 'data.c', 'decompress.c', 'dired.c',
-  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs-module.c',
-  'emacs.c', 'eval.c',
+  'dispnew.c', 'doc.c', 'doprnt.c', 'editfns.c', 'emacs-hash.c',
+  'emacs-module.c', 'emacs.c', 'eval.c',
   'fileio.c', 'filelock.c', 'floatfns.c', 'fns.c', 'font.c', 'frame.c',
   'gnutls.c', 'indent.c', 'insdel.c', 'intervals.c', 'itree.c', 'json.c',
   'keyboard.c', 'keymap.c', 'lcms.c', 'lread.c', 'macros.c', 'marker.c',
@@ -86,8 +86,23 @@ endif
 ns_obj_objc = ['nsterm.m', 'nsfns.m', 'nsmenu.m', 'nsselect.m',
                 'nsimage.m', 'macfont.m']
 
+# Android JNI port (deleted java/Makefile.in + cross/Makefile.in at
+# anchor 08a22b8965ec).  Replaces X11/GTK/NS sources; the resulting
+# libemacs.so is loaded by the Java EmacsService/EmacsActivity on
+# device.  sfnt*.c is Emacs's hand-rolled OpenType reader used when
+# the platform has no system Freetype.
+android_obj = ['android.c', 'androidterm.c', 'androidfns.c',
+               'androidmenu.c', 'androidselect.c', 'androidvfs.c',
+               'androidfont.c',
+               'sfnt.c', 'sfntfont.c', 'sfntfont-android.c']
+
 # Assemble base_obj depending on whether we have a GUI toolkit.
-if gtk3_dep.found()
+if want_android
+  base_obj_basenames = (
+    base_obj_core + android_obj + window_system_obj
+    + cm_obj + dynlib_obj + feature_obj
+  )
+elif gtk3_dep.found()
   base_obj_basenames = (
     base_obj_core + xobj + gtk_obj + window_system_obj
     + font_obj + notify_obj + xgselect_obj
@@ -112,36 +127,48 @@ base_obj_sources = files(base_obj_basenames)
 # ----------------------------------------------------------------------
 # globals.h -- function/variable forward declarations harvested from
 # every src/*.c file by make-docfile -g.  See src/Makefile.in:600.
+# Android: globals.h is identical across targets (it depends only on
+# the C source set), so reuse the host build's copy and skip running
+# make-docfile here -- the cross-compile env doesn't have lib-src
+# helpers anyway.
 # ----------------------------------------------------------------------
-globals_h = custom_target(
-  'globals.h',
-  input  : base_obj_sources,
-  output : 'globals.h',
-  command : [
-    make_docfile,
-    '-d', meson.current_source_dir(),
-    '-g',
-  ] + base_obj_basenames,
-  capture : true,
-)
-
-# ----------------------------------------------------------------------
-# etc/DOC -- doc strings extracted from base_obj sources by
-# make-docfile -d.  Snarf-documentation in loadup.el reads it during
-# the final pdump (loadup.el calls (Snarf-documentation "DOC")).
-# Mirrors src/Makefile.in:583.
-# ----------------------------------------------------------------------
-etc_doc = custom_target(
-  'etc-DOC',
-  input  : base_obj_sources,
-  output : 'DOC',
-  command : [
-    make_docfile,
-    '-d', meson.current_source_dir(),
-  ] + base_obj_basenames,
-  capture : true,
-  build_by_default : true,
-)
+if want_android
+  _host_build = get_option('android-host-build')
+  globals_h = custom_target(
+    'globals.h',
+    output  : 'globals.h',
+    command : ['cp', '-f', _host_build + '/src/globals.h', '@OUTPUT@'],
+  )
+  etc_doc = custom_target(
+    'etc-DOC',
+    output  : 'DOC',
+    command : ['cp', '-f', _host_build + '/src/DOC', '@OUTPUT@'],
+    build_by_default : true,
+  )
+else
+  globals_h = custom_target(
+    'globals.h',
+    input  : base_obj_sources,
+    output : 'globals.h',
+    command : [
+      make_docfile,
+      '-d', meson.current_source_dir(),
+      '-g',
+    ] + base_obj_basenames,
+    capture : true,
+  )
+  etc_doc = custom_target(
+    'etc-DOC',
+    input  : base_obj_sources,
+    output : 'DOC',
+    command : [
+      make_docfile,
+      '-d', meson.current_source_dir(),
+    ] + base_obj_basenames,
+    capture : true,
+    build_by_default : true,
+  )
+endif
 
 # ----------------------------------------------------------------------
 # lisp.mk -- list of Lisp files loadup.el will load, extracted from
@@ -234,7 +261,9 @@ epaths_h = configure_file(
 # ----------------------------------------------------------------------
 # buildobj.h -- the list of base_obj objects as C string literals.
 # Used by doc.c to attribute primitives to their source files
-# (mirrors src/Makefile.in:591).
+# (mirrors src/Makefile.in:591).  Android: regenerate against the
+# Android source list so the embedded module names match what's
+# linked into libemacs.so.
 # ----------------------------------------------------------------------
 make_buildobj_h = files('../meson/make_buildobj_h.py')
 
@@ -272,18 +301,29 @@ if gtk3_dep.found()
     cc.find_library('ICE',        required : true),  # X ICE
   ]
 endif
-# terminfo (ncurses).
-tinfo_dep = cc.find_library('tinfo', required : false)
-if not tinfo_dep.found()
-  tinfo_dep = cc.find_library('ncurses', required : true)
+# terminfo (ncurses).  Skipped for Android: the NDK doesn't ship
+# ncurses, and the Android port doesn't drive a tty terminal.
+if want_android
+  tinfo_dep = dependency('', required : false)
+else
+  tinfo_dep = cc.find_library('tinfo', required : false)
+  if not tinfo_dep.found()
+    tinfo_dep = cc.find_library('ncurses', required : true)
+  endif
 endif
 
-src_deps = [
-  libgnu_dep, gnutls_dep, treesit_dep,
-  sqlite_dep, xml_dep, gmp_dep,
-  dependency('threads'),
-  tinfo_dep,
-] + extra_x_libs
+if want_android
+  # emacs-hash.c and androidvfs.c route through the libgcrypt facade,
+  # so the Android build also links gcrypt_dep.
+  src_deps = [libgnu_dep, gcrypt_dep, dependency('threads')]
+else
+  src_deps = [
+    libgnu_dep, gnutls_dep, treesit_dep,
+    sqlite_dep, xml_dep, gmp_dep, gcrypt_dep,
+    dependency('threads'),
+    tinfo_dep,
+  ] + extra_x_libs
+endif
 if gtk3_dep.found()
   src_deps += [gtk3_dep, cairo_dep, cairo_ft_dep,
                harfbuzz_dep, freetype_dep, fontconfig_dep, xft_dep]
@@ -325,7 +365,7 @@ endif
 # option resolves to disabled.
 foreach _dep : [
   jpeg_dep, tiff_dep, png_dep, gif_dep, rsvg_dep, webp_dep, xpm_dep,
-  imagemagick_dep, lcms2_dep, dbus_dep, gpm_dep, gio_dep, selinux_dep,
+  lcms2_dep, dbus_dep, gpm_dep, gio_dep, selinux_dep,
   zlib_dep, libotf_dep, m17n_flt_dep, alsa_dep, webkit_dep,
 ]
   if _dep.found()
@@ -368,6 +408,32 @@ src_compile_probe = static_library(
   install : false,
   build_by_default : false,
 )
+
+if want_android
+  # The Android port produces libemacs.so (loaded by the JVM via
+  # System.loadLibrary in EmacsNative.java) instead of a desktop
+  # emacs binary.  The host's bootstrap-emacs / emacs.pdmp / lisp
+  # tree come from -Dandroid-host-build=... and are bundled into
+  # the APK by meson/build_android_apk.py.
+  libemacs = shared_library(
+    'emacs',
+    sources : [
+      src_compile_probe_sources,
+      globals_h, buildobj_h, emacs_module_h, epaths_h,
+    ],
+    include_directories : [
+      top_inc, include_directories('.', '../lib'),
+    ],
+    c_args : src_args,
+    dependencies : src_deps,
+    name_prefix : 'lib',
+    install : false,
+    build_by_default : true,
+  )
+  # Skip temacs/bootstrap/dump cycle on Android: those artefacts
+  # come from the host build dir.
+  subdir_done()
+endif
 
 # Phase-3 milestone: link temacs from the same source set.  This is
 # the C-only stage of the bootstrap (src/Makefile.in:624-643).

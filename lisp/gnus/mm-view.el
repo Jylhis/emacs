@@ -35,7 +35,6 @@
 (autoload 'vcard-parse-string "vcard")
 (autoload 'vcard-format-string "vcard")
 (autoload 'fill-flowed "flow-fill")
-(autoload 'html2text "html2text" nil t)
 
 (defvar gnus-article-mime-handles)
 (defvar gnus-newsgroup-charset)
@@ -52,8 +51,7 @@
     (gnus-w3m . gnus-article-html)
     (links . mm-inline-render-with-links)
     (lynx mm-inline-render-with-stdin nil
-	  "lynx" "-dump" "-force_html" "-stdin" "-nolist")
-    (html2text mm-inline-render-with-function html2text))
+	  "lynx" "-dump" "-force_html" "-stdin" "-nolist"))
   "The attributes of renderer types for text/html.")
 
 (defcustom mm-fill-flowed t

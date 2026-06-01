@@ -31,8 +31,6 @@ libgnu_sources = files(
   'getopt1.c',
   'gettime.c',
   'lstat.c',
-  'md5.c',
-  'md5-stream.c',
   'memeq.c',
   'memmem.c',
   'mempcpy.c',
@@ -51,17 +49,12 @@ libgnu_sources = files(
   'realloc.c',
   'save-cwd.c',
   'set-permissions.c',
-  'sha1.c',
-  'sha256.c',
-  'sha3.c',
-  'sha512.c',
   'sig2str.c',
   'stat-time.c',
   'streq.c',
   'strnul.c',
   'tempname.c',
   'timespec.c',
-  'u64.c',
   'time_rz.c',
   'timegm.c',
   'timespec-add.c',
@@ -215,8 +208,8 @@ sys_types_overrides = {
 }
 
 # ---- string.h: GNU extensions that gnulib portably provides.
-# Enable only the inlines lib/file-has-acl.c, sha256.c, and the
-# lib-src tools currently call (streq, memeq, strnul, mempcpy).
+# Enable only the inlines lib/file-has-acl.c and the lib-src tools
+# currently call (streq, memeq, strnul, mempcpy).
 # c++defs.h / arg-nonnull.h / warn-on-use.h are spliced in by
 # process_in_h.py, so the resulting <string.h> compiles cleanly.  ----
 have_mempcpy = cc.has_function('mempcpy',

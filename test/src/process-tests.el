@@ -89,6 +89,7 @@ process to complete."
         (should (string= (buffer-string) "arg1=\"x &y\", arg2=\n"))))))
 
 (ert-deftest process-test-stderr-buffer ()
+  :tags (if (getenv "EMACS_EMBA_CI") '(:unstable))
   (skip-unless (executable-find "bash"))
   (with-timeout (60 (ert-fail "Test timed out"))
   (let* ((stdout-buffer (generate-new-buffer "*stdout*"))
@@ -1053,6 +1054,64 @@ Return nil if FILENAME doesn't exist."
                      (list (process-status proc)
                            (process-exit-status proc)
                            events))))))
+
+(defun process-tests/broken-pipe (connection-type)
+  "Test handling of broken pipes; see bug#79079.
+This test runs a shell script that reads a line of text and closes
+stdin.  We send two lines of text to the script; the second should
+signal an error indicating that the pipe has been closed.  The script
+should also run to completion, printing out the line of text it read."
+  (with-temp-buffer
+    (let ((saw-error nil)
+          (proc (make-process
+                 :name "test" :buffer (current-buffer)
+                 :command `(,(expand-file-name invocation-name
+                                               invocation-directory)
+                            "-Q" "--batch" "--eval"
+                            ,(prin1-to-string
+                              '(let ((line (read-string "")))
+                                 (file--close-stream 'stdin)
+                                 (message "closed stream")
+                                 (sit-for 1)
+                                 (message "%s" line))))
+                 :connection-type connection-type)))
+      (process-send-string proc "hello\n")
+      (while (not (string-prefix-p "closed stream\n" (buffer-string)))
+        (accept-process-output))
+      (condition-case err
+          (process-send-string proc "extra\n")
+        (error
+         (setq saw-error t)
+         (should (string-match
+                  (rx bos "Process test" (? "<" (+ digit) ">")
+                      " no longer connected to pipe; closed it"
+                      eos)
+                  (error-message-string err)))))
+      (unless saw-error
+        (ert-fail "Expected error from `process-send-string'"))
+      ;; Wait for the process to finish, and check results.
+      (while (eq (process-status proc) 'run)
+        (accept-process-output))
+      (accept-process-output)
+      (should (eq (process-status proc) 'exit))
+      (should (eq (process-exit-status proc) 0))
+      (should (string-match
+               (rx bos "closed stream\nhello\n\nProcess test"
+                   (? "<" (+ digit) ">") " finished\n" eos)
+               (buffer-string))))))
+
+;; These tests only works when running Emacs interactively, since we
+;; don't catch SIGPIPE in batch mode.  TODO: Fixing bug#66186 would
+;; probably allow running these tests in batch mode.
+(ert-deftest process-tests/broken-pipe/pipe-all ()
+  (skip-when noninteractive)
+  (process-tests/broken-pipe 'pipe))
+
+(ert-deftest process-tests/broken-pipe/pipe-stdin ()
+  (skip-when (or noninteractive
+                 ;; Emacs doesn't support PTYs on MS-Windows.
+                 (not (memq system-type '(ms-dos windows-nt)))))
+  (process-tests/broken-pipe '(pipe . pty)))
 
 (ert-deftest process-num-processors ()
   "Sanity checks for num-processors."

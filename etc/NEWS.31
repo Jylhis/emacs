@@ -48,6 +48,13 @@ incorrectly in rare cases.
 This allows to specify the directory where the user unit file for
 systemd is installed; default is '${prefix}/usr/lib/systemd/user'.
 
+---
+** libgcrypt is now required to build Emacs.
+The bundled gnulib MD5/SHA-1/SHA-2/SHA-3 modules have been removed;
+'md5', 'secure-hash', and 'buffer-hash' now compute their digests
+through libgcrypt instead.  Building Emacs therefore requires the
+libgcrypt development files.
+
 
 * Startup Changes in Emacs 31.1
 
@@ -168,6 +175,12 @@ behavior, customize 'find-function-mode-lower-precedence' to non-nil.
 
 ---
 ** 'find-function' can now find 'cl-defmethod' invocations inside macros.
+
+---
+** New minor mode 'prettify-special-glyphs-mode'.
+The new minor mode prettifies the special character glyphs (truncation
+and continuation) on TTY frames (and GUI frames without fringes).  You
+can customize the associated new face 'special-glyphs'.
 
 ** Minibuffer and Completions
 
@@ -566,6 +579,14 @@ ID.  When called interactively, both functions prompt for an ID.
 
 ** Mode Line
 
+---
+*** New definitions for mode-line faces under dark background mode.
+The faces 'mode-line' and 'mode-line-highlight' now have separate
+definitions for the dark background mode.  Previously, these two faces
+looked the same in both the light and dark background modes.  To get the
+previous visuals for these two faces, customize them to have the colors
+"grey75" and "grey40", respectively, regardless of the background mode.
+
 +++
 *** New user option 'mode-line-collapse-minor-modes'.
 If non-nil, minor mode lighters on the mode line are collapsed into a
@@ -801,6 +822,25 @@ compile.el will now use paths specified in both
 doing search.  'compilation-search-extra-path' is consulted first.
 One possible use case of this option is to customize add new search
 paths on a per-project basis with directory-local variables.
+
+---
+** Emacs no longer kills child processes after EPIPE.
+Previously, Emacs would immediately kill a child process and set its
+exit status to 256 if sending input to that process returned EPIPE.
+Now when this happens, Emacs closes the file descriptor to write to the
+child process, but allows it to continue execution as normal.
+
+---
+** New variable 'tty-cursor-movement-use-TAB'.
+If this is set to the nil value, Emacs will not use TABs to optimize
+cursor motion on text-mode terminals.  This is for the rare cases where
+the hardware tabs of the terminal were set to a non-default value by the
+'tabs' command or similar, or if using TABs for cursor movement has any
+other undesired effects.  The default is t, which preserves past
+behavior.
+
+If this variable is nil, 'tty-cursor-movement-use-TAB-BS' has no effect,
+and Emacs will never use TABs for any cursor-movement sequences.
 
 
 * Editing Changes in Emacs 31.1
@@ -3939,7 +3979,13 @@ A major mode based on 'conf-mode' for editing ".npmrc" files.
 ** New major modes based on the tree-sitter library
 
 *** New major mode 'markdown-ts-mode'.
-A major mode based on the tree-sitter library for editing Markdown files.
+A major mode based on the tree-sitter library for editing Markdown
+files.  Markdown files are visited using this mode when the required
+tree-sitter grammars ('markdown' and 'markdown-inline') are available,
+or when the user has opted in via 'treesit-enabled-modes'.  Otherwise,
+Markdown files fall back to 'text-mode'.
+
+To install the grammars, use 'M-x markdown-ts-mode-install-parsers'.
 
 *** New major mode 'mhtml-ts-mode'.
 An optional major mode based on the tree-sitter library for editing HTML
@@ -3994,6 +4040,21 @@ all versions, sleep events require Windows 8 or later).
 
 
 * Incompatible Lisp Changes in Emacs 31.1
+
++++
+** Boundaries of 'cursor-sensor-functions' now obey stickiness.
+'cursor-sensor-mode' now uses 'get-pos-property' to decide whether a
+boundary is considered as inside or outside.
+
+This means that by default, the boundaries have changed: the end
+position of a stretch of a 'cursor-sensor-functions' text property
+used to be considered outside of the stretch whereas it is now
+considered as inside.  You can recover the previous behavior by
+controlling the stickiness, for example with a call like:
+
+    (add-text-properties BEG END
+                         '(cursor-sensor-functions (MY-FUNCTION)
+                           rear-nonsticky (cursor-sensor-functions)))
 
 +++
 ** 'makunbound' on a variable alias undoes the alias.
@@ -4075,6 +4136,71 @@ All the characters that belong to the 'symbol' script (according to
 ** Some libraries obsolete since Emacs 24.4 and 24.5 have been removed:
 cc-compat.el, info-edit.el, meese.el, otodo-mode.el, rcompile.el,
 sup-mouse.el, terminal.el, vi.el, vip.el, ws-mode.el, and yow.el.
+
++++
+** Further long-obsolete libraries have been removed.
+The following libraries, all obsolete for ten or more years, are no
+longer shipped: cl-compat.el (use cl-lib; obsolete since 23.3); the
+PGG suite -- pgg.el, pgg-def.el, pgg-gpg.el, pgg-parse.el,
+pgg-pgp.el, pgg-pgp5.el (use EPG; obsolete since 24.1); bruce.el
+(24.3); longlines.el (use 'visual-line-mode'; obsolete since 24.4);
+crisp.el, tpu-edt.el, tpu-extras.el, tpu-mapper.el (24.5); and
+vc-arch.el, landmark.el, eudcb-ph.el, gulp.el (25.1).  The pgg
+manual has been removed as well.
+
++++
+** Libraries obsolete since Emacs 26-28 have been removed.
+The following obsolete libraries are no longer shipped:
+html2text.el (use 'shr' or 'gnus-w3m' for HTML rendering;
+obsolete since 26.1), messcompat.el (26.1); url-ns.el,
+starttls.el, tls.el (GnuTLS replaces the latter two),
+mantemp.el (27.1); inversion.el, metamail.el, nnir.el (use
+'gnus-search' via 'nnselect'), rfc2368.el (use 'rfc6068'),
+sb-image.el (28.1).
+
++++
+** Ghostscript image support removed.
+The 'postscript image type and the lisp/obsolete/gs.el interface,
+obsolete since 26.1, have been removed.  Use external viewers
+such as 'mupdf' or 'pdf-tools' to display PostScript files.
+The HAVE_GHOSTSCRIPT block in src/image.c and the associated
+Ghostview client-message handler in src/xterm.c are gone.
+
+---
+** Lucid, Motif, Xaw3d, and Carbon source branches removed.
+The Meson build has not offered Lucid (Athena), Motif, or Xaw3d
+toolkits since the autotools cutover (only 'gtk3', 'pgtk', 'ns',
+and 'none' are supported); the '#ifdef USE_LUCID', '#ifdef
+USE_MOTIF', '#ifdef HAVE_XAW3D', and '#ifdef HAVE_CARBON' guarded
+code paths in src/ have been stripped.  The Xaw scrollbar
+callbacks in src/xterm.c remain inside '#else /* not USE_GTK */'
+as preprocessor-skipped reference code.  The 'x-toolkit-scroll-bars'
+docstring and value now list only 'gtk'.
+
+---
+** GConf settings support removed.
+The legacy GConf desktop-settings backend (the HAVE_GCONF code in
+src/xsettings.c and the default-disabled 'gconf' build option) has
+been removed.  GSettings remains the supported backend.
+
++++
+** ImageMagick image support removed.
+The 'imagemagick' image type, the imagemagick-render-type variable,
+the imagemagick-types function, and the entire HAVE_IMAGEMAGICK
+code path in src/image.c are gone.  ImageMagick was default-disabled
+in the Meson build and carries a long tail of CVE advisories;
+'create-image' callers in lisp/ guard the imagemagick type with
+'fboundp' and degrade silently.
+
+---
+** Deprecated build options removed.
+The meson.options entries 'imagemagick', 'gconf', 'xaw3d',
+'cairo-xcb', 'kerberos', 'kerberos5', and 'hesiod' have been
+removed.  All were default-disabled; their gated C code in
+src/xsettings.c (GConf) and src/image.c (ImageMagick) is also
+gone.  The Kerberos/Hesiod blocks in lib-src/pop.c remain as
+preprocessor-skipped code.  GSettings remains the supported
+desktop-settings backend.
 
 +++
 ** 'if-let' and 'when-let' are now obsolete.
@@ -4194,6 +4320,11 @@ When no tags file is loaded, symbol completion just won't provide any
 suggestions.  So the 'M-?' command now works without a tags table.  And
 the 'M-.' will show a message describing the several built-in options
 that will provide an Xref backend when used.
+
++++
+** Calling 'debug' in batch sessions no longer kills Emacs.
+If you want Emacs to exit, your program will now have to call
+'kill-emacs' explicitly.
 
 
 * Lisp Changes in Emacs 31.1
@@ -4647,6 +4778,14 @@ This variable generalizes the 'completion-lazy-hilit' variable added in
 Emacs 30.  It allows Lisp programs that present completion candidates
 ("completion frontends") to provide additional information which can be
 used to adjust or optimize completion candidates computation.
+
+** D-Bus
+
++++
+*** Support error handler in asynchronous method calls.
+The HANDLER argument of 'dbus-call-method-asynchronously' can be a cons
+cell '(HANDLER . ERROR-HANDLER)'.  ERROR-HANDLER is invoked if the
+method call returns with a D-Bus error; the error is passed as argument.
 
 
 * Changes in Emacs 31.1 on Non-Free Operating Systems

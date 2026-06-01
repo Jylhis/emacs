@@ -3677,9 +3677,6 @@ extern void image_destroy_bitmap (struct frame *, ptrdiff_t);
 extern void image_destroy_all_bitmaps (Display_Info *);
 #ifdef HAVE_X_WINDOWS
 extern void x_create_bitmap_mask (struct frame *, ptrdiff_t);
-#ifndef USE_CAIRO
-extern void x_kill_gs_process (Pixmap, struct frame *);
-#endif	/* !USE_CAIRO */
 #endif
 extern Lisp_Object image_find_image_file (Lisp_Object);
 

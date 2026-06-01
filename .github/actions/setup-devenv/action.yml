@@ -64,11 +64,14 @@ runs:
         declare -px
         DUMP
         chmod +x /tmp/devenv-dump.sh
-        devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.sh
+        devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.raw
+        grep -E '^declare -x ' /tmp/devenv-env.raw > /tmp/devenv-env.sh || true
         lines=$(wc -l < /tmp/devenv-env.sh)
         echo "Captured $lines lines of export statements"
         if [ "$lines" -lt 20 ]; then
           echo "::error::devenv shell produced suspiciously little env ($lines lines)"
+          echo "Raw devenv shell output:"
+          cat /tmp/devenv-env.raw || true
           cat /tmp/devenv-env.sh || true
           exit 1
         fi

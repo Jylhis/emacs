@@ -973,9 +973,6 @@ static const struct x_atom_ref x_atom_refs[] =
     ATOM_REFS_INIT ("_MULE_BASELINE_OFFSET", Xatom_MULE_BASELINE_OFFSET)
     ATOM_REFS_INIT ("_MULE_RELATIVE_COMPOSE", Xatom_MULE_RELATIVE_COMPOSE)
     ATOM_REFS_INIT ("_MULE_DEFAULT_ASCENT", Xatom_MULE_DEFAULT_ASCENT)
-    /* Ghostscript support.  */
-    ATOM_REFS_INIT ("DONE", Xatom_DONE)
-    ATOM_REFS_INIT ("PAGE", Xatom_PAGE)
     ATOM_REFS_INIT ("_EMACS_SCROLLBAR", Xatom_Scrollbar)
     ATOM_REFS_INIT ("_EMACS_HORIZONTAL_SCROLLBAR", Xatom_Horizontal_Scrollbar)
     ATOM_REFS_INIT ("_XEMBED", Xatom_XEMBED)
@@ -1141,7 +1138,7 @@ static int handle_one_xevent (struct x_display_info *,
 			      XEvent *, int *,
 			      struct input_event *);
 #endif
-#if ! (defined USE_X_TOOLKIT || defined USE_MOTIF) && defined USE_GTK
+#if !defined USE_X_TOOLKIT && defined USE_GTK
 static int x_dispatch_event (XEvent *, Display *);
 #endif
 static void x_wm_set_window_state (struct frame *, int);
@@ -5680,7 +5677,7 @@ x_cache_xi_devices (struct x_display_info *dpyinfo)
       return;
     }
 
-  dpyinfo->devices = xzalloc (sizeof *dpyinfo->devices * ndevices);
+  dpyinfo->devices = xcalloc (ndevices, sizeof *dpyinfo->devices);
 
   for (i = 0; i < ndevices; ++i)
     {
@@ -12384,7 +12381,7 @@ x_dnd_process_quit (struct frame *f, Time timestamp)
 Lisp_Object
 x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			   Lisp_Object return_frame, Atom *ask_action_list,
-			   const char **ask_action_names, size_t n_ask_actions,
+			   const char **ask_action_names, int n_ask_actions,
 			   bool allow_current_frame, Atom *target_atoms,
 			   int ntargets, Lisp_Object selection_target_list,
 			   bool follow_tooltip)
@@ -12398,7 +12395,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   char *atom_name, *ask_actions;
   Lisp_Object action, ltimestamp, val;
   specpdl_ref ref, count, base;
-  ptrdiff_t i, end, fill;
+  ptrdiff_t end, fill;
   XTextProperty prop;
   Lisp_Object frame_object, x, y, frame, local_value;
   bool signals_were_pending, need_sync;
@@ -12490,7 +12487,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
       end = 0;
       count = SPECPDL_INDEX ();
 
-      for (i = 0; i < n_ask_actions; ++i)
+      for (int i = 0; i < n_ask_actions; i++)
 	{
 	  fill = end;
 	  end += strlen (ask_action_names[i]) + 1;
@@ -13569,7 +13566,7 @@ xi_disable_devices (struct x_display_info *dpyinfo,
     return;
 
   ndevices = 0;
-  devices = xzalloc (sizeof *devices * dpyinfo->num_devices);
+  devices = xcalloc (dpyinfo->num_devices, sizeof *devices);
 
   /* Loop through every device currently in DPYINFO, and copy it to
      DEVICES if it is not in TO_DISABLE.  Note that this function
@@ -13713,8 +13710,7 @@ x_detect_focus_change (struct x_display_info *dpyinfo, struct frame *frame,
 }
 
 
-#if (defined USE_LUCID && defined HAVE_XINPUT2) \
-  || (!defined USE_X_TOOLKIT && !defined USE_GTK)
+#if !defined USE_X_TOOLKIT && !defined USE_GTK
 /* Handle an event saying the mouse has moved out of an Emacs frame.  */
 
 void
@@ -15324,96 +15320,7 @@ x_horizontal_scroll_bar_to_input_event (struct x_display_info *dpyinfo,
 }
 
 
-#ifdef USE_MOTIF
-
-/* Minimum and maximum values used for Motif scroll bars.  */
-
-#define XM_SB_MAX 10000000
-
-/* Scroll bar callback for Motif scroll bars.  WIDGET is the scroll
-   bar widget.  CLIENT_DATA is a pointer to the scroll_bar structure.
-   CALL_DATA is a pointer to a XmScrollBarCallbackStruct.  */
-
-static void
-xm_scroll_callback (Widget widget, XtPointer client_data, XtPointer call_data)
-{
-  struct scroll_bar *bar = client_data;
-  XmScrollBarCallbackStruct *cs = call_data;
-  enum scroll_bar_part part = scroll_bar_nowhere;
-  bool horizontal = bar->horizontal;
-  int whole = 0, portion = 0;
-
-  switch (cs->reason)
-    {
-    case XmCR_DECREMENT:
-      bar->dragging = -1;
-      part = horizontal ? scroll_bar_left_arrow : scroll_bar_up_arrow;
-      break;
-
-    case XmCR_INCREMENT:
-      bar->dragging = -1;
-      part = horizontal ? scroll_bar_right_arrow : scroll_bar_down_arrow;
-      break;
-
-    case XmCR_PAGE_DECREMENT:
-      bar->dragging = -1;
-      part = horizontal ? scroll_bar_before_handle : scroll_bar_above_handle;
-      break;
-
-    case XmCR_PAGE_INCREMENT:
-      bar->dragging = -1;
-      part = horizontal ? scroll_bar_after_handle : scroll_bar_below_handle;
-      break;
-
-    case XmCR_TO_TOP:
-      bar->dragging = -1;
-      part = horizontal ? scroll_bar_to_leftmost : scroll_bar_to_top;
-      break;
-
-    case XmCR_TO_BOTTOM:
-      bar->dragging = -1;
-      part = horizontal ? scroll_bar_to_rightmost : scroll_bar_to_bottom;
-      break;
-
-    case XmCR_DRAG:
-      {
-	int slider_size;
-
-	block_input ();
-	XtVaGetValues (widget, XmNsliderSize, &slider_size, NULL);
-	unblock_input ();
-
-	if (horizontal)
-	  {
-	    portion = bar->whole * ((float)cs->value / XM_SB_MAX);
-	    whole = bar->whole * ((float)(XM_SB_MAX - slider_size) / XM_SB_MAX);
-	    portion = min (portion, whole);
-	    part = scroll_bar_horizontal_handle;
-	  }
-	else
-	  {
-	    whole = XM_SB_MAX - slider_size;
-	    portion = min (cs->value, whole);
-	    part = scroll_bar_handle;
-	  }
-
-	bar->dragging = cs->value;
-      }
-      break;
-
-    case XmCR_VALUE_CHANGED:
-      break;
-    };
-
-  if (part != scroll_bar_nowhere)
-    {
-      window_being_scrolled = bar->window;
-      x_send_scroll_bar_event (bar->window, part, portion, whole,
-			       bar->horizontal);
-    }
-}
-
-#elif defined USE_GTK
+#ifdef USE_GTK
 
 /* Scroll bar callback for GTK scroll bars.  WIDGET is the scroll
    bar widget.  DATA is a pointer to the scroll_bar structure. */
@@ -15527,7 +15434,7 @@ xg_end_scroll_callback (GtkWidget *widget,
 }
 
 
-#else /* not USE_GTK and not USE_MOTIF */
+#else /* not USE_GTK */
 
 /* Xaw scroll bar callback.  Invoked when the thumb is dragged.
    WIDGET is the scroll bar widget.  CLIENT_DATA is a pointer to the
@@ -16221,9 +16128,6 @@ x_scroll_bar_create (struct window *w, int top, int left,
   bar->end = 0;
   bar->dragging = -1;
   bar->horizontal = horizontal;
-#if defined (USE_TOOLKIT_SCROLL_BARS) && defined (USE_LUCID)
-  bar->last_seen_part = scroll_bar_nowhere;
-#endif
 
   /* Add bar to its frame's list of scroll bars.  */
   bar->next = FRAME_SCROLL_BARS (f);
@@ -18815,28 +18719,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
           }
 #endif /* X_TOOLKIT_EDITRES */
 
-        if (event->xclient.message_type == dpyinfo->Xatom_DONE
-	    || event->xclient.message_type == dpyinfo->Xatom_PAGE)
-          {
-            /* Ghostview job completed.  Kill it.  We could
-               reply with "Next" if we received "Page", but we
-               currently never do because we are interested in
-               images, only, which should have 1 page.  */
-	    f = x_window_to_frame (dpyinfo, event->xclient.window);
-	    if (!f)
-	      goto OTHER;
-#ifndef USE_CAIRO
-            Pixmap pixmap = (Pixmap) event->xclient.data.l[1];
-	    /* FIXME: why does this sometimes generate a BadMatch
-	       error?  */
-	    x_catch_errors (dpyinfo->display);
-            x_kill_gs_process (pixmap, f);
-	    x_uncatch_errors ();
-            expose_frame (f, 0, 0, 0, 0);
-#endif	/* !USE_CAIRO */
-	    goto done;
-          }
-
 #ifdef USE_TOOLKIT_SCROLL_BARS
         /* Scroll bar callbacks send a ClientMessage from which
            we construct an input_event.  */
@@ -19627,21 +19509,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  if (mouse_frame)
 	    x_flush_dirty_back_buffer_on (mouse_frame);
 	}
-
-#if defined USE_MOTIF && defined USE_TOOLKIT_SCROLL_BARS
-      if (f == 0)
-        {
-          /* Scroll bars consume key events, but we want
-             the keys to go to the scroll bar's frame.  */
-          Widget widget = XtWindowToWidget (dpyinfo->display,
-                                            event->xkey.window);
-          if (widget && XmIsScrollBar (widget))
-            {
-              widget = XtParent (widget);
-              f = x_any_window_to_frame (dpyinfo, XtWindow (widget));
-            }
-        }
-#endif /* USE_MOTIF and USE_TOOLKIT_SCROLL_BARS */
 
       if (f != 0)
         {
@@ -22024,7 +21891,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 			      if (!f)
 				{
-#if defined USE_MOTIF || !defined USE_TOOLKIT_SCROLL_BARS
+#ifndef USE_TOOLKIT_SCROLL_BARS
 				  bar = x_window_to_scroll_bar (dpyinfo->display,
 								xev->event, 2);
 
@@ -22827,32 +22694,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      <= x_dnd_recursion_depth))
 		goto XI_OTHER;
 
-#ifdef USE_MOTIF
-#ifdef USE_TOOLKIT_SCROLL_BARS
-	      struct scroll_bar *bar
-		= x_window_to_scroll_bar (dpyinfo->display,
-					  xev->event, 2);
-#endif
-
-	      use_copy = true;
-	      copy.xbutton.type = (xev->evtype == XI_ButtonPress
-				   ? ButtonPress : ButtonRelease);
-	      copy.xbutton.serial = xev->serial;
-	      copy.xbutton.send_event = xev->send_event;
-	      copy.xbutton.display = dpyinfo->display;
-	      copy.xbutton.window = xev->event;
-	      copy.xbutton.root = xev->root;
-	      copy.xbutton.subwindow = xev->child;
-	      copy.xbutton.time = xev->time;
-	      copy.xbutton.x = lrint (xev->event_x);
-	      copy.xbutton.y = lrint (xev->event_y);
-	      copy.xbutton.x_root = lrint (xev->root_x);
-	      copy.xbutton.y_root = lrint (xev->root_y);
-	      copy.xbutton.state = xi_convert_event_state (xev);
-	      copy.xbutton.button = xev->detail;
-	      copy.xbutton.same_screen = True;
-
-#elif defined USE_GTK && !defined HAVE_GTK3
+#if defined USE_GTK && !defined HAVE_GTK3
 	      copy = gdk_event_new (xev->evtype == XI_ButtonPress
 				    ? GDK_BUTTON_PRESS : GDK_BUTTON_RELEASE);
 
@@ -22889,7 +22731,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		 scroll events are present.  */
 	      if (xev->flags & XIPointerEmulated)
 		{
-#if !defined USE_MOTIF || !defined USE_TOOLKIT_SCROLL_BARS
+#ifndef USE_TOOLKIT_SCROLL_BARS
 		  *finish = X_EVENT_DROP;
 #else
 		  if (bar)
@@ -23842,7 +23684,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
 	  case XI_KeyRelease:
-#if defined HAVE_X_I18N || defined USE_GTK || defined USE_LUCID
+#if defined HAVE_X_I18N || defined USE_GTK
 	    {
 	      XKeyPressedEvent xkey;
 
@@ -28820,13 +28662,6 @@ x_free_frame_resources (struct frame *f)
 	unload_color (f, f->output_data.x->scroll_bar_background_pixel);
       if (f->output_data.x->scroll_bar_foreground_pixel != -1)
 	unload_color (f, f->output_data.x->scroll_bar_foreground_pixel);
-#if defined (USE_LUCID) && defined (USE_TOOLKIT_SCROLL_BARS)
-      /* Scrollbar shadow colors.  */
-      if (f->output_data.x->scroll_bar_top_shadow_pixel != -1)
-	unload_color (f, f->output_data.x->scroll_bar_top_shadow_pixel);
-      if (f->output_data.x->scroll_bar_bottom_shadow_pixel != -1)
-	unload_color (f, f->output_data.x->scroll_bar_bottom_shadow_pixel);
-#endif /* USE_LUCID && USE_TOOLKIT_SCROLL_BARS */
       if (f->output_data.x->white_relief.pixel != -1)
 	unload_color (f, f->output_data.x->white_relief.pixel);
       if (f->output_data.x->black_relief.pixel != -1)
@@ -29946,7 +29781,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       static char const at[] = " at ";
       ptrdiff_t nbytes = sizeof (title) + sizeof (at);
       if (ckd_add (&nbytes, nbytes, SBYTES (system_name)))
-	memory_full (SIZE_MAX);
+	memory_full_up ();
       dpyinfo->x_id_name = xmalloc (nbytes);
       sprintf (dpyinfo->x_id_name, "%s%s%s", title, at, SDATA (system_name));
     }
@@ -31572,21 +31407,13 @@ adjusted if the default value does not work for whatever reason.  */);
   DEFVAR_LISP ("x-toolkit-scroll-bars", Vx_toolkit_scroll_bars,
     doc: /* Which toolkit scroll bars Emacs uses, if any.
 A value of nil means Emacs doesn't use toolkit scroll bars.
-With the X Window system, the value is a symbol describing the
-X toolkit.  Possible values are: gtk, motif, xaw, or xaw3d.
-With MS Windows, Haiku windowing or Nextstep, the value is t.
+With the X Window system, the value is the symbol `gtk' when GTK
+toolkit scroll bars are in use.
+With Haiku windowing or Nextstep, the value is t.
 With Android, the value is nil, but that is because Emacs on
 Android does not support scroll bars at all.  */);
 #ifdef USE_TOOLKIT_SCROLL_BARS
-#ifdef USE_MOTIF
-  Vx_toolkit_scroll_bars = intern_c_string ("motif");
-#elif defined HAVE_XAW3D
-  Vx_toolkit_scroll_bars = intern_c_string ("xaw3d");
-#elif USE_GTK
   Vx_toolkit_scroll_bars = intern_c_string ("gtk");
-#else
-  Vx_toolkit_scroll_bars = intern_c_string ("xaw");
-#endif
 #else
   Vx_toolkit_scroll_bars = Qnil;
 #endif

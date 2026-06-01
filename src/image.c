@@ -101,14 +101,6 @@ static unsigned long image_alloc_image_color (struct frame *, struct image *,
 					      Lisp_Object, unsigned long);
 #endif	/* USE_CAIRO */
 
-#if defined HAVE_PGTK && defined HAVE_IMAGEMAGICK
-/* In pgtk, we don't want to create scaled image.  If we create scaled
- * image on scale=2.0 environment, the created image is half size and
- * Gdk scales it back, and the result is blurry.  To avoid this, we
- * hold original size image as far as we can, and let Gdk to scale it
- * when it is shown.  */
-# define DONT_CREATE_TRANSFORMED_IMAGEMAGICK_IMAGE
-#endif
 
 
 #define XBM_BIT_SHUFFLE(b) (b)
@@ -2344,7 +2336,7 @@ postprocess_image (struct frame *f, struct image *img)
     }
 }
 
-#if defined (HAVE_IMAGEMAGICK) || defined (HAVE_NATIVE_TRANSFORMS)
+#ifdef HAVE_NATIVE_TRANSFORMS
 /* Scale an image size by returning SIZE / DIVISOR * MULTIPLIER,
    safely rounded and clipped to int range.  */
 
@@ -2450,7 +2442,7 @@ image_compute_scale (struct frame *f, Lisp_Object spec, struct image *img)
   return scale;
 }
 
-#if defined HAVE_IMAGEMAGICK || defined HAVE_NATIVE_TRANSFORMS
+#ifdef HAVE_NATIVE_TRANSFORMS
 /* Compute the desired size of an image with native size WIDTH x HEIGHT,
    which is to be displayed on F.  Use IMG to deduce the size.  Store
    the desired size into *D_WIDTH x *D_HEIGHT.  Store -1 x -1 if the
@@ -2743,13 +2735,6 @@ image_set_transform (struct frame *f, struct image *img)
     { 0, 0, 1 },
   };
 #endif
-
-# if (defined HAVE_IMAGEMAGICK \
-      && !defined DONT_CREATE_TRANSFORMED_IMAGEMAGICK_IMAGE)
-  /* ImageMagick images already have the correct transform.  */
-  if (EQ (image_spec_value (img->spec, QCtype, NULL), Qimagemagick))
-    return;
-# endif
 
 # if !defined USE_CAIRO && defined HAVE_XRENDER
   if (!img->picture)
@@ -3153,7 +3138,7 @@ image_set_transform (struct frame *f, struct image *img)
 #endif
 }
 
-#endif /* HAVE_IMAGEMAGICK || HAVE_NATIVE_TRANSFORMS */
+#endif /* HAVE_NATIVE_TRANSFORMS */
 
 /* Return the id of image with Lisp specification SPEC on frame F.
    SPEC must be a valid Lisp image specification (see valid_image_p).  */
@@ -3203,7 +3188,7 @@ lookup_image (struct frame *f, Lisp_Object spec, int face_id)
       img->face_font_size = font_size;
       img->face_font_height = face->font->height;
       img->face_font_width = face->font->average_width;
-      size_t len = strlen (font_family) + 1;
+      ptrdiff_t len = strlen (font_family) + 1;
       img->face_font_family = xmalloc (len);
       memcpy (img->face_font_family, font_family, len);
       img->load_failed_p = ! img->type->load_img (f, img);
@@ -3267,8 +3252,7 @@ lookup_image (struct frame *f, Lisp_Object spec, int face_id)
 
 	  /* Do image transformations and compute masks, unless we
 	     don't have the image yet.  */
-	  if (!EQ (builtin_lisp_symbol (img->type->type), Qpostscript))
-	    postprocess_image (f, img);
+	  postprocess_image (f, img);
 
           /* postprocess_image above may modify the image or the mask,
              relying on the image's real width and height, so
@@ -4914,7 +4898,7 @@ static struct xpm_cached_color **xpm_color_cache;
 static void
 xpm_init_color_cache (struct frame *f, XpmAttributes *attrs)
 {
-  size_t nbytes = XPM_COLOR_CACHE_BUCKETS * sizeof *xpm_color_cache;
+  ptrdiff_t nbytes = XPM_COLOR_CACHE_BUCKETS * sizeof *xpm_color_cache;
   xpm_color_cache = xzalloc (nbytes);
   init_color_table ();
 
@@ -4974,8 +4958,8 @@ xpm_cache_color (struct frame *f, char *color_name, XColor *color, int bucket)
   if (bucket < 0)
     bucket = xpm_color_bucket (color_name);
 
-  size_t len = strlen (color_name) + 1;
-  size_t nbytes = FLEXSIZEOF (struct xpm_cached_color, name, len);
+  ptrdiff_t len = strlen (color_name) + 1;
+  ptrdiff_t nbytes = FLEXSIZEOF (struct xpm_cached_color, name, len);
   struct xpm_cached_color *p = xmalloc (nbytes);
   memcpy (p->name, color_name, len);
   p->color = *color;
@@ -6210,7 +6194,7 @@ image_to_emacs_colors (struct frame *f, struct image *img, bool rgb_p)
   if (ckd_mul (&nbytes, sizeof *colors, img->width)
       || ckd_mul (&nbytes, nbytes, img->height)
       || SIZE_MAX < nbytes)
-    memory_full (SIZE_MAX);
+    memory_full_up ();
   colors = xmalloc (nbytes);
 
   /* Get the X image or create a memory device context for IMG. */
@@ -6315,7 +6299,7 @@ image_detect_edges (struct frame *f, struct image *img,
 
   if (ckd_mul (&nbytes, sizeof *new, img->width)
       || ckd_mul (&nbytes, nbytes, img->height))
-    memory_full (SIZE_MAX);
+    memory_full_up ();
   new = xmalloc (nbytes);
 
   for (y = 0; y < img->height; ++y)
@@ -7490,7 +7474,7 @@ png_load_body (struct frame *f, struct image *img, struct png_load_context *c)
   /* Allocate memory for the image.  */
   if (ckd_mul (&nbytes, row_bytes, sizeof *pixels)
       || ckd_mul (&nbytes, nbytes, height))
-    memory_full (SIZE_MAX);
+    memory_full_up ();
   c->pixels = pixels = xmalloc (nbytes);
   c->rows = rows = xmalloc (height * sizeof *rows);
   for (i = 0; i < height; ++i)
@@ -9548,823 +9532,6 @@ webp_load (struct frame *f, struct image *img)
 #endif /* HAVE_WEBP */
 
 
-#ifdef HAVE_IMAGEMAGICK
-
-
-/***********************************************************************
-				 ImageMagick
-***********************************************************************/
-
-/* Indices of image specification fields in imagemagick_format.  */
-
-enum imagemagick_keyword_index
-  {
-    IMAGEMAGICK_TYPE,
-    IMAGEMAGICK_DATA,
-    IMAGEMAGICK_FILE,
-    IMAGEMAGICK_ASCENT,
-    IMAGEMAGICK_MARGIN,
-    IMAGEMAGICK_RELIEF,
-    IMAGEMAGICK_ALGORITHM,
-    IMAGEMAGICK_HEURISTIC_MASK,
-    IMAGEMAGICK_MASK,
-    IMAGEMAGICK_BACKGROUND,
-    IMAGEMAGICK_HEIGHT,
-    IMAGEMAGICK_WIDTH,
-    IMAGEMAGICK_MAX_HEIGHT,
-    IMAGEMAGICK_MAX_WIDTH,
-    IMAGEMAGICK_FORMAT,
-    IMAGEMAGICK_ROTATION,
-    IMAGEMAGICK_CROP,
-    IMAGEMAGICK_LAST
-  };
-
-/* Vector of image_keyword structures describing the format
-   of valid user-defined image specifications.  */
-
-static struct image_keyword imagemagick_format[IMAGEMAGICK_LAST] =
-  {
-    {":type",		IMAGE_SYMBOL_VALUE,			1},
-    {":data",		IMAGE_STRING_VALUE,			0},
-    {":file",		IMAGE_STRING_VALUE,			0},
-    {":ascent",		IMAGE_ASCENT_VALUE,			0},
-    {":margin",		IMAGE_NON_NEGATIVE_INTEGER_VALUE_OR_PAIR, 0},
-    {":relief",		IMAGE_INTEGER_VALUE,			0},
-    {":conversion",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-    {":heuristic-mask",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-    {":mask",		IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-    {":background",	IMAGE_STRING_OR_NIL_VALUE,		0},
-    {":height",		IMAGE_INTEGER_VALUE,			0},
-    {":width",		IMAGE_INTEGER_VALUE,			0},
-    {":max-height",	IMAGE_INTEGER_VALUE,			0},
-    {":max-width",	IMAGE_INTEGER_VALUE,			0},
-    {":format",		IMAGE_SYMBOL_VALUE,			0},
-    {":rotation",	IMAGE_NUMBER_VALUE,     		0},
-    {":crop",		IMAGE_DONT_CHECK_VALUE_TYPE,		0}
-  };
-
-/* Return true if OBJECT is a valid IMAGEMAGICK image specification.  Do
-   this by calling parse_image_spec and supplying the keywords that
-   identify the IMAGEMAGICK format.   */
-
-static bool
-imagemagick_image_p (Lisp_Object object)
-{
-  struct image_keyword fmt[IMAGEMAGICK_LAST];
-  memcpy (fmt, imagemagick_format, sizeof fmt);
-
-  if (!parse_image_spec (object, fmt, IMAGEMAGICK_LAST, Qimagemagick))
-    return 0;
-
-  /* Must specify either the :data or :file keyword.  */
-  return fmt[IMAGEMAGICK_FILE].count + fmt[IMAGEMAGICK_DATA].count == 1;
-}
-
-/* The GIF library also defines DrawRectangle, but its never used in Emacs.
-   Therefore rename the function so it doesn't collide with ImageMagick.  */
-#define DrawRectangle DrawRectangleGif
-
-#ifdef HAVE_IMAGEMAGICK7
-# include <MagickWand/MagickWand.h>
-# include <MagickCore/version.h>
-/* ImageMagick 7 compatibility definitions.  */
-# define PixelSetMagickColor PixelSetPixelColor
-typedef PixelInfo MagickPixelPacket;
-#else
-# include <wand/MagickWand.h>
-# include <magick/version.h>
-#endif
-
-/* ImageMagick 6.5.3 through 6.6.5 hid PixelGetMagickColor for some reason.
-   Emacs seems to work fine with the hidden version, so unhide it.  */
-#if 0x653 <= MagickLibVersion && MagickLibVersion <= 0x665
-extern WandExport void PixelGetMagickColor (const PixelWand *,
-					    MagickPixelPacket *);
-#endif
-
-static void
-imagemagick_initialize (void)
-{
-  static bool imagemagick_initialized;
-  if (!imagemagick_initialized)
-    {
-      imagemagick_initialized = true;
-      MagickWandGenesis ();
-    }
-}
-
-/* Log ImageMagick error message.
-   Useful when an ImageMagick function returns the status `MagickFalse'.  */
-
-static void
-imagemagick_error (MagickWand *wand)
-{
-  char *description;
-  ExceptionType severity;
-
-  description = MagickGetException (wand, &severity);
-  image_error ("ImageMagick error: %s", build_string (description));
-  MagickRelinquishMemory (description);
-}
-
-/* Possibly give ImageMagick some extra help to determine the image
-   type by supplying a "dummy" filename based on the Content-Type.  */
-
-static char *
-imagemagick_filename_hint (Lisp_Object spec, char hint_buffer[MaxTextExtent])
-{
-  Lisp_Object symbol = Qimage_format_suffixes;
-  Lisp_Object val = find_symbol_value (symbol);
-  Lisp_Object format;
-
-  if (! CONSP (val))
-    return NULL;
-
-  format = image_spec_value (spec, QCformat, NULL);
-  val = Fcar_safe (Fcdr_safe (Fassq (format, val)));
-  if (! STRINGP (val))
-    return NULL;
-
-  /* It's OK to truncate the hint if it has MaxTextExtent or more bytes,
-     as ImageMagick would ignore the extra bytes anyway.  */
-  snprintf (hint_buffer, MaxTextExtent, "/tmp/foo.%s", SSDATA (val));
-  return hint_buffer;
-}
-
-/* Animated images (e.g., GIF89a) are composed from one "master image"
-   (which is the first one), and then there's a number of images that
-   follow.  If following images have non-transparent colors, these are
-   composed "on top" of the master image.  So, in general, one has to
-   compute all the preceding images to be able to display a particular
-   sub-image.
-
-   Computing all the preceding images is too slow, so we maintain a
-   cache of previously computed images.  We have to maintain a cache
-   separate from the image cache, because the images may be scaled
-   before display.
-
-   FIXME: Consolidate this with the GIF and WebP anim_cache.
-   Not just for DRY, but for Fclear_image_cache too.  */
-
-struct animation_cache
-{
-  MagickWand *wand;
-  int index;
-  struct timespec update_time;
-  struct animation_cache *next;
-  char signature[FLEXIBLE_ARRAY_MEMBER];
-};
-
-static struct animation_cache *animation_cache = NULL;
-
-static struct animation_cache *
-imagemagick_create_cache (char *signature)
-{
-  size_t len = strlen (signature) + 1;
-  struct animation_cache *cache
-    = xmalloc (FLEXSIZEOF (struct animation_cache, signature, len));
-  cache->wand = 0;
-  cache->index = 0;
-  cache->next = 0;
-  memcpy (cache->signature, signature, len);
-  return cache;
-}
-
-/* Discard cached images that haven't been used for a minute.  If
-   CLEAR, discard all cached animated images.  */
-static void
-imagemagick_prune_animation_cache (bool clear)
-{
-  struct animation_cache **pcache = &animation_cache;
-  struct timespec old = timespec_sub (current_timespec (),
-				      make_timespec (60, 0));
-
-  while (*pcache)
-    {
-      struct animation_cache *cache = *pcache;
-      if (clear || timespec_cmp (old, cache->update_time) > 0)
-	{
-	  if (cache->wand)
-	    DestroyMagickWand (cache->wand);
-	  *pcache = cache->next;
-	  xfree (cache);
-	}
-      else
-	pcache = &cache->next;
-    }
-}
-
-static struct animation_cache *
-imagemagick_get_animation_cache (MagickWand *wand)
-{
-  char *signature = MagickGetImageSignature (wand);
-  struct animation_cache *cache;
-  struct animation_cache **pcache = &animation_cache;
-
-  imagemagick_prune_animation_cache (false);
-
-  while (1)
-    {
-      cache = *pcache;
-      if (! cache)
-	{
-          *pcache = cache = imagemagick_create_cache (signature);
-          break;
-        }
-      if (strcmp (signature, cache->signature) == 0)
-	break;
-      pcache = &cache->next;
-    }
-
-  DestroyString (signature);
-  cache->update_time = current_timespec ();
-  return cache;
-}
-
-static MagickWand *
-imagemagick_compute_animated_image (MagickWand *super_wand, int ino)
-{
-  int i;
-  MagickWand *composite_wand;
-  size_t dest_width, dest_height;
-  struct animation_cache *cache = imagemagick_get_animation_cache (super_wand);
-
-  MagickSetIteratorIndex (super_wand, 0);
-
-  if (ino == 0 || cache->wand == NULL || cache->index > ino)
-    {
-      composite_wand = MagickGetImage (super_wand);
-      if (cache->wand)
-	DestroyMagickWand (cache->wand);
-    }
-  else
-    composite_wand = cache->wand;
-
-  dest_height = MagickGetImageHeight (composite_wand);
-
-  for (i = max (1, cache->index + 1); i <= ino; i++)
-    {
-      MagickWand *sub_wand;
-      PixelIterator *source_iterator, *dest_iterator;
-      PixelWand **source, **dest;
-      size_t source_width, source_height;
-      ssize_t source_left, source_top;
-      MagickPixelPacket pixel;
-      DisposeType dispose;
-      ptrdiff_t lines = 0;
-
-      MagickSetIteratorIndex (super_wand, i);
-      sub_wand = MagickGetImage (super_wand);
-
-      MagickGetImagePage (sub_wand, &source_width, &source_height,
-			  &source_left, &source_top);
-
-      /* This flag says how to handle transparent pixels.  */
-      dispose = MagickGetImageDispose (sub_wand);
-
-      source_iterator = NewPixelIterator (sub_wand);
-      if (! source_iterator)
-	{
-	  DestroyMagickWand (composite_wand);
-	  DestroyMagickWand (sub_wand);
-	  cache->wand = NULL;
-	  image_error ("Imagemagick pixel iterator creation failed");
-	  return NULL;
-	}
-
-      dest_iterator = NewPixelIterator (composite_wand);
-      if (! dest_iterator)
-	{
-	  DestroyMagickWand (composite_wand);
-	  DestroyMagickWand (sub_wand);
-	  DestroyPixelIterator (source_iterator);
-	  cache->wand = NULL;
-	  image_error ("Imagemagick pixel iterator creation failed");
-	  return NULL;
-	}
-
-      /* The sub-image may not start at origin, so move the destination
-	 iterator to where the sub-image should start. */
-      if (source_top > 0)
-	{
-	  PixelSetIteratorRow (dest_iterator, source_top);
-	  lines = source_top;
-	}
-
-      while ((source = PixelGetNextIteratorRow (source_iterator, &source_width))
-	     != NULL)
-	{
-	  ptrdiff_t x;
-
-	  /* Sanity check.  This shouldn't happen, but apparently
-	     does in some pictures.  */
-	  if (++lines >= dest_height)
-	    break;
-
-	  dest = PixelGetNextIteratorRow (dest_iterator, &dest_width);
-	  for (x = 0; x < source_width; x++)
-	    {
-	      /* Sanity check.  This shouldn't happen, but apparently
-		 also does in some pictures.  */
-	      if (x + source_left >= dest_width)
-		break;
-	      /* Normally we only copy over non-transparent pixels,
-		 but if the disposal method is "Background", then we
-		 copy over all pixels.  */
-	      if (dispose == BackgroundDispose || PixelGetAlpha (source[x]))
-		{
-		  PixelGetMagickColor (source[x], &pixel);
-		  PixelSetMagickColor (dest[x + source_left], &pixel);
-		}
-	    }
-	  PixelSyncIterator (dest_iterator);
-	}
-
-      DestroyPixelIterator (source_iterator);
-      DestroyPixelIterator (dest_iterator);
-      DestroyMagickWand (sub_wand);
-    }
-
-  /* Cache a copy for the next iteration.  The current wand will be
-     destroyed by the caller. */
-  cache->wand = CloneMagickWand (composite_wand);
-  cache->index = ino;
-
-  return composite_wand;
-}
-
-
-/* Helper function for imagemagick_load, which does the actual loading
-   given contents and size, apart from frame and image structures,
-   passed from imagemagick_load.  Uses librimagemagick to do most of
-   the image processing.
-
-   F is a pointer to the Emacs frame; IMG to the image structure to
-   prepare; CONTENTS is the string containing the IMAGEMAGICK data to
-   be parsed; SIZE is the number of bytes of data; and FILENAME is
-   either the file name or the image data.
-
-   Return true if successful.  */
-
-static bool
-imagemagick_load_image (struct frame *f, struct image *img,
-			unsigned char *contents, unsigned int size,
-			char *filename)
-{
-  int width, height;
-  size_t image_width, image_height;
-  MagickBooleanType status;
-  Emacs_Pix_Container ximg;
-  int x, y;
-  MagickWand *image_wand;
-  PixelIterator *iterator;
-  PixelWand **pixels, *bg_wand = NULL;
-  MagickPixelPacket  pixel;
-  Lisp_Object image;
-#ifndef DONT_CREATE_TRANSFORMED_IMAGEMAGICK_IMAGE
-  Lisp_Object value;
-#endif
-  Lisp_Object crop;
-  EMACS_INT ino;
-  int desired_width, desired_height;
-#ifndef DONT_CREATE_TRANSFORMED_IMAGEMAGICK_IMAGE
-  double rotation;
-#endif
-  char hint_buffer[MaxTextExtent];
-  char *filename_hint = NULL;
-  imagemagick_initialize ();
-
-  /* Handle image index for image types who can contain more than one image.
-     Interface :index is same as for GIF.  First we "ping" the image to see how
-     many sub-images it contains.  Pinging is faster than loading the image to
-     find out things about it.  */
-
-  image = image_spec_value (img->spec, QCindex, NULL);
-  ino = FIXNUMP (image) ? XFIXNAT (image) : 0;
-  image_wand = NewMagickWand ();
-
-  if (filename)
-    status = MagickReadImage (image_wand, filename);
-  else
-    {
-      Lisp_Object lwidth = image_spec_value (img->spec, QCwidth, NULL);
-      Lisp_Object lheight = image_spec_value (img->spec, QCheight, NULL);
-
-      if (FIXNATP (lwidth) && FIXNATP (lheight))
-	{
-	  MagickSetSize (image_wand, XFIXNAT (lwidth), XFIXNAT (lheight));
-	  MagickSetDepth (image_wand, 8);
-	}
-      filename_hint = imagemagick_filename_hint (img->spec, hint_buffer);
-      MagickSetFilename (image_wand, filename_hint);
-      status = MagickReadImageBlob (image_wand, contents, size);
-    }
-
-  if (status == MagickFalse)
-    {
-      imagemagick_error (image_wand);
-      DestroyMagickWand (image_wand);
-      return 0;
-    }
-
-#if defined HAVE_MAGICKAUTOORIENTIMAGE		\
-  || HAVE_DECL_MAGICKAUTOORIENTIMAGE
-  /* If no :rotation is explicitly specified, apply the automatic
-     rotation from EXIF. */
-  if (NILP (image_spec_value (img->spec, QCrotation, NULL)))
-    if (MagickAutoOrientImage (image_wand) == MagickFalse)
-      {
-        image_error ("Error applying automatic orientation in image `%s'", img->spec);
-        DestroyMagickWand (image_wand);
-        return 0;
-      }
-#endif
-
-  if (ino < 0 || ino >= MagickGetNumberImages (image_wand))
-    {
-      image_error ("Invalid image number `%s' in image `%s'", image, img->spec);
-      DestroyMagickWand (image_wand);
-      return 0;
-    }
-
-  if (MagickGetImageDelay (image_wand) > 0)
-    img->lisp_data =
-      Fcons (Qdelay,
-             Fcons (make_float (MagickGetImageDelay (image_wand) / 100.0),
-                    img->lisp_data));
-
-  if (MagickGetNumberImages (image_wand) > 1)
-    img->lisp_data =
-      Fcons (Qcount,
-             Fcons (make_fixnum (MagickGetNumberImages (image_wand)),
-                    img->lisp_data));
-
-  /* If we have an animated image, get the new wand based on the
-     "super-wand". */
-  if (MagickGetNumberImages (image_wand) > 1)
-    {
-      /* This is an animated image (it has a delay), so compute the
-	 composite image etc. */
-      if (MagickGetImageDelay (image_wand) > 0)
-	{
-	  MagickWand *super_wand = image_wand;
-	  image_wand = imagemagick_compute_animated_image (super_wand, ino);
-	  if (! image_wand)
-	    image_wand = super_wand;
-	  else
-	    DestroyMagickWand (super_wand);
-	}
-      else
-	/* This is not an animated image: It's just a multi-image file
-	   (like an .ico file).  Just return the correct
-	   sub-image.  */
-	{
-	  MagickWand *super_wand = image_wand;
-
-	  MagickSetIteratorIndex (super_wand, ino);
-	  image_wand = MagickGetImage (super_wand);
-	  DestroyMagickWand (super_wand);
-	}
-    }
-
-  /* Retrieve the frame's background color, for use later.  */
-  {
-    Emacs_Color bgcolor;
-    Lisp_Object specified_bg;
-
-    specified_bg = image_spec_value (img->spec, QCbackground, NULL);
-    if (!STRINGP (specified_bg)
-	|| !FRAME_TERMINAL (f)->defined_color_hook (f,
-                                                    SSDATA (specified_bg),
-                                                    &bgcolor,
-                                                    false,
-                                                    false))
-      FRAME_TERMINAL (f)->query_frame_background_color (f, &bgcolor);
-
-    bg_wand = NewPixelWand ();
-    PixelSetRed   (bg_wand, (double) bgcolor.red   / 65535);
-    PixelSetGreen (bg_wand, (double) bgcolor.green / 65535);
-    PixelSetBlue  (bg_wand, (double) bgcolor.blue  / 65535);
-  }
-
-#ifndef DONT_CREATE_TRANSFORMED_IMAGEMAGICK_IMAGE
-  compute_image_size (f, MagickGetImageWidth (image_wand),
-		      MagickGetImageHeight (image_wand),
-		      img, &desired_width, &desired_height);
-#else
-  desired_width = desired_height = -1;
-#endif
-
-  if (desired_width != -1 && desired_height != -1)
-    {
-      status = MagickScaleImage (image_wand, desired_width, desired_height);
-      if (status == MagickFalse)
-	{
-	  image_error ("Imagemagick scale failed");
-	  imagemagick_error (image_wand);
-	  goto imagemagick_error;
-	}
-    }
-
-  /* crop behaves similar to image slicing in Emacs but is more memory
-     efficient.  */
-  crop = image_spec_value (img->spec, QCcrop, NULL);
-
-  if (CONSP (crop) && TYPE_RANGED_FIXNUMP (size_t, XCAR (crop)))
-    {
-      /* After some testing, it seems MagickCropImage is the fastest crop
-         function in ImageMagick.  This crop function seems to do less copying
-         than the alternatives, but it still reads the entire image into memory
-         before cropping, which is apparently difficult to avoid when using
-         imagemagick.  */
-      size_t crop_width = XFIXNUM (XCAR (crop));
-      crop = XCDR (crop);
-      if (CONSP (crop) && TYPE_RANGED_FIXNUMP (size_t, XCAR (crop)))
-	{
-	  size_t crop_height = XFIXNUM (XCAR (crop));
-	  crop = XCDR (crop);
-	  if (CONSP (crop) && TYPE_RANGED_FIXNUMP (ssize_t, XCAR (crop)))
-	    {
-	      ssize_t crop_x = XFIXNUM (XCAR (crop));
-	      crop = XCDR (crop);
-	      if (CONSP (crop) && TYPE_RANGED_FIXNUMP (ssize_t, XCAR (crop)))
-		{
-		  ssize_t crop_y = XFIXNUM (XCAR (crop));
-		  MagickCropImage (image_wand, crop_width, crop_height,
-				   crop_x, crop_y);
-		}
-	    }
-	}
-    }
-
-#ifndef DONT_CREATE_TRANSFORMED_IMAGEMAGICK_IMAGE
-  /* Furthermore :rotation. we need background color and angle for
-     rotation.  */
-  /*
-    TODO background handling for rotation specified_bg =
-    image_spec_value (img->spec, QCbackground, NULL); if (!STRINGP
-    (specified_bg).  */
-  value = image_spec_value (img->spec, QCrotation, NULL);
-  if (FLOATP (value))
-    {
-      rotation = XFLOAT_DATA (value);
-      status = MagickRotateImage (image_wand, bg_wand, rotation);
-      if (status == MagickFalse)
-        {
-          image_error ("Imagemagick image rotate failed");
-	  imagemagick_error (image_wand);
-          goto imagemagick_error;
-        }
-    }
-#endif
-
-  /* Set the canvas background color to the frame or specified
-     background, and flatten the image.  Note: as of ImageMagick
-     6.6.0, SVG image transparency is not handled properly
-     (e.g. etc/images/splash.svg shows a white background always).  */
-  {
-    MagickWand *new_wand;
-    MagickSetImageBackgroundColor (image_wand, bg_wand);
-#if defined HAVE_MAGICKMERGEIMAGELAYERS		\
-  || HAVE_DECL_MAGICKMERGEIMAGELAYERS
-    new_wand = MagickMergeImageLayers (image_wand, MergeLayer);
-#else
-    new_wand = MagickFlattenImages (image_wand);
-#endif
-    DestroyMagickWand (image_wand);
-    image_wand = new_wand;
-  }
-
-  /* Finally we are done manipulating the image.  Figure out the
-     resulting width/height and transfer ownership to Emacs.  */
-  image_height = MagickGetImageHeight (image_wand);
-  image_width = MagickGetImageWidth (image_wand);
-
-  if (! (image_width <= INT_MAX && image_height <= INT_MAX
-	 && check_image_size (f, image_width, image_height)))
-    {
-      image_size_error ();
-      goto imagemagick_error;
-    }
-
-  width = image_width;
-  height = image_height;
-
-  /* We can now get a valid pixel buffer from the imagemagick file, if all
-     went ok.  */
-
-  init_color_table ();
-
-#if (defined (HAVE_MAGICKEXPORTIMAGEPIXELS)	     \
-     || HAVE_DECL_MAGICKEXPORTIMAGEPIXELS)	     \
-  && ! defined (HAVE_NS)
-  if (imagemagick_render_type != 0)
-    {
-      /* Magicexportimage is normally faster than pixelpushing.  This
-         method is also well tested.  Some aspects of this method are
-         ad-hoc and needs to be more researched. */
-      void *dataptr;
-      int imagedepth = 24; /*MagickGetImageDepth(image_wand);*/
-      const char *exportdepth = imagedepth <= 8 ? "I" : "BGRP"; /*"RGBP";*/
-      /* Try to create a x pixmap to hold the imagemagick pixmap.  */
-      if (!image_create_x_image_and_pixmap (f, img, width, height, imagedepth,
-					    &ximg, 0))
-	{
-#ifdef COLOR_TABLE_SUPPORT
-	  free_color_table ();
-#endif
-	  image_error ("Imagemagick X bitmap allocation failure");
-	  goto imagemagick_error;
-	}
-      dataptr = ximg->data;
-
-      /* Oddly, the below code doesn't seem to work:*/
-      /* switch(ximg->bitmap_unit){ */
-      /* case 8: */
-      /*   pixelwidth=CharPixel; */
-      /*   break; */
-      /* case   16: */
-      /*   pixelwidth=ShortPixel; */
-      /*   break; */
-      /* case   32: */
-      /*   pixelwidth=LongPixel; */
-      /*   break; */
-      /* } */
-      /*
-        Here im just guessing the format of the bitmap.
-        happens to work fine for:
-        - bw djvu images
-        on rgb display.
-        seems about 3 times as fast as pixel pushing(not carefully measured)
-      */
-      int pixelwidth = CharPixel; /*??? TODO figure out*/
-      MagickExportImagePixels (image_wand, 0, 0, width, height,
-			       exportdepth, pixelwidth, dataptr);
-    }
-  else
-#endif /* HAVE_MAGICKEXPORTIMAGEPIXELS */
-    {
-      size_t image_height;
-      double quantum_range = QuantumRange;
-      MagickRealType color_scale = 65535.0 / quantum_range;
-      /* Try to create a x pixmap to hold the imagemagick pixmap.  */
-      if (!image_create_x_image_and_pixmap (f, img, width, height, 0,
-					    &ximg, 0))
-        {
-#ifdef COLOR_TABLE_SUPPORT
-	  free_color_table ();
-#endif
-          image_error ("Imagemagick X bitmap allocation failure");
-          goto imagemagick_error;
-        }
-
-      /* Copy imagemagick image to x with primitive yet robust pixel
-         pusher loop.  This has been tested a lot with many different
-         images.  */
-
-      /* Copy pixels from the imagemagick image structure to the x image map. */
-      iterator = NewPixelIterator (image_wand);
-      if (! iterator)
-        {
-#ifdef COLOR_TABLE_SUPPORT
-	  free_color_table ();
-#endif
-	  image_destroy_x_image (ximg);
-          image_error ("Imagemagick pixel iterator creation failed");
-          goto imagemagick_error;
-        }
-
-      image_height = MagickGetImageHeight (image_wand);
-      for (y = 0; y < image_height; y++)
-        {
-	  size_t row_width;
-	  pixels = PixelGetNextIteratorRow (iterator, &row_width);
-          if (! pixels)
-            break;
-	  int xlim = min (row_width, width);
-	  for (x = 0; x < xlim; x++)
-            {
-              PixelGetMagickColor (pixels[x], &pixel);
-              PUT_PIXEL (ximg, x, y,
-                         lookup_rgb_color (f,
-					   color_scale * pixel.red,
-					   color_scale * pixel.green,
-					   color_scale * pixel.blue));
-	    }
-	}
-      DestroyPixelIterator (iterator);
-    }
-
-#ifdef COLOR_TABLE_SUPPORT
-  /* Remember colors allocated for this image.  */
-  img->colors = colors_in_color_table (&img->ncolors);
-  free_color_table ();
-#endif /* COLOR_TABLE_SUPPORT */
-
-  img->width  = width;
-  img->height = height;
-
-  /* Put ximg into the image.  */
-  image_put_x_image (f, img, ximg, 0);
-
-  /* Final cleanup. image_wand should be the only resource left. */
-  DestroyMagickWand (image_wand);
-  if (bg_wand) DestroyPixelWand (bg_wand);
-
-  /* Do not call MagickWandTerminus, to work around ImageMagick bug 825.  See:
-     https://github.com/ImageMagick/ImageMagick/issues/825
-     Although this bug was introduced in ImageMagick 6.9.9-14 and
-     fixed in 6.9.9-18, it's simpler to work around it in all versions.  */
-
-  return 1;
-
- imagemagick_error:
-  DestroyMagickWand (image_wand);
-  if (bg_wand) DestroyPixelWand (bg_wand);
-
-  /* TODO more cleanup.  */
-  image_error ("Error parsing IMAGEMAGICK image `%s'", img->spec);
-  return 0;
-}
-
-
-/* Load IMAGEMAGICK image IMG for use on frame F.  Value is true if
-   successful. this function will go into the imagemagick_type structure, and
-   the prototype thus needs to be compatible with that structure.  */
-
-static bool
-imagemagick_load (struct frame *f, struct image *img)
-{
-  bool success_p = 0;
-  Lisp_Object file_name;
-
-  /* If IMG->spec specifies a file name, create a non-file spec from it.  */
-  file_name = image_spec_value (img->spec, QCfile, NULL);
-  if (STRINGP (file_name))
-    {
-      Lisp_Object file = image_find_image_file (file_name);
-      if (!STRINGP (file))
-	{
-	  image_not_found_error (file_name);
-	  return false;
-	}
-      file = ENCODE_FILE (file);
-      success_p = imagemagick_load_image (f, img, 0, 0, SSDATA (file));
-    }
-  /* Else it's not a file, it's a Lisp object.  Load the image from a
-     Lisp object rather than a file.  */
-  else
-    {
-      Lisp_Object data;
-
-      data = image_spec_value (img->spec, QCdata, NULL);
-      if (!STRINGP (data))
-	{
-	  image_invalid_data_error (data);
-	  return false;
-	}
-      success_p = imagemagick_load_image (f, img, SDATA (data),
-                                          SBYTES (data), NULL);
-    }
-
-  return success_p;
-}
-
-DEFUN ("imagemagick-types", Fimagemagick_types, Simagemagick_types, 0, 0, 0,
-       doc: /* Return a list of image types supported by ImageMagick.
-Each entry in this list is a symbol named after an ImageMagick format
-tag.  See the ImageMagick manual for a list of ImageMagick formats and
-their descriptions (https://www.imagemagick.org/script/formats.php).
-You can also try the shell command: `identify -list format'.
-
-Note that ImageMagick recognizes many file-types that Emacs does not
-recognize as images, such as C.  See `imagemagick-enabled-types'
-and `imagemagick-types-inhibit'.  */)
-  (void)
-{
-  Lisp_Object typelist = Qnil;
-  size_t numf = 0;
-  ExceptionInfo *ex;
-  char **imtypes;
-  size_t i;
-
-  imagemagick_initialize ();
-  ex = AcquireExceptionInfo ();
-  imtypes = GetMagickList ("*", &numf, ex);
-  DestroyExceptionInfo (ex);
-
-  for (i = 0; i < numf; i++)
-    {
-      Lisp_Object imagemagicktype = intern (imtypes[i]);
-      typelist = Fcons (imagemagicktype, typelist);
-      imtypes[i] = MagickRelinquishMemory (imtypes[i]);
-    }
-
-  MagickRelinquishMemory (imtypes);
-  return Fnreverse (typelist);
-}
-
-#endif	/* defined (HAVE_IMAGEMAGICK) */
 
 
 
@@ -11020,260 +10187,6 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
 
 
 /***********************************************************************
-				Ghostscript
- ***********************************************************************/
-
-#if defined HAVE_X_WINDOWS && !defined USE_CAIRO
-#define HAVE_GHOSTSCRIPT 1
-#endif /* HAVE_X_WINDOWS && !USE_CAIRO */
-
-#ifdef HAVE_GHOSTSCRIPT
-
-/* Indices of image specification fields in gs_format, below.  */
-
-enum gs_keyword_index
-{
-  GS_TYPE,
-  GS_PT_WIDTH,
-  GS_PT_HEIGHT,
-  GS_FILE,
-  GS_LOADER,
-  GS_BOUNDING_BOX,
-  GS_ASCENT,
-  GS_MARGIN,
-  GS_RELIEF,
-  GS_ALGORITHM,
-  GS_HEURISTIC_MASK,
-  GS_MASK,
-  GS_BACKGROUND,
-  GS_LAST
-};
-
-/* Vector of image_keyword structures describing the format
-   of valid user-defined image specifications.  */
-
-static const struct image_keyword gs_format[GS_LAST] =
-{
-  {":type",		IMAGE_SYMBOL_VALUE,			1},
-  {":pt-width",		IMAGE_POSITIVE_INTEGER_VALUE,		1},
-  {":pt-height",	IMAGE_POSITIVE_INTEGER_VALUE,		1},
-  {":file",		IMAGE_STRING_VALUE,			1},
-  {":loader",		IMAGE_FUNCTION_VALUE,			0},
-  {":bounding-box",	IMAGE_DONT_CHECK_VALUE_TYPE,		1},
-  {":ascent",		IMAGE_ASCENT_VALUE,			0},
-  {":margin",		IMAGE_NON_NEGATIVE_INTEGER_VALUE_OR_PAIR, 0},
-  {":relief",		IMAGE_INTEGER_VALUE,			0},
-  {":conversion",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-  {":heuristic-mask",	IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-  {":mask",		IMAGE_DONT_CHECK_VALUE_TYPE,		0},
-  {":background",	IMAGE_STRING_OR_NIL_VALUE,		0}
-};
-
-/* Return true if OBJECT is a valid Ghostscript image
-   specification.  */
-
-static bool
-gs_image_p (Lisp_Object object)
-{
-  struct image_keyword fmt[GS_LAST];
-  Lisp_Object tem;
-  int i;
-
-  memcpy (fmt, gs_format, sizeof fmt);
-
-  if (!parse_image_spec (object, fmt, GS_LAST, Qpostscript))
-    return 0;
-
-  /* Bounding box must be a list or vector containing 4 integers.  */
-  tem = fmt[GS_BOUNDING_BOX].value;
-  if (CONSP (tem))
-    {
-      for (i = 0; i < 4; ++i, tem = XCDR (tem))
-	if (!CONSP (tem) || !FIXNUMP (XCAR (tem)))
-	  return 0;
-      if (!NILP (tem))
-	return 0;
-    }
-  else if (VECTORP (tem))
-    {
-      if (ASIZE (tem) != 4)
-	return 0;
-      for (i = 0; i < 4; ++i)
-	if (!FIXNUMP (AREF (tem, i)))
-	  return 0;
-    }
-  else
-    return 0;
-
-  return 1;
-}
-
-
-/* Load Ghostscript image IMG for use on frame F.  Value is true
-   if successful.  */
-
-static bool
-gs_load (struct frame *f, struct image *img)
-{
-  uintmax_t printnum1, printnum2;
-  Lisp_Object window_and_pixmap_id = Qnil, loader, pt_height, pt_width;
-  Lisp_Object frame;
-  double in_width, in_height;
-  Lisp_Object pixel_colors = Qnil;
-
-  /* Compute pixel size of pixmap needed from the given size in the
-     image specification.  Sizes in the specification are in pt.  1 pt
-     = 1/72 in, xdpi and ydpi are stored in the frame's X display
-     info.  */
-  pt_width = image_spec_value (img->spec, QCpt_width, NULL);
-  in_width = FIXNUMP (pt_width) ? XFIXNAT (pt_width) / 72.0 : 0;
-  in_width *= FRAME_RES_X (f);
-  pt_height = image_spec_value (img->spec, QCpt_height, NULL);
-  in_height = FIXNUMP (pt_height) ? XFIXNAT (pt_height) / 72.0 : 0;
-  in_height *= FRAME_RES_Y (f);
-
-  if (! (in_width <= INT_MAX && in_height <= INT_MAX
-	 && check_image_size (f, in_width, in_height)))
-    {
-      image_size_error ();
-      return 0;
-    }
-  img->width = in_width;
-  img->height = in_height;
-
-  /* Create the pixmap.  */
-  eassert (img->pixmap == NO_PIXMAP);
-
-  if (image_check_image_size (0, img->width, img->height))
-    {
-      /* Only W32 version did BLOCK_INPUT here.  ++kfs */
-      block_input ();
-      img->pixmap = XCreatePixmap (FRAME_X_DISPLAY (f), FRAME_X_DRAWABLE (f),
-				   img->width, img->height,
-				   FRAME_DISPLAY_INFO (f)->n_planes);
-      unblock_input ();
-    }
-
-  if (!img->pixmap)
-    {
-      image_error ("Unable to create pixmap for `%s'" , img->spec);
-      return 0;
-    }
-
-  /* Call the loader to fill the pixmap.  It returns a process object
-     if successful.  We do not record_unwind_protect here because
-     other places in redisplay like calling window scroll functions
-     don't either.  Let the Lisp loader use `unwind-protect' instead.  */
-  printnum1 = FRAME_X_DRAWABLE (f);
-  printnum2 = img->pixmap;
-  window_and_pixmap_id
-    = make_formatted_string ("%"PRIuMAX" %"PRIuMAX,
-			     printnum1, printnum2);
-
-  printnum1 = FRAME_FOREGROUND_PIXEL (f);
-  printnum2 = FRAME_BACKGROUND_PIXEL (f);
-  pixel_colors
-    = make_formatted_string ("%"PRIuMAX" %"PRIuMAX,
-			     printnum1, printnum2);
-
-  XSETFRAME (frame, f);
-  loader = image_spec_value (img->spec, QCloader, NULL);
-  if (NILP (loader))
-    loader = Qgs_load_image;
-
-  img->lisp_data = calln (loader, frame, img->spec,
-			  make_fixnum (img->width),
-			  make_fixnum (img->height),
-			  window_and_pixmap_id,
-			  pixel_colors);
-  return PROCESSP (img->lisp_data);
-}
-
-
-/* Kill the Ghostscript process that was started to fill PIXMAP on
-   frame F.  Called from XTread_socket when receiving an event
-   telling Emacs that Ghostscript has finished drawing.  */
-
-void
-x_kill_gs_process (Pixmap pixmap, struct frame *f)
-{
-  struct image_cache *c = FRAME_IMAGE_CACHE (f);
-  ptrdiff_t i;
-  struct image *img;
-
-  /* Find the image containing PIXMAP.  */
-  for (i = 0; i < c->used; ++i)
-    if (c->images[i]->pixmap == pixmap)
-      break;
-
-  /* Should someone in between have cleared the image cache, for
-     instance, give up.  */
-  if (i == c->used)
-    return;
-
-  /* Kill the GS process.  We should have found PIXMAP in the image
-     cache and its image should contain a process object.  */
-  img = c->images[i];
-  eassert (PROCESSP (img->lisp_data));
-  Fkill_process (img->lisp_data, Qnil);
-  img->lisp_data = Qnil;
-
-#if defined (HAVE_X_WINDOWS)
-
-  /* On displays with a mutable colormap, figure out the colors
-     allocated for the image by looking at the pixels of an XImage for
-     img->pixmap.  */
-  if (x_mutable_colormap (FRAME_X_VISUAL_INFO (f)))
-    {
-      XImage *ximg;
-
-      block_input ();
-
-      /* Try to get an XImage for img->pixmep.  */
-      ximg = XGetImage (FRAME_X_DISPLAY (f), img->pixmap,
-			0, 0, img->width, img->height, ~0, ZPixmap);
-      if (ximg)
-	{
-	  /* Initialize the color table.  */
-	  init_color_table ();
-
-	  /* For each pixel of the image, look its color up in the
-	     color table.  After having done so, the color table will
-	     contain an entry for each color used by the image.  */
-#ifdef COLOR_TABLE_SUPPORT
-	  for (int y = 0; y < img->height; ++y)
-	    for (int x = 0; x < img->width; ++x)
-	      {
-		unsigned long pixel = XGetPixel (ximg, x, y);
-
-		lookup_pixel_color (f, pixel);
-	      }
-
-	  /* Record colors in the image.  Free color table and XImage.  */
-	  img->colors = colors_in_color_table (&img->ncolors);
-	  free_color_table ();
-#endif
-	  XDestroyImage (ximg);
-	}
-      else
-	image_error ("Cannot get X image of `%s'; colors will not be freed",
-		     img->spec);
-
-      unblock_input ();
-    }
-#endif /* HAVE_X_WINDOWS */
-
-  /* Now that we have the pixmap, compute mask and transform the
-     image if requested.  */
-  block_input ();
-  postprocess_image (f, img);
-  unblock_input ();
-}
-
-#endif /* HAVE_GHOSTSCRIPT */
-
-
-/***********************************************************************
 				Tests
  ***********************************************************************/
 DEFUN ("imagep", Fimagep, Simagep, 1, 1, 0,
@@ -11320,8 +10233,7 @@ The list of capabilities can include one or more of the following:
   if (FRAME_WINDOW_P (f))
     {
 #ifdef HAVE_NATIVE_TRANSFORMS
-# if defined HAVE_IMAGEMAGICK || defined (USE_CAIRO) || defined (HAVE_NS) \
-  || defined HAVE_ANDROID
+# if defined (USE_CAIRO) || defined (HAVE_NS) || defined HAVE_ANDROID
       return list2 (Qscale, Qrotate90);
 # elif defined (HAVE_X_WINDOWS) && defined (HAVE_XRENDER)
       if (FRAME_DISPLAY_INFO (f)->xrender_supported_p)
@@ -11379,13 +10291,6 @@ initialize_image_type (struct image_type const *type)
 
 static struct image_type const image_types[] =
 {
-#ifdef HAVE_GHOSTSCRIPT
- { SYMBOL_INDEX (Qpostscript), gs_image_p, gs_load, image_clear_image },
-#endif
-#ifdef HAVE_IMAGEMAGICK
- { SYMBOL_INDEX (Qimagemagick), imagemagick_image_p, imagemagick_load,
-   image_clear_image },
-#endif
 #ifdef HAVE_RSVG
  { SYMBOL_INDEX (Qsvg), svg_image_p, svg_load, image_clear_image,
    IMAGE_TYPE_INIT (init_svg_functions) },
@@ -11453,9 +10358,6 @@ image_prune_animation_caches (bool clear)
   /* FIXME: Consolidate these animation cache implementations.  */
 #if defined (HAVE_WEBP) || defined (HAVE_GIF)
   anim_prune_animation_cache (clear? Qt: Qnil);
-#endif
-#ifdef HAVE_IMAGEMAGICK
-  imagemagick_prune_animation_cache (clear);
 #endif
 }
 
@@ -11526,15 +10428,6 @@ non-numeric, there is no explicit limit on the size of images.  */);
   DEFSYM (Qcrop, "crop");
 #endif
 
-#ifdef HAVE_GHOSTSCRIPT
-  add_image_type (Qpostscript);
-  DEFSYM (QCloader, ":loader");
-  DEFSYM (QCpt_width, ":pt-width");
-  DEFSYM (QCpt_height, ":pt-height");
-  DEFSYM (Qgs_load_image, "gs-load-image");
-#endif /* HAVE_GHOSTSCRIPT */
-
-
   DEFSYM (Qpbm, "pbm");
   add_image_type (Qpbm);
 
@@ -11582,11 +10475,6 @@ non-numeric, there is no explicit limit on the size of images.  */);
 #endif /* NS_IMPL_GNUSTEP && !HAVE_WEBP */
 #endif
 
-#if defined (HAVE_IMAGEMAGICK)
-  DEFSYM (Qimagemagick, "imagemagick");
-  add_image_type (Qimagemagick);
-#endif
-
 #if defined (HAVE_RSVG)
   DEFSYM (Qsvg, "svg");
   DEFSYM (QCbase_uri, ":base-uri");
@@ -11622,9 +10510,6 @@ non-numeric, there is no explicit limit on the size of images.  */);
 #endif
 
   defsubr (&Sinit_image_library);
-#ifdef HAVE_IMAGEMAGICK
-  defsubr (&Simagemagick_types);
-#endif
   defsubr (&Sclear_image_cache);
   defsubr (&Simage_flush);
   defsubr (&Simage_size);
@@ -11673,20 +10558,4 @@ size), or the symbol `auto', which will compute a scaling factor
 based on the font pixel size.  */);
   Vimage_scaling_factor = Qauto;
 
-#ifdef HAVE_IMAGEMAGICK
-  DEFVAR_INT ("imagemagick-render-type", imagemagick_render_type,
-    doc: /* Integer indicating which ImageMagick rendering method to use.
-The options are:
-  0 -- the default method (pixel pushing)
-  1 -- a newer method ("MagickExportImagePixels") that may perform
-       better (speed etc) in some cases, but has not been as thoroughly
-       tested with Emacs as the default method.  This method requires
-       ImageMagick version 6.4.6 (approximately) or later.
-*/);
-  /* MagickExportImagePixels is in 6.4.6-9, but not 6.4.4-10.  */
-  imagemagick_render_type = 0;
-
-  DEFSYM (Qimage_format_suffixes, "image-format-suffixes");
-  DEFSYM (QCformat, ":format");
-#endif /* HAVE_IMAGEMAGICK */
 }

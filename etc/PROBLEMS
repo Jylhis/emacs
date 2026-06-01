@@ -136,6 +136,9 @@ result in an endless loop.
 If you need Emacs to be able to recover from closing displays, compile
 it with the Lucid toolkit instead of GTK.
 
+One possible mitigation for the problem is described in
+https://debbugs.gnu.org/81124
+
 ** Emacs compiled with GTK+ 3 crashes when run under some X servers.
 This happens when the X server does not provide certain display
 features that the underlying GTK+ 3 toolkit assumes.  For example, this
@@ -1748,63 +1751,6 @@ This can happen if you have "Allow Primary Windows On Top" enabled which
 seems to be the default in the Common Desktop Environment.
 To change, go in to "Desktop Controls" -> "Window Style Manager"
 and uncheck "Allow Primary Windows On Top".
-
-*** Xaw3d : When using Xaw3d scroll bars without arrows, the very first mouse
-click in a scroll bar might be ignored by the scroll bar widget.  This
-is probably a bug in Xaw3d; when Xaw3d is compiled with arrows, the
-problem disappears.
-
-*** Xaw: There are known binary incompatibilities between Xaw, Xaw3d, neXtaw,
-XawM and the few other derivatives of Xaw.  So when you compile with
-one of these, it may not work to dynamically link with another one.
-For example, strange problems, such as Emacs exiting when you type
-"C-x 1", were reported when Emacs compiled with Xaw3d and libXaw was
-used with neXtaw at run time.
-
-The solution is to rebuild Emacs with the toolkit version you actually
-want to use, or set LD_PRELOAD to preload the same toolkit version you
-built Emacs with.
-
-*** Open Motif: Problems with file dialogs in Emacs built with Open Motif.
-
-When Emacs 21 is built with Open Motif 2.1, it can happen that the
-graphical file dialog boxes do not work properly.  The "OK", "Filter"
-and "Cancel" buttons do not respond to mouse clicks.  Dragging the
-file dialog window usually causes the buttons to work again.
-
-As a workaround, you can try building Emacs using Motif or LessTif instead.
-
-Another workaround is not to use the mouse to trigger file prompts,
-but to use the keyboard.  This way, you will be prompted for a file in
-the minibuffer instead of a graphical file dialog.
-
-*** LessTif: Problems in Emacs built with LessTif.
-
-The problems seem to depend on the version of LessTif and the Motif
-emulation for which it is set up.
-
-Only the Motif 1.2 emulation seems to be stable enough in LessTif.
-LessTif 0.92-17's Motif 1.2 emulation seems to work okay on FreeBSD.
-On GNU/Linux systems, lesstif-0.92.6 configured with "./configure
---enable-build-12 --enable-default-12" is reported to be the most
-successful.  The binary GNU/Linux package
-lesstif-devel-0.92.0-1.i386.rpm was reported to have problems with
-menu placement.
-
-On some systems, Emacs occasionally locks up, grabbing all mouse and
-keyboard events.  We don't know what causes these problems; they are
-not reproducible by Emacs developers.
-
-*** Motif: The Motif version of Emacs paints the screen a solid color.
-
-This has been observed to result from the following X resource:
-
-   Emacs*default.attributeFont:	-*-courier-medium-r-*-*-*-140-*-*-*-*-iso8859-*
-
-That the resource has this effect indicates a bug in something, but we
-do not know what.  If it is an Emacs bug, we hope someone can
-explain what the bug is so we can fix it.  In the mean time, removing
-the resource prevents the problem.
 
 *** FVWM: Some versions of FVWM incorrectly set the 'sticky' frame parameter.
 

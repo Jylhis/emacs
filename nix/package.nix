@@ -13,6 +13,7 @@
   libxml2,
   ncurses,
   gmp,
+  libgcrypt,
   lcms2,
   zlib,
   gawk,
@@ -32,7 +33,6 @@
   tree-sitter,
   sqlite,
   mailutils,
-  imagemagick,
 
   acl,
   dbus,
@@ -66,34 +66,41 @@
   withSqlite3 ? true,
   withMailutils ? stdenv.isLinux,
   withModules ? true,
-  withImageMagick ? false,
   withXwidgets ? false,
 
   noGui ? false,
   withPgtk ? false,
   withGTK3 ? stdenv.isLinux && !noGui && !withPgtk,
   withNS ? stdenv.isDarwin && !noGui,
+  withNsSelfContained ? false,
 
   withSystemAppearancePatch ? false,
   withRoundUndecoratedPatch ? false,
+  withFixNsXColorsPatch ? false,
 
   extraMesonFlags ? [ ],
   extraPatches ? [ ],
   siteStart ? null,
+
+  # When set, the resulting derivation keeps a copy of the meson
+  # build dir at $out/share/emacs/host-build so a downstream
+  # cross-compile (nix/android.nix) can read bootstrap-emacs,
+  # emacs.pdmp, and the byte-compiled lisp tree.
+  exposeHostBuild ? false,
 }:
 
 let
   inherit (lib) optional optionals optionalString;
 
   toolkit =
-    if noGui || withNS then
+    if noGui then
       "none"
     else if withPgtk then
       "pgtk"
     else if withGTK3 then
       "gtk3"
     else
-      "none";
+      "auto";
 
   darwinFrameworks = optional stdenv.isDarwin apple-sdk;
 
@@ -106,7 +113,8 @@ stdenv.mkDerivation (_finalAttrs: {
     "emacs-jylhis"
     + optionalString noGui "-nox"
     + optionalString (withPgtk && !noGui) "-pgtk"
-    + optionalString (withGTK3 && !withPgtk && !noGui && stdenv.isLinux) "-gtk3";
+    + optionalString (withGTK3 && !withPgtk && !noGui && stdenv.isLinux) "-gtk3"
+    + optionalString (withNsSelfContained && stdenv.isDarwin) "-macos";
 
   inherit version src;
 
@@ -116,6 +124,9 @@ stdenv.mkDerivation (_finalAttrs: {
     )
     ++ optional (withRoundUndecoratedPatch && patchExists "round-undecorated-frame.patch") (
       patchPath "round-undecorated-frame.patch"
+    )
+    ++ optional (withFixNsXColorsPatch && patchExists "fix-ns-x-colors.patch") (
+      patchPath "fix-ns-x-colors.patch"
     )
     ++ extraPatches;
 
@@ -133,6 +144,7 @@ stdenv.mkDerivation (_finalAttrs: {
     libxml2
     ncurses
     gmp
+    libgcrypt
     lcms2
     zlib
     gawk
@@ -152,7 +164,6 @@ stdenv.mkDerivation (_finalAttrs: {
   ++ optional withSqlite3 sqlite
   ++ optional withTreeSitter tree-sitter
   ++ optional withMailutils mailutils
-  ++ optional withImageMagick imagemagick
   ++ optionals stdenv.isLinux (
     [
       acl
@@ -197,9 +208,8 @@ stdenv.mkDerivation (_finalAttrs: {
     (lib.mesonEnable "sqlite3" withSqlite3)
     (lib.mesonEnable "mailutils" withMailutils)
     (lib.mesonEnable "modules" withModules)
-    (lib.mesonEnable "toolkit-scroll-bars" (!noGui))
+    (lib.mesonEnable "toolkit-scroll-bars" (withGTK3 || withPgtk || withNS))
     (lib.mesonEnable "xwidgets" withXwidgets)
-    (lib.mesonEnable "imagemagick" withImageMagick)
     (lib.mesonEnable "dbus" stdenv.isLinux)
     (lib.mesonEnable "gpm" false)
     (lib.mesonEnable "gsettings" false)
@@ -211,6 +221,7 @@ stdenv.mkDerivation (_finalAttrs: {
     (lib.mesonEnable "xim" (stdenv.isLinux && withGTK3 && !withPgtk))
     (lib.mesonEnable "xinput2" (stdenv.isLinux && withGTK3 && !withPgtk))
   ]
+  ++ optional withNsSelfContained (lib.mesonEnable "ns-self-contained" true)
   ++ extraMesonFlags;
 
   enableParallelBuilding = true;
@@ -220,7 +231,19 @@ stdenv.mkDerivation (_finalAttrs: {
   '';
 
   postInstall =
-    optionalString (stdenv.isLinux && !noGui) ''
+    optionalString exposeHostBuild ''
+      mkdir -p $out/share/emacs/host-build/src $out/share/emacs/host-build/lisp
+      # bootstrap-emacs + the final pdumper image -- the Android APK
+      # bundles emacs.pdmp under assets/, and the cross build re-uses
+      # bootstrap-emacs to stage byte-compiled lisp.
+      install -m0755 src/bootstrap-emacs $out/share/emacs/host-build/src/
+      install -m0644 src/emacs.pdmp      $out/share/emacs/host-build/src/
+      # Mirror the byte-compiled lisp tree (only .elc files).
+      (cd lisp && find . -name '*.elc' -print0 \
+        | xargs -0 -I {} install -Dm0644 {} \
+            $out/share/emacs/host-build/lisp/{})
+    ''
+    + optionalString (stdenv.isLinux && !noGui) ''
       if [ -f etc/emacs.desktop ]; then
         install -Dm0644 etc/emacs.desktop \
           $out/share/applications/emacs.desktop

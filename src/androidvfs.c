@@ -33,7 +33,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <sys/mman.h>
 
 #include <stat-time.h>
-#include <md5.h>
+#include "emacs-hash.h"
 
 #include <linux/ashmem.h>
 

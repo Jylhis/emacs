@@ -26,8 +26,6 @@ system registry (@pxref{MS-Windows Registry}).
 @menu
 * Resources::           Using X resources with Emacs (in general).
 * Table of Resources::  Table of specific X resources that affect Emacs.
-* Lucid Resources::     X resources for Lucid menus.
-* Motif Resources::     X resources for Motif and LessTif menus.
 * GTK resources::       Resources for GTK+ widgets.
 @end menu
 
@@ -145,8 +143,7 @@ specifications.
 
   The table below lists the X resource names that Emacs recognizes.
 Note that some of the resources have no effect in Emacs compiled with
-various X toolkits (GTK+, Lucid, etc.)---we indicate below when this
-is the case.
+the GTK+ toolkit---we indicate below when this is the case.
 
 @table @asis
 @item @code{alpha} (class @code{Alpha})
@@ -239,8 +236,7 @@ Additional space between lines, in pixels.
 @item @code{menuBackground} (class @code{Background})
 @cindex background for menus (X resource)
 The background color of the menus in non-toolkit versions of Emacs.
-(For toolkit versions, see @ref{Lucid Resources}, also see @ref{Motif
-Resources}, and see @ref{GTK resources}.)
+(For the toolkit version, see @ref{GTK resources}.)
 @end ifnottex
 
 @item @code{menuBar} (class @code{MenuBar})
@@ -256,14 +252,12 @@ will use a separate minibuffer frame instead.
 @item @code{paneFont} (class @code{Font})
 @cindex font for menus (X resource)
 Font name for menu pane titles, in non-toolkit versions of Emacs.
-(For toolkit versions, see @ref{Lucid Resources}, also see @ref{Motif
-Resources}, and see @ref{GTK resources}.)
+(For the toolkit version, see @ref{GTK resources}.)
 
 @item @code{paneForeground} (class @code{Foreground})
 @cindex foreground for menus (X resource)
 Foreground color for menu pane titles, in non-toolkit versions of
-Emacs.  (For toolkit versions, see @ref{Lucid Resources}, also see
-@ref{Motif Resources}, and see @ref{GTK resources}.)
+Emacs.  (For the toolkit version, see @ref{GTK resources}.)
 @end ifnottex
 
 @item @code{pointerColor} (class @code{Foreground})
@@ -300,13 +294,11 @@ compiled with GTK+ support.
 @ifnottex
 @item @code{selectionFont} (class @code{SelectionFont})
 Font name for pop-up menu items, in non-toolkit versions of Emacs.  (For
-toolkit versions, see @ref{Lucid Resources}, also see @ref{Motif
-Resources}, and see @ref{GTK resources}.)
+the toolkit version, see @ref{GTK resources}.)
 
 @item @code{selectionForeground} (class @code{SelectionForeground})
 Foreground color for pop-up menu items, in non-toolkit versions of
-Emacs.  (For toolkit versions, see @ref{Lucid Resources}, also see
-@ref{Motif Resources}, and see @ref{GTK resources}.)
+Emacs.  (For the toolkit version, see @ref{GTK resources}.)
 
 @item @code{selectionTimeout} (class @code{SelectionTimeout})
 Number of milliseconds to wait for a selection reply.
@@ -406,190 +398,6 @@ is the number of color planes.
 @samp{foreground} attribute of the face @var{face}.  However, we
 recommend customizing faces from within Emacs, instead of using X
 resources.  @xref{Face Customization}.
-
-@ifnottex
-@node Lucid Resources
-@appendixsec Lucid Menu And Dialog X Resources
-@cindex Menu X Resources (Lucid widgets)
-@cindex Dialog X Resources (Lucid widgets)
-@cindex Lucid Widget X Resources
-
-  If Emacs is compiled with the X toolkit support using Lucid widgets,
-you can use X resources to customize the appearance of the menu bar
-(@pxref{Menu Bar}), pop-up menus, and dialog boxes (@pxref{Dialog
-Boxes}).  The resources for the menu bar fall in the
-@samp{pane.menubar} class (following, as always, either the name of
-the Emacs executable or @samp{Emacs} for all Emacs invocations).  The
-resources for the pop-up menu are in the @samp{menu*} class.  The
-resources for dialog boxes are in the @samp{dialog*} class.
-
-  For example, to display menu bar entries with the @samp{Courier-12}
-font (@pxref{Fonts}), write this:
-
-@example
-Emacs.pane.menubar.font: Courier-12
-@end example
-
-@noindent
-Lucid widgets can display multilingual text in your locale.  To enable
-this, specify a @code{fontSet} resource instead of a @code{font}
-resource.  @xref{Fontsets}.  If both @code{font} and @code{fontSet}
-resources are specified, the @code{fontSet} resource is used.
-
-Here is a list of resources for menu bars, pop-up menus, and dialogs:
-
-@table @code
-@item font
-Font for menu item text.
-@item fontSet
-Fontset for menu item text.
-@item background
-Background color.
-@item buttonForeground
-Foreground color for a selected item.
-@item foreground
-Foreground color.
-@item disabledForeground
-Foreground color for a disabled menu item.
-@item highlightForeground
-Foreground color for a menu item highlighted by the mouse or key
-navigation.
-@item highlightBackground
-Background color for a menu item highlighted by the mouse or key
-navigation.
-@ifnottex
-@item horizontalSpacing
-Horizontal spacing in pixels between items.  Default is 3.
-@item verticalSpacing
-Vertical spacing in pixels between items.  Default is 2.
-@item arrowSpacing
-Horizontal spacing between the arrow (which indicates a submenu) and
-the associated text.  Default is 10.
-@item shadowThickness
-Thickness of shadow lines for 3D buttons, arrows, and other graphical
-elements.  Default is 1.
-@item borderThickness
-Thickness of the external borders of the menu bars and pop-up menus.
-Default is 1.
-@item cursor
-Name of the cursor to use in the menu bars and pop-up menus.  Default
-is @code{"right_ptr"}.
-@end ifnottex
-@item margin
-Margin of the menu bar, in characters.  Default is 1.
-@end table
-
-@node Motif Resources
-@appendixsec Motif Menu X Resources
-@cindex Menu X Resources (Motif widgets)
-@cindex Motif Widget X Resources
-
-  If Emacs is compiled with the X toolkit support using Motif or
-LessTif widgets, you can use X resources to customize the appearance
-of the menu bar (@pxref{Menu Bar}), pop-up menus, and dialog boxes
-(@pxref{Dialog Boxes}).  However, the resources are organized
-differently from Lucid widgets.
-
-  The resource names for the menu bar are in the @samp{pane.menubar}
-class, and they must be specified in this form:
-
-@smallexample
-Emacs.pane.menubar.@var{subwidget}.@var{resource}: @var{value}
-@end smallexample
-
-@noindent
-For pop-up menus, the resources are in the @samp{menu*} class, instead
-of @samp{pane.menubar}.  For dialog boxes, they are in @samp{dialog}.
-In each case, each individual menu string is a subwidget; the
-subwidget's name is the same as the menu item string.  For example,
-the @samp{File} menu in the menu bar is a subwidget named
-@samp{emacs.pane.menubar.File}.
-
-  Typically, you want to specify the same resources for the whole menu
-bar.  To do this, use @samp{*} instead of a specific subwidget name.
-For example, to specify the font @samp{8x16} for all menu bar items,
-including submenus, write this:
-
-@smallexample
-Emacs.pane.menubar.*.fontList: 8x16
-@end smallexample
-
-  Each item in a submenu also has its own name for X resources; for
-example, the @samp{File} submenu has an item named @samp{Save (current
-buffer)}.  A resource specification for a submenu item looks like
-this:
-
-@smallexample
-Emacs.pane.menubar.popup_*.@var{menu}.@var{item}.@var{resource}: @var{value}
-@end smallexample
-
-@noindent
-For example, here's how to specify the font for the @samp{Save (current
-buffer)} item:
-
-@smallexample
-Emacs.pane.menubar.popup_*.File.Save (current buffer).fontList: 8x16
-@end smallexample
-
-@noindent
-For an item in a second-level submenu, such as @samp{Complete Word}
-under @samp{Spell Checking} under @samp{Tools}, the resource fits this
-template:
-
-@smallexample
-Emacs.pane.menubar.popup_*.popup_*.@var{menu}.@var{resource}: @var{value}
-@end smallexample
-
-@noindent
-For example,
-
-@smallexample
-Emacs.pane.menubar.popup_*.popup_*.Spell Checking.Complete Word: @var{value}
-@end smallexample
-
-@noindent
-(This should be one long line.)
-
-  If you want the submenu items to look different from the menu bar
-itself, you must first specify the resource for all of them, then
-override the value for submenus alone.  Here is an example:
-
-@smallexample
-Emacs.pane.menubar.*.fontList: 9x18
-Emacs.pane.menubar.popup_*.fontList: 8x16
-@end smallexample
-
-  To specify resources for the LessTif file-selection box, use
-@samp{fsb*}, like this:
-
-@example
-Emacs.fsb*.fontList: 8x16
-@end example
-
-  Here is a list of resources for LessTif menu bars and pop-up menus:
-
-@table @code
-@item armColor
-The color to show in an armed button.
-@item fontList
-The font to use.
-@item marginBottom
-@itemx marginHeight
-@itemx marginLeft
-@itemx marginRight
-@itemx marginTop
-@itemx marginWidth
-Amount of space to leave around the item, within the border.
-@item borderWidth
-The width of the border around the menu item, on all sides.
-@item shadowThickness
-The width of the border shadow.
-@item bottomShadowColor
-The color for the border shadow, on the bottom and the right.
-@item topShadowColor
-The color for the border shadow, on the top and the left.
-@end table
-@end ifnottex
 
 @node GTK resources
 @appendixsec GTK+ resources

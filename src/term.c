@@ -536,7 +536,7 @@ encode_terminal_code (struct glyph *src, int src_len,
      Vglyph_table contains a string or a composite glyph is
      encountered.  */
   if (ckd_mul (&required, src_len, MAX_MULTIBYTE_LENGTH))
-    memory_full (SIZE_MAX);
+    memory_full_up ();
   if (encode_terminal_src_size < required)
     encode_terminal_src = xpalloc (encode_terminal_src,
 				   &encode_terminal_src_size,
@@ -1225,7 +1225,7 @@ calculate_costs (struct frame *frame)
       max_frame_cols = max (max_frame_cols, FRAME_COLS (frame));
       if ((min (PTRDIFF_MAX, SIZE_MAX) / sizeof (int) - 1) / 2
 	  < max_frame_cols)
-	memory_full (SIZE_MAX);
+	memory_full_up ();
 
       char_ins_del_vector =
 	xrealloc (char_ins_del_vector,
@@ -2562,7 +2562,7 @@ This function temporarily suspends and resumes the terminal
 device.  */)
   (Lisp_Object size, Lisp_Object tty)
 {
-  if (!TYPE_RANGED_FIXNUMP (size_t, size))
+  if (!RANGED_FIXNUMP (0, size, min (PTRDIFF_MAX, SIZE_MAX)))
     error ("Invalid output buffer size");
   Fsuspend_tty (tty);
   struct terminal *terminal = decode_tty_terminal (tty);
@@ -5086,8 +5086,19 @@ On TTY frames, as a display optimization, Emacs may move to a position
 by "overshooting" with TAB characters and one BACKSPACE character, when
 this is more efficient.  This combination can interfere with the
 functioning of some software, such as screen readers.  Set this to
-non-nil to enable this optimization.  */);
+non-nil to enable this optimization.
+If `tty-cursor-movement-use-TAB' is nil, this variable has no effect,
+as Emacs will never use TABs for cursor movement.  */);
   tty_cursor_movement_use_TAB_BS = 0;
+
+  DEFVAR_BOOL ("tty-cursor-movement-use-TAB", tty_cursor_movement_use_TAB,
+    doc: /* Whether TTY frames may use TAB for cursor motion.
+On TTY frames, as a display optimization, Emacs may move cursor to a
+position with TAB characters, when this is more efficient.  This might
+produce wrong results if the hardware tabs of the terminal were set to
+be of different width than Emacs expects.  Set this to nil to disable
+using TABs for cursor motion.  */);
+  tty_cursor_movement_use_TAB = 1;
 
   defsubr (&Stty_display_color_p);
   defsubr (&Stty_display_color_cells);

@@ -2018,20 +2018,6 @@ x_set_scroll_bar_background (struct frame *f, Lisp_Object value, Lisp_Object old
   if (f->output_data.x->scroll_bar_background_pixel != -1)
     unload_color (f, f->output_data.x->scroll_bar_background_pixel);
 
-#if defined (USE_LUCID) && defined (USE_TOOLKIT_SCROLL_BARS)
-  /* Scrollbar shadow colors.  */
-  if (f->output_data.x->scroll_bar_top_shadow_pixel != -1)
-    {
-      unload_color (f, f->output_data.x->scroll_bar_top_shadow_pixel);
-      f->output_data.x->scroll_bar_top_shadow_pixel = -1;
-    }
-  if (f->output_data.x->scroll_bar_bottom_shadow_pixel != -1)
-    {
-      unload_color (f, f->output_data.x->scroll_bar_bottom_shadow_pixel);
-      f->output_data.x->scroll_bar_bottom_shadow_pixel = -1;
-    }
-#endif /* USE_LUCID && USE_TOOLKIT_SCROLL_BARS */
-
   f->output_data.x->scroll_bar_background_pixel = pixel;
   if (FRAME_X_WINDOW (f) && FRAME_VISIBLE_P (f))
     {
@@ -3320,7 +3306,7 @@ struct x_xim_text_conversion_data
   struct coding_system *coding;
   char *source;
   struct x_display_info *dpyinfo;
-  size_t size;
+  ptrdiff_t size;
 };
 
 static Lisp_Object
@@ -3453,7 +3439,7 @@ x_xim_text_to_utf8_unix (struct x_display_info *dpyinfo,
 
 static char *
 x_encode_xim_text (struct x_display_info *dpyinfo, char *text,
-		   size_t size, ptrdiff_t *length,
+		   ptrdiff_t size, ptrdiff_t *length,
 		   ptrdiff_t *chars)
 {
   struct coding_system coding;
@@ -4631,10 +4617,6 @@ This function is an internal primitive--use `make-frame' instead.  */)
   FRAME_FONTSET (f) = -1;
   f->output_data.x->scroll_bar_foreground_pixel = -1;
   f->output_data.x->scroll_bar_background_pixel = -1;
-#if defined (USE_LUCID) && defined (USE_TOOLKIT_SCROLL_BARS)
-  f->output_data.x->scroll_bar_top_shadow_pixel = -1;
-  f->output_data.x->scroll_bar_bottom_shadow_pixel = -1;
-#endif /* USE_LUCID && USE_TOOLKIT_SCROLL_BARS */
   f->output_data.x->white_relief.pixel = -1;
   f->output_data.x->black_relief.pixel = -1;
   f->output_data.x->visibility_state = VisibilityFullyObscured;
@@ -5835,7 +5817,7 @@ x_get_monitor_attributes_xinerama (struct x_display_info *dpyinfo)
 			/ x_display_pixel_width (dpyinfo));
   mm_height_per_pixel = ((double) HeightMMOfScreen (dpyinfo->screen)
 			 / x_display_pixel_height (dpyinfo));
-  monitors = xzalloc (n_monitors * sizeof *monitors);
+  monitors = xcalloc (n_monitors, sizeof *monitors);
   for (i = 0; i < n_monitors; ++i)
     {
       struct MonitorInfo *mi = &monitors[i];
@@ -5909,7 +5891,7 @@ x_get_monitor_attributes_xrandr (struct x_display_info *dpyinfo)
       if (!rr_monitors)
 	goto fallback;
 
-      monitors = xzalloc (n_monitors * sizeof *monitors);
+      monitors = xcalloc (n_monitors, sizeof *monitors);
 #ifdef USE_XCB
       atom_name_cookies = alloca (n_monitors * sizeof *atom_name_cookies);
 #endif
@@ -6008,7 +5990,7 @@ x_get_monitor_attributes_xrandr (struct x_display_info *dpyinfo)
       return Qnil;
     }
   n_monitors = resources->noutput;
-  monitors = xzalloc (n_monitors * sizeof *monitors);
+  monitors = xcalloc (n_monitors, sizeof *monitors);
 
 #if RANDR13_LIBRARY
   if (randr13_avail)
@@ -6171,7 +6153,7 @@ Internal use only, use `display-monitor-attributes-list' instead.  */)
 			 / x_display_pixel_height (dpyinfo));
 #endif
   monitor_frames = make_nil_vector (n_monitors);
-  monitors = xzalloc (n_monitors * sizeof *monitors);
+  monitors = xcalloc (n_monitors, sizeof *monitors);
 
   FOR_EACH_FRAME (rest, frame)
     {
@@ -7974,10 +7956,6 @@ x_create_tip_frame (struct x_display_info *dpyinfo, Lisp_Object parms)
   FRAME_FONTSET (f) = -1;
   f->output_data.x->scroll_bar_foreground_pixel = -1;
   f->output_data.x->scroll_bar_background_pixel = -1;
-#if defined (USE_LUCID) && defined (USE_TOOLKIT_SCROLL_BARS)
-  f->output_data.x->scroll_bar_top_shadow_pixel = -1;
-  f->output_data.x->scroll_bar_bottom_shadow_pixel = -1;
-#endif /* USE_LUCID && USE_TOOLKIT_SCROLL_BARS */
   f->output_data.x->white_relief.pixel = -1;
   f->output_data.x->black_relief.pixel = -1;
 
@@ -9854,7 +9832,7 @@ eliminated in future versions of Emacs.  */);
   staticpro (&tip_dy);
 
   defsubr (&Sx_uses_old_gtk_dialog);
-#if defined (USE_MOTIF) || defined (USE_GTK)
+#ifdef USE_GTK
   defsubr (&Sx_file_dialog);
 #endif
 

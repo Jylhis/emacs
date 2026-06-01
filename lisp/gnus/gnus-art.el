@@ -7985,8 +7985,6 @@ variable is the real callback function."
      0 (>= gnus-button-browse-level 0) browse-url 0)
     ("^[^:]+:" gnus-button-url-regexp
      0 (>= gnus-button-browse-level 0) browse-url 0)
-    ("^OpenPGP:.*url=" gnus-button-url-regexp
-     0 (>= gnus-button-browse-level 0) gnus-button-openpgp 0)
     ("^[^:]+:" "\\bmailto:\\([-a-z.@_+0-9%=?&/]+\\)"
      0 (>= gnus-button-message-level 0) gnus-url-mailto 1)
     ("^[^:]+:" "\\(<\\(url: \\)?\\(nntp\\|news\\):\\([^>\n ]*\\)>\\)"
@@ -8458,17 +8456,6 @@ url is put as the `gnus-button-url' overlay property on the button."
 		      (how-many ",")))
 	  (Info-index-next 1)))
       nil)))
-
-(autoload 'pgg-snarf-keys-region "pgg")
-;; Called after pgg-snarf-keys-region, which autoloads pgg.el.
-(declare-function pgg-display-output-buffer "pgg" (start end status))
-
-(defun gnus-button-openpgp (url)
-  "Retrieve and add an OpenPGP key given URL from an OpenPGP header."
-  (with-temp-buffer
-    (mm-url-insert-file-contents-external url)
-    (pgg-snarf-keys-region (point-min) (point-max))
-    (pgg-display-output-buffer nil nil nil)))
 
 (defun gnus-button-message-id (message-id)
   "Fetch MESSAGE-ID."

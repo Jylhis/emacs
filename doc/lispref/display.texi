@@ -3539,6 +3539,11 @@ buffer text.  Note that this is so even if the overlay or display
 string is displayed in the display margins (@pxref{Display Margins}).
 
 @item
+If the text is to be shown in the display margins, and any given
+attribute has not been specified during the preceding steps, Emacs
+applies the attribute of the @code{margin} face.
+
+@item
 If any given attribute has not been specified during the preceding
 steps, Emacs applies the attribute of the @code{default} face.
 @end itemize
@@ -5990,7 +5995,6 @@ displayed (@pxref{Display Feature Testing}).
 * Image Descriptors::   How to specify an image for use in @code{:display}.
 * XBM Images::          Special features for XBM format.
 * XPM Images::          Special features for XPM format.
-* ImageMagick Images::  Special features available through ImageMagick.
 * SVG Images::          Creating and manipulating SVG images.
 * Other Image Types::   Various other formats are supported.
 * Defining Images::     Convenient ways to define an image for later use.
@@ -6027,11 +6031,6 @@ any optional libraries includes BMP images.@footnote{
 On MS-Windows, this requires @code{w32-use-native-image-API} to be set
 non-@code{nil}.
 }
-
-  Furthermore, if you build Emacs with ImageMagick
-(@code{libMagickWand}) support, Emacs can display any image format
-that ImageMagick can.  @xref{ImageMagick Images}.  All images
-displayed via ImageMagick have type symbol @code{imagemagick}.
 
 @defvar image-types
 This variable contains a list of type symbols for image formats which
@@ -6194,13 +6193,12 @@ according to the value of @code{image-scaling-factor}.
 
 @item :rotation @var{angle}
 Specifies a rotation angle in degrees.  Only multiples of 90 degrees
-are supported, unless the image type is @code{imagemagick}.  Positive
-values rotate clockwise, negative values counter-clockwise.  Rotation
-is performed after scaling and cropping.
+are supported.  Positive values rotate clockwise, negative values
+counter-clockwise.  Rotation is performed after scaling and
+cropping.
 
 @item :flip @var{flip}
 If this is @code{t}, the image will be horizontally flipped.
-Currently it has no effect if the image type is @code{imagemagick}.
 Vertical flipping can be achieved by rotating the image 180 degrees
 and toggling this value.
 
@@ -6413,8 +6411,7 @@ integral multiple of 90 degrees.
 
 If image transforms are not supported, @code{:rotation}, @code{:crop},
 @code{:width}, @code{:height}, @code{:scale}, @code{:max-width} and
-@code{:max-height} will only be usable through ImageMagick, if
-available (@pxref{ImageMagick Images}).
+@code{:max-height} will not be usable.
 @end defun
 @node XBM Images
 @subsection XBM Images
@@ -6486,92 +6483,6 @@ The value, @var{symbols}, should be an alist whose elements have the
 form @code{(@var{name} . @var{color})}.  In each element, @var{name} is
 the name of a color as it appears in the image file, and @var{color}
 specifies the actual color to use for displaying that name.
-@end table
-
-@node ImageMagick Images
-@subsection ImageMagick Images
-@cindex ImageMagick images
-@cindex images, support for more formats
-
-  If your Emacs build has ImageMagick support, you can use the
-ImageMagick library to load many image formats (@pxref{File
-Conveniences,,, emacs, The GNU Emacs Manual}).  The image type symbol
-for images loaded via ImageMagick is @code{imagemagick}, regardless of
-the actual underlying image format.
-
-To check for ImageMagick support, use the following:
-
-@lisp
-(image-type-available-p 'imagemagick)
-@end lisp
-
-@defun imagemagick-types
-This function returns a list of image file extensions supported by the
-current ImageMagick installation.  Each list element is a symbol
-representing an internal ImageMagick name for an image type, such as
-@code{BMP} for @file{.bmp} images.
-@end defun
-
-@defopt imagemagick-enabled-types
-The value of this variable is a list of ImageMagick image types which
-Emacs may attempt to render using ImageMagick.  Each list element
-should be one of the symbols in the list returned by
-@code{imagemagick-types}, or an equivalent string.  Alternatively, a
-value of @code{t} enables ImageMagick for all possible image types.
-Regardless of the value of this variable,
-@code{imagemagick-types-inhibit} (see below) takes precedence.
-@end defopt
-
-@defopt imagemagick-types-inhibit
-The value of this variable lists the ImageMagick image types which
-should never be rendered using ImageMagick, regardless of the value of
-@code{imagemagick-enabled-types}.  A value of @code{t} disables
-ImageMagick entirely.
-@end defopt
-
-@defvar image-format-suffixes
-This variable is an alist mapping image types to file name extensions.
-Emacs uses this in conjunction with the @code{:format} image property
-(see below) to give a hint to the ImageMagick library as to the type
-of an image.  Each element has the form @code{(@var{type}
-@var{extension})}, where @var{type} is a symbol specifying an image
-content-type, and @var{extension} is a string that specifies the
-associated file name extension.
-@end defvar
-
-  Images loaded with ImageMagick support the following additional
-image descriptor properties:
-
-@table @code
-@item :background @var{background}
-@var{background}, if non-@code{nil}, should be a string specifying a
-color, which is used as the image's background color if the image
-supports transparency.  If the value is @code{nil}, it defaults to the
-frame's background color.
-
-@item :format @var{type}
-The value, @var{type}, should be a symbol specifying the type of the
-image data, as found in @code{image-format-suffixes}.  This is used
-when the image does not have an associated file name, to provide a
-hint to ImageMagick to help it detect the image type.
-
-@item :crop @var{geometry}
-The value of @var{geometry} should be a list of the form
-@code{(@var{width} @var{height} @var{x} @var{y})}.  @var{width} and
-@var{height} specify the width and height of the cropped image.  If
-@var{x} is a positive number it specifies the offset of the cropped
-area from the left of the original image, and if negative the offset
-from the right.  If @var{y} is a positive number it specifies the
-offset from the top of the original image, and if negative from the
-bottom.  If @var{x} or @var{y} are @code{nil} or unspecified the crop
-area will be centered on the original image.
-
-If the crop area is outside or overlaps the edge of the image it will
-be reduced to exclude any areas outside of the image.  This means it
-is not possible to use @code{:crop} to increase the size of the image
-by entering large @var{width} or @var{height} values.
-
-Cropping is performed after scaling but before rotation.
 @end table
 
 @node SVG Images
@@ -7394,8 +7305,7 @@ about these image-specific key bindings.
 @cindex image frames
 Some image files can contain more than one image.  We say that there
 are multiple ``frames'' in the image.  At present, Emacs supports
-multiple frames for GIF, TIFF, WebP, and certain ImageMagick formats
-such as DJVM@.
+multiple frames for GIF, TIFF, and WebP images.
 
 The frames can be used either to represent multiple pages (this is
 usually the case with multi-frame TIFF files, for example), or to

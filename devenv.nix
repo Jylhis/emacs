@@ -13,6 +13,7 @@ in
       texinfo
       gnutls
       jansson
+      libgcrypt
       libxml2
       ncurses
       sqlite
@@ -135,6 +136,19 @@ in
     CC = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}";
     CXX = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "c++"}";
     OBJC = "${lib.getExe pkgs.ccache} ${lib.getExe' pkgs.gcc "cc"}";
+
+    # Runtime native compilation: libgccjit shells out to the gcc
+    # driver, which then invokes `ld` to link each .eln.  That driver
+    # is *not* the cc-wrapper, so it cannot find the C runtime startup
+    # files (crti.o, from glibc) or libgcc_s (from gcc's lib output)
+    # on its own and fails with "cannot find crti.o" / "-lgcc_s".
+    # LIBRARY_PATH points the driver at both.  Without this, any test
+    # that redefines a primitive subr (which triggers an on-demand
+    # trampoline native-compile, e.g. subr-tests-bug22027) fails.
+    LIBRARY_PATH = lib.makeLibraryPath [
+      pkgs.stdenv.cc.cc
+      pkgs.stdenv.cc.libc
+    ];
   };
 
   enterShell =
@@ -209,9 +223,9 @@ in
   enterTest = ''
     set -euo pipefail
     echo "Running devenv tests"
-    git --version | grep --color=auto "${pkgs.git.version}"
-    cc --version | head -1
-    ccache --version | head -1
+    git --version
+    cc --version | sed -n '1p'
+    ccache --version | sed -n '1p'
     pkg-config --version
   '';
 

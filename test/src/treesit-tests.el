@@ -924,7 +924,10 @@ visible_end.)"
         (treesit-parser-create 'javascript))
       (should (equal '((15 . 29)) (treesit-query-range 'javascript query)))
       (should (equal '((16 . 28)) (treesit-query-range
-                                   'javascript query nil nil '(1 . -1)))))))
+                                   'javascript query nil nil '(1 . -1))))
+      (should (equal nil (treesit-query-range
+                          'javascript query nil nil nil
+                          (lambda (_node _offset) nil)))))))
 
 (ert-deftest treesit-range-merge ()
   "Test merging ranges."
