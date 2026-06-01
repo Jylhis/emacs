@@ -40,6 +40,14 @@ def _load_path(lisp_root: Path) -> list[str]:
         if rel.startswith("cedet/"):
             continue
         paths.append(str(d))
+    # obsolete/ goes LAST so its files (which often shadow a live library,
+    # e.g. obsolete/cl.el) never win over the current one, while still
+    # letting the obsolete packages resolve their intra-obsolete requires
+    # (idlwave -> idlw-help/idlw-shell, isearchb -> iswitchb).  Without it
+    # those few files fail to byte-compile with "Cannot open load file".
+    obsolete = lisp_root / "obsolete"
+    if obsolete.is_dir():
+        paths.append(str(obsolete))
     return paths
 
 def main() -> int:
