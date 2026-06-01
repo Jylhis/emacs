@@ -208,8 +208,8 @@ sys_types_overrides = {
 }
 
 # ---- string.h: GNU extensions that gnulib portably provides.
-# Enable only the inlines lib/file-has-acl.c, sha256.c, and the
-# lib-src tools currently call (streq, memeq, strnul, mempcpy).
+# Enable only the inlines lib/file-has-acl.c and the lib-src tools
+# currently call (streq, memeq, strnul, mempcpy).
 # c++defs.h / arg-nonnull.h / warn-on-use.h are spliced in by
 # process_in_h.py, so the resulting <string.h> compiles cleanly.  ----
 have_mempcpy = cc.has_function('mempcpy',

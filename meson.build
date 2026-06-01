@@ -414,8 +414,10 @@ endif
 # libgcrypt provides MD5/SHA-1/SHA-2/SHA-3 used by Fmd5,
 # Fsecure_hash, Fbuffer_hash, decompress-zlib, comp.c, and the
 # make-fingerprint host tool.  In-tree replacement for gnulib's
-# lib/{md5,sha1,sha256,sha512,sha3}.c.
-gcrypt_dep = dependency('libgcrypt', required : true)
+# lib/{md5,sha1,sha256,sha512,sha3}.c.  Require >= 1.8 so the
+# GCRY_MD_SHA3_* algorithms used by Fsecure_hash are guaranteed
+# present (SHA-3 landed in libgcrypt 1.7).
+gcrypt_dep = dependency('libgcrypt', version : '>=1.8', required : true)
 
 # Native compilation via libgccjit (configure.ac:1588).  No pkg-config
 # file ships with libgccjit, so probe for the header.  Try
