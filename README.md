@@ -59,6 +59,9 @@ meson compile -C build
 # Smoke tests
 meson test -C build --suite smoke
 
+# Refresh the checked-in bootstrap autoload snapshot
+meson compile -C build ldefs-boot
+
 # Debug build
 meson setup build --buildtype=debug -Dcheck=yes,glyphs -Dcheck-lisp-object-type=true
 

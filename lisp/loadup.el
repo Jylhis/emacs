@@ -170,7 +170,8 @@
 ;; gets added that is necessary during bootstrapping, ldefs-boot.el
 ;; should be updated by overwriting it with an up-to-date copy of
 ;; loaddefs.el that is not corrupted by local changes.
-;; admin/update_autogen can be used to update ldefs-boot.el periodically.
+;; On this fork, `meson compile -C build ldefs-boot' updates
+;; ldefs-boot.el periodically.
 (condition-case nil
     (load "loaddefs")
   (file-error
