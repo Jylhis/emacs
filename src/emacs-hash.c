@@ -21,6 +21,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include "emacs-hash.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -51,6 +52,23 @@ emacs_hash_ctor (void)
   emacs_hash_init_once ();
 }
 
+static void
+emacs_hash_die (const char *where, int algo, gcry_error_t err)
+{
+  fprintf (stderr, "emacs-hash: %s failed for algorithm %d: %s\n",
+	   where, algo, gcry_strerror (err));
+  abort ();
+}
+
+static const unsigned char *
+emacs_hash_read (gcry_md_hd_t h, int algo)
+{
+  const unsigned char *digest = gcry_md_read (h, algo);
+  if (! digest)
+    emacs_hash_die ("gcry_md_read", algo, GPG_ERR_DIGEST_ALGO);
+  return digest;
+}
+
 /* One-shot hash of LEN bytes at BUF, written into RESBLOCK.
    Returns RESBLOCK.  */
 static void *
@@ -58,8 +76,15 @@ emacs_hash_oneshot (int algo, size_t digest_size,
 		    const char *buf, size_t len, void *resblock)
 {
   emacs_hash_init_once ();
-  gcry_md_hash_buffer (algo, resblock, buf, len);
-  (void) digest_size;
+
+  gcry_md_hd_t hd;
+  gcry_error_t err = gcry_md_open (&hd, algo, 0);
+  if (err)
+    emacs_hash_die ("gcry_md_open", algo, err);
+
+  gcry_md_write (hd, buf, len);
+  memcpy (resblock, emacs_hash_read (hd, algo), digest_size);
+  gcry_md_close (hd);
   return resblock;
 }
 
@@ -142,7 +167,8 @@ emacs_hash_stream (int algo, size_t digest_size,
   emacs_hash_init_once ();
 
   gcry_md_hd_t hd;
-  if (gcry_md_open (&hd, algo, 0) != 0)
+  gcry_error_t err = gcry_md_open (&hd, algo, 0);
+  if (err)
     return 1;
 
   enum { CHUNK = 32 * 1024 };
@@ -166,7 +192,7 @@ emacs_hash_stream (int algo, size_t digest_size,
   free (buf);
 
   if (rc == 0)
-    memcpy (resblock, gcry_md_read (hd, 0), digest_size);
+    memcpy (resblock, emacs_hash_read (hd, algo), digest_size);
   gcry_md_close (hd);
   return rc;
 }
@@ -192,24 +218,22 @@ static void
 ctx_init (gcry_md_hd_t *h, int algo)
 {
   emacs_hash_init_once ();
-  if (gcry_md_open (h, algo, 0) != 0)
+  gcry_error_t err = gcry_md_open (h, algo, 0);
+  if (err)
     {
-      /* Match gnulib: an init failure is essentially unrecoverable.
-	 We zero the handle so a later process/finish hits a NULL
-	 pointer rather than a stale handle.  */
       *h = NULL;
+      emacs_hash_die ("gcry_md_open", algo, err);
     }
 }
 
 static void *
-ctx_finish (gcry_md_hd_t *h, size_t digest_size, void *resbuf)
+ctx_finish (gcry_md_hd_t *h, int algo, size_t digest_size, void *resbuf)
 {
-  if (*h)
-    {
-      memcpy (resbuf, gcry_md_read (*h, 0), digest_size);
-      gcry_md_close (*h);
-      *h = NULL;
-    }
+  if (! *h)
+    emacs_hash_die ("gcry_md_read", algo, GPG_ERR_DIGEST_ALGO);
+  memcpy (resbuf, emacs_hash_read (*h, algo), digest_size);
+  gcry_md_close (*h);
+  *h = NULL;
   return resbuf;
 }
 
@@ -235,7 +259,7 @@ md5_process_block (const void *buf, size_t len, struct md5_ctx *ctx)
 void *
 md5_finish_ctx (struct md5_ctx *ctx, void *resbuf)
 {
-  return ctx_finish (&ctx->h, MD5_DIGEST_SIZE, resbuf);
+  return ctx_finish (&ctx->h, GCRY_MD_MD5, MD5_DIGEST_SIZE, resbuf);
 }
 
 void
@@ -254,7 +278,7 @@ sha1_process_bytes (const void *buf, size_t len, struct sha1_ctx *ctx)
 void *
 sha1_finish_ctx (struct sha1_ctx *ctx, void *resbuf)
 {
-  return ctx_finish (&ctx->h, SHA1_DIGEST_SIZE, resbuf);
+  return ctx_finish (&ctx->h, GCRY_MD_SHA1, SHA1_DIGEST_SIZE, resbuf);
 }
 
 void
@@ -273,5 +297,5 @@ sha256_process_bytes (const void *buf, size_t len, struct sha256_ctx *ctx)
 void *
 sha256_finish_ctx (struct sha256_ctx *ctx, void *resbuf)
 {
-  return ctx_finish (&ctx->h, SHA256_DIGEST_SIZE, resbuf);
+  return ctx_finish (&ctx->h, GCRY_MD_SHA256, SHA256_DIGEST_SIZE, resbuf);
 }
