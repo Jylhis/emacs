@@ -2246,10 +2246,13 @@ Interactively, EVENT is the value of `last-nonmenu-event'."
 				    (plist-get eww-data :url)))))))
       (eww-browse-url
        (concat
-        (shr-expand-url
-         (or (cdr (assq :action form))
-             (car (url-path-and-query (url-generic-parse-url (plist-get eww-data :url)))))
-         (plist-get eww-data :url))
+        (let ((base-url (plist-get eww-data :url)))
+          (if-let* ((action (cdr (assq :action form))))
+              (shr-expand-url action base-url)
+            (let* ((urlobj (url-generic-parse-url base-url))
+                   (path (car (url-path-and-query urlobj))))
+              (setf (url-filename urlobj) path)
+              (url-recreate-url urlobj))))
         "?"
         (mm-url-encode-www-form-urlencoded values))))))
 
