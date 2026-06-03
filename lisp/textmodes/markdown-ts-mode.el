@@ -5411,11 +5411,16 @@ NOTE: See `markdown-ts--set-up-inline'."
 ;;;###autoload
 (defun markdown-ts-buffer-string ()
   "Like `buffer-string', and convert overlay properties to text properties."
-  (let ((str (buffer-string)))
-    (dolist (ov (overlays-in (point-min) (point-max)) str)
-      (when-let* ((face (overlay-get ov 'face)))
-        (font-lock-append-text-property
-         (overlay-start ov) (overlay-end ov) 'face face str)))))
+  (let* ((beg (point-min))
+         (end (point-max))
+         (str (buffer-substring beg end))
+         (len (length str)))
+    (dolist (ov (overlays-in beg end) str)
+      (when-let* ((face (overlay-get ov 'face))
+                  (ov-beg (max 0 (- (overlay-start ov) beg)))
+                  (ov-end (min len (- (overlay-end ov) beg))))
+        (when (<= ov-beg ov-end)
+          (font-lock-append-text-property ov-beg ov-end 'face face str))))))
 
 (defun markdown-ts--barf-if-not-mode (&optional context)
   "Signal an error if the current buffer is not a `markdown-ts-mode' buffer.
