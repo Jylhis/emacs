@@ -180,7 +180,9 @@ directory is first displayed.
 
 You can still use `vc-dir-show-fileentry' to manually add an entry for
 an \\+`up-to-date' or \\+`ignored' file."
-  :type 'boolean
+  :type '(choice (const :tag "Never auto-hide" nil)
+                 (const :tag "Hide on revert only" revert)
+                 (const :tag "Always auto-hide" t))
   :group 'vc
   :version "31.1")
 
