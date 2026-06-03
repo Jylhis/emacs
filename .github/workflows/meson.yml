@@ -230,7 +230,6 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
-      issues: write
     strategy:
       # Don't fast-fail the gtk3 variant when no-X variant breaks (or
       # vice versa); the parity audit tracks each independently.
@@ -255,6 +254,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -408,33 +409,6 @@ jobs:
           echo "=== meson-log.txt ==="
           tail -200 build/meson-logs/meson-log.txt || true
 
-      # Post the verbose compile log to the PR so diagnostics are
-      # visible without admin-rights log access.  Only fires on PRs.
-      - name: Post build failure as PR comment
-        if: failure() && github.event_name == 'pull_request'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9
-        with:
-          script: |
-            const fs = await import('node:fs');
-            const sections = [];
-            for (const [name, path] of [
-              ['compile.log (last 8 KB)', 'build/compile.log'],
-              ['meson-log.txt (last 4 KB)', 'build/meson-logs/meson-log.txt'],
-            ]) {
-              try {
-                const text = fs.readFileSync(path, 'utf8');
-                const slice = text.slice(name.includes('8') ? -8192 : -4096);
-                sections.push(`<details><summary>${name}</summary>\n\n\`\`\`\n${slice}\n\`\`\`\n</details>`);
-              } catch (e) {
-                sections.push(`(no ${path}: ${e.message})`);
-              }
-            }
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
-              body: '## Meson build failure on ' + context.sha.slice(0, 7) + '\n\n' + sections.join('\n\n'),
-            });
 
       - name: meson compile bootstrap-emacs.pdmp
         # The pbootstrap dump (run_dump.py --mode pbootstrap) is
@@ -744,6 +718,28 @@ jobs:
             build/compile.log
           retention-days: 14
           if-no-files-found: ignore
+
+  report-linux-failure:
+    name: report linux meson failure
+    needs: [build-and-test]
+    if: always() && github.event_name == 'pull_request' && needs.build-and-test.result == 'failure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Post build failure as PR comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3  # v9
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body: '## Meson Linux build failed on ' + context.sha.slice(0, 7) + '\n\nSee the build-and-test job logs and uploaded artifacts for diagnostics.',
+            });
 
   required:
     name: meson required
