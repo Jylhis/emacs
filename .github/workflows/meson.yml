@@ -211,8 +211,14 @@ jobs:
       - name: Lint GitHub Actions workflows
         if: needs.classify.outputs.actionlint == 'true'
         run: |
-          # Download actionlint
-          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          # Download pinned actionlint release and verify checksum.
+          ACTIONLINT_VERSION="1.7.8"
+          ACTIONLINT_TAR="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          ACTIONLINT_SHA256="48d4e0ec9ed4e5f3a6102b2f518c9f87c5a7a90681e0f3f8fce1168f335807f1"
+          curl -sSfL -o "$ACTIONLINT_TAR" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${ACTIONLINT_TAR}"
+          echo "${ACTIONLINT_SHA256}  ${ACTIONLINT_TAR}" | sha256sum -c -
+          tar -xzf "$ACTIONLINT_TAR"
           ./actionlint -color
 
   # ================================================================
