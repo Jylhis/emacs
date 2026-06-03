@@ -240,7 +240,7 @@ in
       exec = ''
         set -euo pipefail
         cd "$DEVENV_ROOT"
-        codespell --config admin/.codespell.cfg "$@"
+        bash admin/run-codespell "$@"
       '';
     };
 
