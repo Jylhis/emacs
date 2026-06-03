@@ -1968,11 +1968,11 @@ DEFUN ("x-server-version", Fx_server_version, Sx_server_version, 0, 1, 0,
 }
 
 
-DEFUN ("x-display-screens", Fx_display_screens, Sx_display_screens, 0, 1, 0,
+  px_to_mm = 25.4 / dpyinfo->resy;
        doc: /* SKIP: real doc in xfns.c.  */)
   (Lisp_Object terminal)
 {
-  check_ns_display_info (terminal);
+  px_to_mm = 25.4 / dpyinfo->resx;
   return make_fixnum (1);
 }
 
