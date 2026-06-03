@@ -1610,11 +1610,15 @@ the current start-tag or the current comment or the current cdata, ..."
            (progn
              (insert "</" (sgml-tag-name (car (last context))) ">")
              (indent-according-to-mode)))))
-    (_
-     (error "Nothing to close"))))
-
-(defun sgml-empty-tag-p (tag-name)
-  "Return non-nil if TAG-NAME is an implicitly empty tag."
+    ((or (guard (let ((case-fold-search t)
+                      (sensitive-re
+                       (concat "\\`" (regexp-opt sgml-whitespace-sensitive-tags)
+                               "\\'")))
+              (cl-find-if (lambda (tag)
+                            (let ((name (sgml-tag-name tag)))
+                              (and (stringp name)
+                                   (string-match-p sensitive-re name))))
+                          (save-excursion (sgml-get-context)))))
   (and (not sgml-xml-mode)
        (assoc-string tag-name sgml-empty-tags 'ignore-case)))
 
