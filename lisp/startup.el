@@ -1265,7 +1265,18 @@ unconditionally."
          (backup-inhibited t)
          (dirs (list dir)))
     (add-to-list 'load-path (directory-file-name dir))
-    (dolist (file (directory-files-recursively dir "" t pred t))
+    (dolist
+        (file
+         (condition-case err
+             (directory-files-recursively dir "" t pred t)
+           (file-error
+            (display-warning
+             'startup
+             (format-message
+              "Skipping recursive traversal of `%s' due to filesystem error: %s"
+              dir (error-message-string err))
+             :warning)
+            nil)))
       (cond
        ((and (file-regular-p file) (string-suffix-p ".el" file))
         (unless just-activate
