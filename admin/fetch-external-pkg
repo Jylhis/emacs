@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+"""Fetch an externally maintained package at a specific upstream SHA.
+
+Reads admin/external-packages.json, clones the upstream repository at
+the given SHA, copies the listed files into this Emacs tree, updates
+the manifest's current_sha, and produces a git commit that records the
+upstream SHA.
+
+Usage:
+    admin/fetch-external-pkg --package tramp --sha abc1234...
+    admin/fetch-external-pkg --package org   --sha HEAD
+
+Options:
+    --package NAME   Name of the package (key in external-packages.json).
+    --sha REF        Git ref or full SHA to check out from the upstream.
+    --dry-run        Print what would be copied without touching the tree.
+    --manifest PATH  Override the default manifest path.
+    --repo-root PATH Override the repository root (default: auto-detected).
+    --no-commit      Copy files but do not create a git commit.
+
+The commit message produced is:
+
+    Update <Package> to upstream <sha>
+
+    * path/to/file.el: Update from upstream <upstream_url>.
+    ...
+
+    Upstream-URL: <upstream_url>
+    Upstream-SHA: <full-sha>
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+
+# ---------------------------------------------------------------------------
+# Public API (tested by test/admin/fetch-external-pkg-tests.py)
+# ---------------------------------------------------------------------------
+
+def load_manifest(path: Path) -> dict:
+    """Load and return the external-packages.json manifest."""
+    with open(path) as f:
+        return json.load(f)
+
+
+def resolve_package(manifest: dict, name: str) -> dict:
+    """Return the package entry for *name*, or exit with an error."""
+    packages = manifest.get("packages", {})
+    if name not in packages:
+        known = sorted(packages.keys())
+        print(
+            f"error: unknown package '{name}'\n"
+            f"known packages: {', '.join(known)}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    return packages[name]
+
+
+def copy_files(
+    upstream_root: Path,
+    emacs_root: Path,
+    paths: list[dict],
+    dry_run: bool = False,
+) -> list[Path]:
+    """Copy files described by *paths* from *upstream_root* to *emacs_root*.
+
+    Each entry in *paths* is {"from": <glob-relative-to-upstream_root>,
+    "to": <directory-relative-to-emacs_root>}.
+
+    Returns the list of destination files written (or that would be
+    written under --dry-run).
+    """
+    written: list[Path] = []
+    for entry in paths:
+        src_pattern = entry["from"]
+        dst_dir_rel = entry["to"]
+
+        matched = sorted(upstream_root.glob(src_pattern))
+        if not matched:
+            print(
+                f"  warning: no files matched '{src_pattern}' in upstream",
+                file=sys.stderr,
+            )
+            continue
+
+        dst_dir = emacs_root / dst_dir_rel
+        for src_file in matched:
+            if not src_file.is_file():
+                continue
+            dst_file = dst_dir / src_file.name
+            if dry_run:
+                print(f"  [dry-run] {src_file.relative_to(upstream_root)}"
+                      f"  →  {dst_file.relative_to(emacs_root)}")
+            else:
+                dst_dir.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(src_file, dst_file)
+            written.append(dst_file)
+    return written
+
+
+# ---------------------------------------------------------------------------
+# Git helpers
+# ---------------------------------------------------------------------------
+
+def _git(args: list[str], cwd: Path | None = None, check: bool = True) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+    )
+    if check and result.returncode != 0:
+        print(result.stderr, file=sys.stderr)
+        raise SystemExit(result.returncode)
+    return result.stdout.strip()
+
+
+def resolve_sha(upstream_dir: Path, ref: str) -> str:
+    """Resolve *ref* to a full 40-character SHA in *upstream_dir*."""
+    return _git(["rev-parse", ref], cwd=upstream_dir)
+
+
+def fetch_upstream(url: str, ref: str, tmpdir: Path) -> Path:
+    """Clone *url* into *tmpdir* and check out *ref*.
+
+    Uses a shallow, single-branch clone when *ref* looks like a branch
+    or tag; falls back to a full clone for arbitrary SHAs (which git
+    fetch does not support by default).
+
+    Returns the path to the cloned repository.
+    """
+    repo = tmpdir / "upstream"
+    repo.mkdir()
+
+    # Try shallow clone first (works for branch tips and tags).
+    result = subprocess.run(
+        ["git", "clone", "--no-checkout", "--depth=1",
+         "--branch", ref, url, str(repo)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        # Full clone + checkout for arbitrary SHAs.
+        print(
+            f"  shallow clone failed; falling back to full clone "
+            f"(this may take a while for large repos)…",
+            file=sys.stderr,
+        )
+        shutil.rmtree(repo)
+        repo.mkdir()
+        _git(["clone", "--no-checkout", url, str(repo)])
+    _git(["checkout", ref, "--"], cwd=repo)
+    return repo
+
+
+def git_commit(
+    emacs_root: Path,
+    pkg_name: str,
+    upstream_url: str,
+    full_sha: str,
+    changed_files: list[Path],
+) -> None:
+    """Stage *changed_files* and create a ChangeLog-style commit."""
+    if not changed_files:
+        print("  no files changed; skipping commit.", file=sys.stderr)
+        return
+
+    # Stage the changed files.
+    rel_paths = [str(f.relative_to(emacs_root)) for f in changed_files]
+    _git(["add", "--", *rel_paths], cwd=emacs_root)
+
+    # Build commit message.
+    pkg_title = pkg_name.capitalize()
+    cl_lines = "\n".join(
+        f"* {p}: Update from {pkg_title} upstream." for p in rel_paths
+    )
+    msg = (
+        f"Update {pkg_title} to upstream {full_sha[:12]}\n"
+        f"\n"
+        f"{cl_lines}\n"
+        f"\n"
+        f"Upstream-URL: {upstream_url}\n"
+        f"Upstream-SHA: {full_sha}\n"
+        f"\n"
+        f"Co-Authored-By: Paperclip <noreply@paperclip.ing>"
+    )
+
+    _git(["commit", "--no-verify", "-m", msg], cwd=emacs_root)
+    print(f"  committed: Update {pkg_title} to upstream {full_sha[:12]}")
+
+
+# ---------------------------------------------------------------------------
+# Manifest update helper
+# ---------------------------------------------------------------------------
+
+def update_manifest_sha(manifest_path: Path, pkg_name: str, sha: str) -> None:
+    """Write the resolved *sha* back into *manifest_path*."""
+    with open(manifest_path) as f:
+        data = json.load(f)
+    data["packages"][pkg_name]["current_sha"] = sha
+    with open(manifest_path, "w") as f:
+        json.dump(data, f, indent=2)
+        f.write("\n")
+
+
+# ---------------------------------------------------------------------------
+# CLI entry point
+# ---------------------------------------------------------------------------
+
+def _auto_repo_root() -> Path:
+    """Walk up from this script to find the repository root (has .git/)."""
+    here = Path(__file__).resolve().parent
+    for candidate in [here, here.parent, here.parent.parent]:
+        if (candidate / ".git").exists():
+            return candidate
+    raise SystemExit("error: could not find repository root (no .git found)")
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--package", required=True,
+                   help="Package name (key in external-packages.json).")
+    p.add_argument("--sha", required=True,
+                   help="Git ref or SHA to check out from the upstream.")
+    p.add_argument("--dry-run", action="store_true",
+                   help="Show what would be copied without modifying the tree.")
+    p.add_argument("--no-commit", action="store_true",
+                   help="Copy files but do not create a git commit.")
+    p.add_argument("--manifest", type=Path,
+                   help="Override path to external-packages.json.")
+    p.add_argument("--repo-root", type=Path,
+                   help="Override path to the Emacs repository root.")
+    args = p.parse_args(argv)
+
+    emacs_root: Path = (
+        args.repo_root.resolve() if args.repo_root else _auto_repo_root()
+    )
+    manifest_path: Path = (
+        args.manifest.resolve() if args.manifest
+        else emacs_root / "admin" / "external-packages.json"
+    )
+
+    manifest = load_manifest(manifest_path)
+    pkg = resolve_package(manifest, args.package)
+
+    upstream_url = pkg.get("upstream_url")
+    if not upstream_url:
+        print(
+            f"error: package '{args.package}' has no upstream_url "
+            f"(it is maintained in-tree).",
+            file=sys.stderr,
+        )
+        return 1
+
+    paths = pkg.get("paths", [])
+    if not paths:
+        print(
+            f"warning: package '{args.package}' has an empty paths list; "
+            f"nothing will be copied.",
+            file=sys.stderr,
+        )
+
+    print(f"Fetching {args.package} from {upstream_url} @ {args.sha} …")
+
+    with tempfile.TemporaryDirectory(prefix="emacs-extpkg-") as td:
+        tmpdir = Path(td)
+
+        if args.dry_run:
+            print("  (dry-run: not cloning upstream)")
+            print(f"  would copy paths from upstream → emacs_root:")
+            for entry in paths:
+                print(f"    {entry['from']}  →  {entry['to']}")
+            return 0
+
+        upstream_dir = fetch_upstream(upstream_url, args.sha, tmpdir)
+        full_sha = resolve_sha(upstream_dir, "HEAD")
+        print(f"  resolved {args.sha!r} → {full_sha}")
+
+        changed = copy_files(upstream_dir, emacs_root, paths)
+        print(f"  {len(changed)} file(s) copied.")
+
+        update_manifest_sha(manifest_path, args.package, full_sha)
+
+        if not args.no_commit:
+            git_commit(emacs_root, args.package, upstream_url,
+                       full_sha, changed)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

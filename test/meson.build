@@ -4,11 +4,16 @@
 # and registers each as a test().  Per-file invocation mirrors the
 # autotools pattern (--eval (ert (quote SELECTOR))).
 #
+# Also registers Python tests under test/admin/ in the 'admin' suite.
+# These tests do not require a built Emacs binary and run with plain
+# python3.
+#
 # Usage:
 #   meson test -C build                   # all tests
 #   meson test -C build --suite smoke     # fast confidence check
 #   meson test -C build --suite lisp      # lisp-level tests only
 #   meson test -C build --suite src       # C-level tests only
+#   meson test -C build --suite admin     # Python admin-tool tests only
 
 # ----------------------------------------------------------------------
 # mod-test.so -- the dynamic module that emacs-module-tests.el loads
@@ -105,5 +110,22 @@ foreach rel : _all_test_files
     depends : [emacs, emacs_pdmp] + _extra_deps,
     timeout : 120,
     suite : _suite,
+  )
+endforeach
+
+# ----------------------------------------------------------------------
+# Python admin-tool tests (no Emacs binary required).
+# Run with: meson test -C build --suite admin
+# ----------------------------------------------------------------------
+foreach py_test : [
+  'test/admin/fetch-external-pkg-tests.py',
+]
+  _name = py_test.replace('/', '_').replace('.py', '')
+  test(
+    _name,
+    py,
+    args : [meson.global_source_root() / py_test],
+    suite : ['admin'],
+    timeout : 30,
   )
 endforeach

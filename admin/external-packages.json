@@ -1,0 +1,73 @@
+{
+  "_comment": "External package manifest.  Each entry records the upstream Git URL, the last synced SHA, and path_map rules used by admin/fetch-external-pkg to copy files from the upstream tree into this Emacs fork.",
+  "packages": {
+    "tramp": {
+      "upstream_url": "https://git.savannah.gnu.org/git/tramp.git",
+      "current_sha": null,
+      "notes": "Tramp is maintained separately by Michael Albinus.  For backward-compatibility requirements see lisp/net/trampver.el.",
+      "paths": [
+        {"from": "lisp/tramp*.el",                  "to": "lisp/net/"},
+        {"from": "test/tramp*-tests.el",             "to": "test/lisp/net/"},
+        {"from": "doc/tramp.texi",                   "to": "doc/misc/"},
+        {"from": "doc/trampver.texi",                "to": "doc/misc/"}
+      ]
+    },
+    "org": {
+      "upstream_url": "https://git.savannah.gnu.org/git/emacs/org-mode.git",
+      "current_sha": null,
+      "notes": "Org Mode is maintained as a separate project periodically merged into Emacs.  See https://orgmode.org/.",
+      "paths": [
+        {"from": "lisp/*.el",              "to": "lisp/org/"},
+        {"from": "etc/styles/*",           "to": "etc/org/"},
+        {"from": "etc/refcards/orgcard.tex","to": "etc/refcards/"},
+        {"from": "doc/misc/org.org",       "to": "doc/misc/"},
+        {"from": "doc/misc/org-setup.org", "to": "doc/misc/"}
+      ]
+    },
+    "eglot": {
+      "upstream_url": "https://github.com/joaotavora/eglot",
+      "current_sha": null,
+      "notes": "Eglot was merged into Emacs 29; upstream continues development at GitHub.",
+      "paths": [
+        {"from": "eglot.el",               "to": "lisp/progmodes/"},
+        {"from": "doc/eglot.texi",         "to": "doc/misc/"},
+        {"from": "tests/eglot-tests.el",   "to": "test/lisp/progmodes/"}
+      ]
+    },
+    "erc": {
+      "upstream_url": null,
+      "current_sha": null,
+      "notes": "ERC is maintained in-tree within the Emacs repository by Amin Bandali.  There is no separate fetch upstream; updates arrive via upstream-commit-review.",
+      "paths": []
+    },
+    "gnus": {
+      "upstream_url": "https://git.savannah.gnu.org/git/gnus.git",
+      "current_sha": null,
+      "notes": "Gnus is maintained separately and periodically merged into Emacs.",
+      "paths": [
+        {"from": "lisp/gnus/*.el",  "to": "lisp/gnus/"},
+        {"from": "lisp/message.el", "to": "lisp/gnus/"},
+        {"from": "texi/gnus.texi",  "to": "doc/misc/"},
+        {"from": "texi/message.texi","to": "doc/misc/"}
+      ]
+    },
+    "transient": {
+      "upstream_url": "https://github.com/magit/transient",
+      "current_sha": null,
+      "notes": "Transient is maintained by Jonas Bernoulli at magit/transient.",
+      "paths": [
+        {"from": "lisp/transient.el",   "to": "lisp/"},
+        {"from": "docs/transient.texi", "to": "doc/misc/"}
+      ]
+    },
+    "modus-themes": {
+      "upstream_url": "https://github.com/protesilaos/modus-themes",
+      "current_sha": null,
+      "notes": "Modus themes maintained by Protesilaos Stavrou.",
+      "paths": [
+        {"from": "*.org",            "to": "doc/misc/"},
+        {"from": "themes/modus*.el", "to": "etc/themes/"}
+      ]
+    }
+  }
+}
