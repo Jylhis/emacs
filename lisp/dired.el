@@ -1594,7 +1594,8 @@ wildcards, erases the buffer, and builds the subdir-alist anew
       ;; as the subdir-alist has been built in dired-readin.
       (run-hooks 'dired-after-readin-hook))))
 
-;; Subroutines of dired-readin
+    (when (and (files--use-insert-directory-program-p)
+               (stringp dired--ls-error-file))
 
 (defun dired-readin-insert ()
   ;; Insert listing for the specified dir (and maybe file list)
