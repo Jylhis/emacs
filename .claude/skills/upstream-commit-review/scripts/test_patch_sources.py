@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -114,6 +115,37 @@ class ListPatchesTests(unittest.TestCase):
             })
             got = ps.list_patches(repo, ["x/*.patch", "x/*.diff"])
             self.assertEqual(set(got), {"x/a.patch", "x/b.diff"})
+
+    def test_symlink_patch_is_rejected_without_hashing_target(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "secret.txt"
+            target.write_text("do not hash me")
+            repo = root / "repo"
+            repo.mkdir()
+            _git(repo, "init", "-q", "-b", "main")
+            link = repo / "x" / "leak.patch"
+            link.parent.mkdir(parents=True)
+            os.symlink(target, link)
+            _git(repo, "add", "x/leak.patch")
+            _git(repo, "commit", "-q", "-m", "symlink")
+
+            with self.assertRaisesRegex(ps.UnsafePatchError, "non-regular"):
+                ps.list_patches(repo, ["x/*.patch"])
+
+    def test_oversized_patch_is_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            repo = Path(td) / "repo"
+            repo.mkdir()
+            _git(repo, "init", "-q", "-b", "main")
+            path = repo / "x" / "huge.patch"
+            path.parent.mkdir(parents=True)
+            path.write_bytes(b"x" * (ps.MAX_PATCH_BYTES + 1))
+            _git(repo, "add", "x/huge.patch")
+            _git(repo, "commit", "-q", "-m", "huge")
+
+            with self.assertRaisesRegex(ps.UnsafePatchError, "limit"):
+                ps.list_patches(repo, ["x/*.patch"])
 
 
 class DiffTests(unittest.TestCase):

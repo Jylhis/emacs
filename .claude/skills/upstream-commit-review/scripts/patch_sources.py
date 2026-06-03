@@ -38,6 +38,7 @@ import tomllib
 from pathlib import Path
 
 DEFAULT_VERDICT = "unreviewed"
+MAX_PATCH_BYTES = 16 * 1024 * 1024
 _VALID_VERDICTS = frozenset(
     {"absorb-now", "verify-then-absorb", "defer",
      "not-applicable", "unreviewed"}
@@ -119,6 +120,59 @@ def clone_source(src: dict, dest: Path) -> None:
     )
 
 
+class UnsafePatchError(ValueError):
+    """Raised when a matched patch path is unsafe to hash."""
+
+
+def _selected_index_entries(
+    repo: Path, globs: list[str]
+) -> list[tuple[str, str, str]]:
+    """Return ``(mode, object_id, path)`` entries matching the globs."""
+    # Use `git ls-files` so we honour the repo's index (avoids picking
+    # up stray files left by previous runs in the worktree).  Include the
+    # staged mode/object id and consume NUL-separated records so later hashing
+    # can read Git blob objects directly instead of following worktree paths.
+    out = subprocess.check_output(
+        ["git", "-C", str(repo), "ls-files", "-s", "-z"],
+        text=True,
+    )
+    selected = []
+    for entry in out.split("\0"):
+        if not entry:
+            continue
+        metadata, path = entry.split("\t", 1)
+        mode, object_id, _stage = metadata.split(" ", 2)
+        pp = PurePosixPath(path)
+        for glob in globs:
+            if pp.match(glob):
+                selected.append((mode, object_id, path))
+                break
+    return selected
+
+
+def _hash_git_blob(repo: Path, object_id: str, rel: str) -> str:
+    """Hash a Git blob by object id without reading through the worktree."""
+    size_text = subprocess.check_output(
+        ["git", "-C", str(repo), "cat-file", "-s", object_id],
+        text=True,
+    ).strip()
+    size = int(size_text)
+    if size > MAX_PATCH_BYTES:
+        raise UnsafePatchError(
+            f"{rel}: patch blob is {size} bytes; limit is {MAX_PATCH_BYTES}"
+        )
+
+    cmd = ["git", "-C", str(repo), "cat-file", "blob", object_id]
+    hasher = hashlib.sha256()
+    with subprocess.Popen(cmd, stdout=subprocess.PIPE) as proc:
+        assert proc.stdout is not None
+        for chunk in iter(lambda: proc.stdout.read(1024 * 1024), b""):
+            hasher.update(chunk)
+        if proc.wait() != 0:
+            raise subprocess.CalledProcessError(proc.returncode, cmd)
+    return hasher.hexdigest()
+
+
 def list_patches(repo: Path, globs: list[str]) -> dict[str, str]:
     """Return ``{relpath: sha256}`` for every file in ``repo`` matching
     any glob.  Glob matching uses ``PurePosixPath.match`` so ``*`` does
@@ -127,22 +181,13 @@ def list_patches(repo: Path, globs: list[str]) -> dict[str, str]:
     up patches several levels deeper (e.g. under
     ``elisp-packages/manual-packages/``).  To recurse, write the glob
     explicitly with ``**`` or list each subdir."""
-    # Use `git ls-files` so we honour the repo's index (avoids picking
-    # up stray files left by previous runs in the worktree).
-    out = subprocess.check_output(
-        ["git", "-C", str(repo), "ls-files"], text=True
-    )
-    selected = []
-    for path in out.splitlines():
-        pp = PurePosixPath(path)
-        for glob in globs:
-            if pp.match(glob):
-                selected.append(path)
-                break
     result: dict[str, str] = {}
-    for rel in selected:
-        body = (repo / rel).read_bytes()
-        result[rel] = hashlib.sha256(body).hexdigest()
+    for mode, object_id, rel in _selected_index_entries(repo, globs):
+        if mode not in {"100644", "100755"}:
+            raise UnsafePatchError(
+                f"{rel}: refusing to hash non-regular git mode {mode}"
+            )
+        result[rel] = _hash_git_blob(repo, object_id, rel)
     return result
 
 
@@ -207,7 +252,16 @@ def cmd_report(args) -> int:
                 f"{name}\t(clone-failed)\terror\tunknown\t{stderr[:120]}"
             )
             continue
-        current = list_patches(dest, src["globs"])
+        try:
+            current = list_patches(dest, src["globs"])
+        except UnsafePatchError as exc:
+            sys.stderr.write(
+                f"[patch-sources] unsafe patch source for {name}: {exc}\n"
+            )
+            out_lines.append(
+                f"{name}\t(unsafe-patch-source)\terror\tunknown\t{str(exc)[:120]}"
+            )
+            continue
         rows = diff_against_baseline(
             current, baseline["sources"].get(name, {})
         )
