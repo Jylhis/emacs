@@ -14,7 +14,7 @@ Steps (mirrors the deleted autotools java/Makefile.in flow):
   5. assemble: copy libemacs.so into lib/arm64-v8a/, dex into root,
      staged assets into assets/, then zip into base.apk
   6. zipalign -p 4 -> aligned.apk
-  7. apksigner sign with the dev keystore -> <out>.apk
+  7. apksigner sign with the configured keystore -> <out>.apk
 """
 
 from __future__ import annotations
@@ -166,29 +166,39 @@ def zipalign(zipalign_bin: Path, in_apk: Path, out_apk: Path) -> None:
     run([str(zipalign_bin), "-p", "-f", "4", str(in_apk), str(out_apk)])
 
 
+def require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if value is None:
+        sys.exit(f"build_android_apk: {name} must be set for APK signing")
+    return value
+
+
 def apksign(apksigner: Path, keystore: Path, in_apk: Path,
             out_apk: Path) -> None:
-    # Dev keystore credentials.  The keystore committed at
-    # java/emacs.keystore holds no security value (shared across all
-    # Emacs developers so users can install builds from different
-    # sources on top of each other); the actual password isn't
-    # publicly documented in this fork.  Override via env vars when
-    # signing with a different keystore:
-    #   EMACS_APK_STOREPASS=...  store password
-    #   EMACS_APK_KEYPASS=...    key password (defaults to store pw)
-    #   EMACS_APK_KEYALIAS=...   key alias inside the store
-    storepass = os.environ.get("EMACS_APK_STOREPASS", "emacs1")
+    # The APK signing key is part of the app identity on Android.
+    # Require callers to supply an explicit keystore and credentials,
+    # and pass passwords through apksigner's env: mechanism so they do
+    # not appear in process argv or the echoed build command.
+    if not keystore.exists():
+        sys.exit(f"build_android_apk: signing keystore not found: {keystore}")
+
+    storepass = require_env("EMACS_APK_STOREPASS")
+    alias = require_env("EMACS_APK_KEYALIAS")
     keypass = os.environ.get("EMACS_APK_KEYPASS", storepass)
-    alias = os.environ.get("EMACS_APK_KEYALIAS", "emacs")
-    run([
+
+    signer_env = os.environ.copy()
+    signer_env["EMACS_APK_STOREPASS"] = storepass
+    signer_env["EMACS_APK_KEYPASS"] = keypass
+    cmd = [
         str(apksigner), "sign",
         "--ks", str(keystore),
-        "--ks-pass", f"pass:{storepass}",
+        "--ks-pass", "env:EMACS_APK_STOREPASS",
         "--ks-key-alias", alias,
-        "--key-pass", f"pass:{keypass}",
+        "--key-pass", "env:EMACS_APK_KEYPASS",
         "--out", str(out_apk),
         str(in_apk),
-    ])
+    ]
+    run(cmd, env=signer_env)
 
 
 def main() -> int:

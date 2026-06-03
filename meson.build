@@ -1132,7 +1132,7 @@ if want_android
 
   _keystore = get_option('android-keystore')
   if _keystore == ''
-    _keystore = meson.global_source_root() / 'java' / 'emacs.keystore'
+    error('Android APK signing requires -Dandroid-keystore=... plus EMACS_APK_STOREPASS and EMACS_APK_KEYALIAS in the environment')
   endif
 
   _abi = 'arm64-v8a'  # matches cross/meson-android.cross's aarch64

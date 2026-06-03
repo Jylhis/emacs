@@ -257,7 +257,7 @@ option('android-host-build', type : 'string', value : '',
   description : 'Path to a completed host Meson build dir; supplies bootstrap-emacs and emacs.pdmp consumed by the APK pipeline.'
 )
 option('android-keystore', type : 'string', value : '',
-  description : 'Path to the keystore used to sign the APK (defaults to java/emacs.keystore).'
+  description : 'Path to the keystore used to sign the APK. Required when -Dandroid=enabled.'
 )
 
 # ----------------------------------------------------------------------

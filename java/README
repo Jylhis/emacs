@@ -13,10 +13,11 @@ The ``res'' directory contains resources, mainly the Emacs icon and
 several ``boolean resources'' which are used as a form of conditional
 evaluation for manifest entries.
 
-`emacs.keystore' is the signing key used to build Emacs.  It is kept
-here, and we encourage all people redistributing Emacs to use this
-key.  It holds no security value, and otherwise it will be impossible
-to install different builds of Emacs on top of each other.
+Android packages must be signed with a keystore supplied by the
+builder.  Do not share private signing keys: Android treats the APK
+signing certificate as part of the application's identity, and a public
+key would allow other packages to impersonate updates for the same
+application ID.
 
 Please keep the Java code indented with tabs and formatted according
 to the rules for C code in the GNU coding standards.  Always use

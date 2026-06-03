@@ -13,6 +13,7 @@
   emacsHost,
   version ? "31.0.50",
   androidApi ? 29,
+  androidKeystore ? null,
 }:
 
 let
@@ -25,6 +26,10 @@ let
   # API-level flags flow through -Dandroid-* meson options.  Use
   # writeText rather than builtins.toFile: the content references the
   # androidsdk derivation, which toFile forbids.
+  mesonKeystoreFlag = lib.optionalString (androidKeystore != null) ''
+      -Dandroid-keystore=${androidKeystore} \
+  '';
+
   crossFile = writeText "android.cross" ''
     [host_machine]
     system     = 'android'
@@ -77,7 +82,7 @@ stdenv.mkDerivation {
       -Dandroid-ndk=${androidNdk} \
       -Dandroid-sdk=${androidSdk} \
       -Dandroid-api=${toString androidApi} \
-      -Dandroid-host-build=$PWD/host-build \
+${mesonKeystoreFlag}      -Dandroid-host-build=$PWD/host-build \
       -Dnative-compilation=no \
       -Dgnutls=disabled \
       -Dtree-sitter=disabled \
