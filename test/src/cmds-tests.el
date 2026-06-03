@@ -48,6 +48,15 @@
       (self-insert-command 0 10)
       (should-not (equal pt 0)))))
 
+(ert-deftest self-insert-repeated-autofill ()
+  "Test `self-insert-command' autofills after repeated insertion."
+  (with-temp-buffer
+    (let ((pt nil)
+          (auto-fill-function (lambda () (setq pt (point)))))
+      (self-insert-command 2 ?\s)
+      (should (equal (buffer-string) "  "))
+      (should (equal pt 2)))))
+
 (ert-deftest self-insert-nonascii-autofill ()
   "Test `self-insert-command' with a non-ASCII autofill function."
   (with-temp-buffer

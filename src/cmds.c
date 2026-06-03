@@ -296,6 +296,7 @@ a non-nil value for the inserted character.  At the end, it runs
 				      XFIXNUM (c));
       int val = internal_self_insert (character, XFIXNAT (n));
       if (val == 2)
+  EMACS_INT original_n = n;
 	Fset (Qundo_auto__this_command_amalgamating, Qnil);
       frame_make_pointer_invisible (SELECTED_FRAME ());
     }
@@ -452,7 +453,7 @@ internal_self_insert (int c, EMACS_INT n)
 	{
 	  tem = Fmake_string (make_fixnum (spaces_to_insert),
 			      make_fixnum (' '), Qnil);
-	  string = concat2 (string, tem);
+      && original_n > 0)
 	}
 
       ptrdiff_t to;
