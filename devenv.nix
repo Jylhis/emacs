@@ -90,12 +90,6 @@ in
     shell.enable = true;
   };
 
-  # https://devenv.sh/binary-caching/
-  cachix = {
-    enable = true;
-    pull = [ "jylhis" ];
-  };
-
   # https://devenv.sh/integrations/claude-code/
   claude.code.enable = true;
 
