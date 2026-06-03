@@ -164,8 +164,13 @@ exec $awk \
 	  line = prefix "https:" substr(suffix, 5 + (suffix ~ /^http:/))
 	}
 	while (match(line, markdown_quotation)) {
-	  prefix = substr(line, 1, RSTART)
-	  within = substr(line, RSTART + 2, RLENGTH - 3)
+	  if (substr(line, RSTART, 1) == "`") {
+	    prefix = substr(line, 1, RSTART - 1)
+	    within = substr(line, RSTART + 1, RLENGTH - 2)
+	  } else {
+	    prefix = substr(line, 1, RSTART)
+	    within = substr(line, RSTART + 2, RLENGTH - 3)
+	  }
 	  suffix = substr(line, RSTART + RLENGTH)
 	  line = prefix "'\''" within "'\''" suffix
 	}
