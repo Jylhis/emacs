@@ -3752,7 +3752,15 @@ the query.  */)
 
   /* Extract C values from Lisp objects.  */
   TSNode treesit_node = XTS_NODE (lisp_node)->node;
-  Lisp_Object lisp_parser = XTS_NODE (lisp_node)->parser;
+      if (beg_byte == visible_beg && end_byte == visible_beg)
+	{
+	  if (needs_to_free_query_and_cursor)
+	    {
+	      ts_query_delete (treesit_query);
+	      ts_query_cursor_delete (cursor);
+	    }
+	  return Qnil;
+	}
 
   const TSLanguage *lang
     = ts_parser_language (XTS_PARSER (lisp_parser)->parser);
