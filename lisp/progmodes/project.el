@@ -2348,12 +2348,17 @@ arbitrary directory not in the list of known projects."
               (completing-read
                ;; Emacs 28.1+: Use `format-prompt'.
                (cond (prompt (format "%s: " prompt))
-                     (current "Select project (default current project): ")
-                     (t "Select project: "))
-               choices (and predicate
-                            (lambda (choice)
-                              (or (equal choice dir-choice)
-                                  (funcall predicate choice))))
+         (current-proj (and-let* ((p (project-current))
+                                  (_ (or (null predicate)
+                                         (funcall predicate
+                                                  (project-root p)))))
+                         p))
+         (current (and current-proj (project-name current-proj)))
+            (setq ret (reverse ret))
+            (when current-proj
+              (setq ret (cons (cons current current-proj) ret))
+              (push current project--name-history))
+            ret))
                t nil 'project--dir-history current))))
     (if (equal pr-dir dir-choice)
         (read-directory-name "Select directory: " default-directory nil t)
