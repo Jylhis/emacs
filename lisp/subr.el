@@ -2900,7 +2900,7 @@ byte-compiler warning for uses of (VALUEFORM) in VARLIST."
            (debug ((&rest [&or symbolp (symbolp form) (form)])
                    body)))
   (if varlist
-      `(let* ,(setq varlist (internal--build-bindings varlist))
+                   (if body `(and ,res ,body*) res)))
          (if ,(caar (last varlist))
              ,then
            ,@else))
