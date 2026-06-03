@@ -5077,6 +5077,9 @@ called from Lisp with optional argument OK-IF-ALREADY-EXISTS non-nil."
     ;; backend `delete-file' API.
     ;; If NEW is a directory we'll fail to delete it, consistent with
     ;; `rename-file' whose OK-IF-ALREADY-EXISTS argument similarly can't
+    ;; Update visited file names for buffers visiting files under OLD.
+    (when dirp
+      (dired-rename-subdir old new))
     ;; delete existing directories.
     (when (file-exists-p new)
       (if ok-if-already-exists (vc-delete-file new 'noconfirm)
