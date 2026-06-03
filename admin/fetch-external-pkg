@@ -167,15 +167,20 @@ def git_commit(
     upstream_url: str,
     full_sha: str,
     changed_files: list[Path],
+    manifest_path: Path | None = None,
 ) -> None:
     """Stage *changed_files* and create a ChangeLog-style commit."""
     if not changed_files:
         print("  no files changed; skipping commit.", file=sys.stderr)
         return
 
-    # Stage the changed files.
+    # Stage the changed files and the updated manifest.
+    all_files = list(changed_files)
+    if manifest_path is not None:
+        all_files.append(manifest_path)
     rel_paths = [str(f.relative_to(emacs_root)) for f in changed_files]
-    _git(["add", "--", *rel_paths], cwd=emacs_root)
+    all_rel = [str(f.relative_to(emacs_root)) for f in all_files]
+    _git(["add", "--", *all_rel], cwd=emacs_root)
 
     # Build commit message.
     pkg_title = pkg_name.capitalize()
@@ -193,7 +198,7 @@ def git_commit(
         f"Co-Authored-By: Paperclip <noreply@paperclip.ing>"
     )
 
-    _git(["commit", "--no-verify", "-m", msg], cwd=emacs_root)
+    _git(["commit", "-m", msg], cwd=emacs_root)
     print(f"  committed: Update {pkg_title} to upstream {full_sha[:12]}")
 
 
@@ -292,7 +297,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if not args.no_commit:
             git_commit(emacs_root, args.package, upstream_url,
-                       full_sha, changed)
+                       full_sha, changed, manifest_path=manifest_path)
 
     return 0
 

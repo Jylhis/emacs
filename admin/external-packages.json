@@ -30,8 +30,8 @@
       "notes": "Eglot was merged into Emacs 29; upstream continues development at GitHub.",
       "paths": [
         {"from": "eglot.el",               "to": "lisp/progmodes/"},
-        {"from": "doc/eglot.texi",         "to": "doc/misc/"},
-        {"from": "tests/eglot-tests.el",   "to": "test/lisp/progmodes/"}
+        {"from": "eglot.texi",             "to": "doc/misc/"},
+        {"from": "eglot-tests.el",         "to": "test/lisp/progmodes/"}
       ]
     },
     "erc": {
@@ -66,7 +66,7 @@
       "notes": "Modus themes maintained by Protesilaos Stavrou.",
       "paths": [
         {"from": "*.org",            "to": "doc/misc/"},
-        {"from": "themes/modus*.el", "to": "etc/themes/"}
+        {"from": "modus*.el",        "to": "etc/themes/"}
       ]
     }
   }
