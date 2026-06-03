@@ -735,15 +735,17 @@ attribute in PKG-SPEC."
                                       (version-list-= (package-desc-version desc)
                                                       vers))))
                         (_ (yes-or-no-p "Copy files from previous installation?")))
-              (let* ((remove (seq-remove
-                              #'file-exists-p
-                              (let ((default-directory dir))
-                                (mapcar #'expand-file-name '("REAME-elpa"))))))
-                (copy-directory
-                 (file-name-as-directory (package-desc-dir prev-desc))
-                 (file-name-as-directory dir)
-                 nil 'parents 'copy-contents)
-                (mapc #'delete-file remove))))
+              (let* ((prev-dir (file-name-as-directory
+                                (package-desc-dir prev-desc)))
+                     (dir (file-name-as-directory dir)))
+                (if (file-equal-p prev-dir dir)
+                    (message "Skipping copy: previous installation is current checkout")
+                  (let ((remove (seq-remove
+                                 #'file-exists-p
+                                 (let ((default-directory dir))
+                                   (mapcar #'expand-file-name '("REAME-elpa"))))))
+                    (copy-directory prev-dir dir nil 'parents 'copy-contents)
+                    (mapc #'delete-file remove))))))
         (message "No release revision was found, continuing...")))))
 
 (defvar package-vc-non-code-file-names
