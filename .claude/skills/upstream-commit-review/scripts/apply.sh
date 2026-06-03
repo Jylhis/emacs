@@ -119,9 +119,9 @@ while IFS=$'\t' read -r SHA BUCKET REASON LINES FILES; do
 
     # ---- Tier 2: NEWS.31 redirect --------------------------------------
     if [ "$CONFLICTED" = "etc/NEWS.31" ]; then
-        # Check upstream commit only touched etc/NEWS.
+        # Check upstream commit touched etc/NEWS.
         UPSTREAM_FILES=$(git show --name-only --format= "$SHA" | sed '/^$/d')
-        if [ "$UPSTREAM_FILES" = "etc/NEWS" ]; then
+        if echo "$UPSTREAM_FILES" | grep -qx "etc/NEWS"; then
             log "  tier-2 NEWS.31 redirect"
             git cherry-pick --abort >>"$LOG" 2>&1 || true
             if git cherry-pick -x -X theirs "$SHA" >>"$LOG" 2>&1; then

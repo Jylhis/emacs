@@ -84,6 +84,14 @@ class ClassifyTests(unittest.TestCase):
                 "a" * 40, "; etc/NEWS: Fix typo", ["etc/NEWS.31"]))
             self.assertEqual(d.bucket, "doc-only")
 
+    def test_doc_only_upstream_news_alias(self):
+        c = commit("a" * 40, "; etc/NEWS: Fix typo", ["etc/NEWS"])
+        with patch.object(os.path, "exists",
+                          side_effect=lambda p: p != "etc/NEWS"), \
+             patch.object(classify.glob, "glob", return_value=["etc/NEWS.31"]):
+            d = classify.classify(c)
+            self.assertEqual(d.bucket, "doc-only")
+
     def test_doc_only_authors(self):
         with patch.object(os.path, "exists", return_value=True):
             d = classify.classify(commit(

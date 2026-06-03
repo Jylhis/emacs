@@ -23,6 +23,7 @@ batched `git log --format=...` pull, so it stays sub-second on
 from __future__ import annotations
 
 import argparse
+import glob
 import os
 import re
 import subprocess
@@ -75,6 +76,14 @@ class Commit:
     @property
     def missing_file(self) -> str | None:
         for f in self.files:
+            # This fork keeps NEWS as versioned files (e.g. etc/NEWS.31).
+            # Treat upstream etc/NEWS as present when any versioned NEWS
+            # file exists so NEWS-related AUTO rules remain reachable.
+            if f == "etc/NEWS":
+                if os.path.exists("etc/NEWS"):
+                    continue
+                if glob.glob("etc/NEWS.[0-9]*"):
+                    continue
             if not os.path.exists(f):
                 return f
         return None
