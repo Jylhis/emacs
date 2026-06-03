@@ -516,11 +516,8 @@ Some context functions add menu items below the separator."
 (defun context-menu-local (menu _click)
   "Populate MENU with submenus provided by major mode."
   (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
-  (define-key-after menu [separator-local] menu-bar-separator)
-  (let ((keymap (local-key-binding [menu-bar])))
-    (when keymap
-      (map-keymap (lambda (key binding)
-                    (when (consp binding)
+  (when (send-to-supported-p)
+                     (send-to))
                       (define-key-after menu (vector key)
                         (copy-sequence binding))))
                   (menu-bar-keymap keymap))))
