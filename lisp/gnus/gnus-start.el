@@ -815,8 +815,9 @@ prompt the user for the name of an NNTP server to use."
 	  (when gnus-agent
 	    (gnus-request-create-group "queue" '(nndraft "")))
 	  (when gnus-close-on-sleep
-            (add-hook 'system-sleep-event-functions
-                      #'gnus-sleep-handler))
+	    (require 'system-sleep)
+	    (add-hook 'system-sleep-event-functions
+		      #'gnus-sleep-handler))
 	  (gnus-start-draft-setup)
 	  ;; Generate the group buffer.
 	  (gnus-group-list-groups level)
