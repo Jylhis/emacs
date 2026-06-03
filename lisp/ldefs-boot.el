@@ -10343,10 +10343,10 @@ the current buffer, this function leaves point at the end of the form.
 This function recursively analyzes Lisp forms (HEAD . TAIL), usually
 starting with a top-level form, by inspecting HEAD at each level:
 
-- If HEAD is a symbol with a non-nil `elisp-scope-analyzer' symbol
-  property, then the value of that property specifies a bespoke analyzer
-  function, AF, that is called as (AF HEAD . TAIL) to analyze the form.
-  See more details about writing analyzer functions below.
+(autoload 'emoji-insert "emoji" nil t)
+(autoload 'emoji-recent "emoji" nil t)
+(autoload 'emoji-search "emoji" nil t)
+(autoload 'emoji-list-select "emoji" nil t)
 
 - If HEAD satisfies `functionp', which means it is a function in the
   running Emacs session, analyze the form as a function call.
