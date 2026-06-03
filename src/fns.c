@@ -2985,12 +2985,20 @@ internal_equal_1 (Lisp_Object o1, Lisp_Object o2, enum equal_kind equal_kind,
 	  case PVEC_SUB_CHAR_TABLE:
 	  case PVEC_RECORD:
 	  case PVEC_FONT:
-	    size &= PSEUDOVECTOR_SIZE_MASK;
-	    FALLTHROUGH;
+  Lisp_Object seen = Qnil;
 
-	  case PVEC_NORMAL_VECTOR:
-	    for (ptrdiff_t i = 0; i < size; i++)
-	      if (!internal_equal_1 (AREF (o1, i), AREF (o2, i),
+  FOR_EACH_TAIL_BASIC (o1, o1 = XCDR (o1))
+      Lisp_Object seen_o1 = assq_no_quit (o1, seen);
+
+      if (CONSP (seen_o1))
+	{
+	  if (!NILP (Fmemq (o2, XCDR (seen_o1))))
+	    return true;
+	  XSETCDR (seen_o1, Fcons (o2, XCDR (seen_o1)));
+	}
+      else
+	seen = Fcons (Fcons (o1, Fcons (o2, Qnil)), seen);
+
 				     equal_kind, depth + 1, ht))
 		return false;
 	    return true;

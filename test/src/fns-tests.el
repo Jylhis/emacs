@@ -958,7 +958,12 @@
     (should (equal (cycle '(1 2 3)) (cycle '(1 2 3 1 2 3))))
     (should (equal (cycle '(1 2 3 1 2 3)) (cycle '(1 2 3))))
     (should (equal (cycle '(1 2 3)) (append '(1 2) (cycle '(3 1 2 3 1 2)))))
-    (should (equal (append '(1 2) (cycle '(3 1 2 3 1 2))) (cycle '(1 2 3))))))
+    (should (equal (append '(1 2) (cycle '(3 1 2 3 1 2))) (cycle '(1 2 3))))
+
+    (let ((c1 (cycle '(0 1)))
+          (c2 (append '(0 1 0 1) (cycle '(0)))))
+      (should-not (equal c1 c2))
+      (should-not (equal c2 c1))))))
 
 (ert-deftest test-cycle-nconc ()
   (should-error (nconc (cyc1 1) 'tail) :type 'circular-list)
