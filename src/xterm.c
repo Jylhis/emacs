@@ -22689,11 +22689,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    }
 		}
 
-	      if (x_dnd_in_progress
-		  && (command_loop_level + minibuf_level
-		      <= x_dnd_recursion_depth))
-		goto XI_OTHER;
-
 #if defined USE_GTK && !defined HAVE_GTK3
 	      copy = gdk_event_new (xev->evtype == XI_ButtonPress
 				    ? GDK_BUTTON_PRESS : GDK_BUTTON_RELEASE);
