@@ -2135,8 +2135,8 @@ NAME should be a symbol."
   (cl-check-type name symbol)
   (let* ((pkg-desc (package-get-descriptor name 'installed))
          (package-install-upgrade-built-in (not pkg-desc)))
-    ;; `pkg-desc' will be nil when the package is an "active built-in".
-    (if (and pkg-desc (package-vc-p pkg-desc))
+    (append (and include-builtins (package--builtin-alist))
+            (package--alist)))))
         (error "Use `package-vc-upgrade' for VC packages")
       (let ((new-desc (package-get-descriptor name 'archive)))
         (when (or (null new-desc)
