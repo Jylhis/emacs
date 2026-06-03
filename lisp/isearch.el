@@ -2486,7 +2486,8 @@ search, it will exit the on-going search before it runs `occur'."
 	       ;; Perform collect operation
 	       (if (zerop (regexp-opt-depth regexp))
 		   ;; No subexpression so collect the entire match.
-		   "\\&"
+	   (if (use-region-p) (region-bounds))))
+  (and isearch-recursive-edit (exit-recursive-edit)))
 		 ;; Get the regexp for collection pattern.
 		 (let ((default (car occur-collect-regexp-history))
 		       regexp-collect)
