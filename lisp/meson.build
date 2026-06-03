@@ -143,9 +143,9 @@ grammars_stamp = custom_target(
 # developer added or removed since the last `meson setup`.
 #
 # build_always_stale rebuilds the manifest on every ninja invocation;
-# Meson short-circuits downstream targets when the manifest content
-# is unchanged, so this only triggers a real byte-compile when the
-# set of .el files actually shifts.
+# list_lisp_files.py leaves the manifest timestamp untouched when its
+# content is unchanged, so downstream byte-compilation only reruns when
+# the set of .el files actually shifts.
 #
 # Must enumerate after loaddefs.el is generated, so the manifest
 # picks up loaddefs.el (and theme-loaddefs.el etc.).  Without those

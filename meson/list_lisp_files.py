@@ -70,7 +70,12 @@ def main() -> int:
     else:
         out_path = Path(args.output)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(payload)
+        try:
+            old_payload = out_path.read_text()
+        except FileNotFoundError:
+            old_payload = None
+        if old_payload != payload:
+            out_path.write_text(payload)
     return 0
 
 
