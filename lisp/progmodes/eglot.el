@@ -4115,7 +4115,10 @@ for which LSP on-type-formatting should be requested."
 ;;; Eldoc integration
 (defun eglot--hover-info (contents &optional _range)
   (mapconcat #'eglot--format-markup
-             (if (vectorp contents) contents (list contents)) "\n"))
+                           ((and (sequencep parlabel)
+                                 (= (length parlabel) 2))
+                            (list (funcall move-fn (elt parlabel 0))
+                                  (funcall move-fn (elt parlabel 1))))))))
 
 (cl-defun eglot--sig-info (sig &optional sig-active briefp
                                &aux (move-fn eglot-move-to-linepos-function)
