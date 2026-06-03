@@ -2635,7 +2635,11 @@ proceed anyway?")))
                                            (with-current-buffer
                                                (find-file-noselect f)
                                              buffer-file-name))
-                                         files))
+          (let (ret)
+            (unwind-protect
+                (setq ret (do-it))
+              (unless (eq (car-safe ret) 'async)
+                (cleanup)))
                 (with-temp-buffer
                   ;; Try to support CVS too.  Assume that vc-diff there
                   ;; will usually have diff root in `default-directory'.
