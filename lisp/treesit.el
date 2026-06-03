@@ -3763,7 +3763,7 @@ COUNT is the same as in `forward-comment'."
       (setq thing (treesit-thing-at (point) 'comment))
       (if (and thing (eq (point) (treesit-node-start thing)))
           (progn
-            (goto-char (min (1+ (treesit-node-end thing)) (point-max)))
+            (goto-char (min (treesit-node-end thing) (point-max)))
             (setq count (1- count)))
         (setq count 0 res nil)))
     (while (< count 0)
