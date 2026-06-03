@@ -1109,7 +1109,6 @@ usage: (define-charset-internal ...)  */)
   ASET (attrs, charset_plist, args[charset_arg_plist]);
 
   hash_hash_t hash_code;
-  ptrdiff_t hash_index
     = hash_find_get_hash (hash_table, args[charset_arg_name], &hash_code);
   if (hash_index >= 0)
     {
