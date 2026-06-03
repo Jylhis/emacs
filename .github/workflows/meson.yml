@@ -369,6 +369,10 @@ jobs:
         with:
           script: |
             const fs = await import('node:fs');
+            const escapeHtml = (s) => s
+              .replaceAll('&', '&amp;')
+              .replaceAll('<', '&lt;')
+              .replaceAll('>', '&gt;');
             const sections = [];
             for (const [name, path] of [
               ['compile.log (last 8 KB)', 'build/compile.log'],
@@ -377,7 +381,8 @@ jobs:
               try {
                 const text = fs.readFileSync(path, 'utf8');
                 const slice = text.slice(name.includes('8') ? -8192 : -4096);
-                sections.push(`<details><summary>${name}</summary>\n\n\`\`\`\n${slice}\n\`\`\`\n</details>`);
+                const safe = escapeHtml(slice);
+                sections.push(`<details><summary>${name}</summary>\n\n<pre><code>${safe}</code></pre>\n</details>`);
               } catch (e) {
                 sections.push(`(no ${path}: ${e.message})`);
               }
