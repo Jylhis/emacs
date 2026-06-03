@@ -380,6 +380,7 @@ typedef id instancetype;
 #ifdef NS_IMPL_COCOA
   BOOL shouldKeepRunning;
   BOOL isFirst;
+  BOOL effectiveAppearanceObserverRegistered;
 #endif
 @public
   int nextappdefined;

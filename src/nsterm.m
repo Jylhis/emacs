@@ -6149,6 +6149,12 @@ ns_term_shutdown (int sig)
 
 static const void *kEmacsAppKVOContext = &kEmacsAppKVOContext;
 
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+#ifndef NSAppKitVersionNumber10_14
+#define NSAppKitVersionNumber10_14 1671
+#endif
+#endif
+
 @implementation EmacsApp
 
 - (id)init
@@ -6381,15 +6387,19 @@ static const void *kEmacsAppKVOContext = &kEmacsAppKVOContext;
 #endif
 
 #if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
-  [self addObserver:self
-         forKeyPath:NSStringFromSelector(@selector(effectiveAppearance))
-            options:NSKeyValueObservingOptionInitial|NSKeyValueObservingOptionNew
-            context:&kEmacsAppKVOContext];
+  if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_14)
+    {
+      [self addObserver:self
+             forKeyPath:NSStringFromSelector(@selector(effectiveAppearance))
+                options:NSKeyValueObservingOptionInitial|NSKeyValueObservingOptionNew
+                context:&kEmacsAppKVOContext];
+      effectiveAppearanceObserverRegistered = YES;
 
-   pending_funcalls = Fcons(list3(Qrun_hook_with_args,
-                                  Qns_system_appearance_change_functions,
-                                  Vns_system_appearance),
-                            pending_funcalls);
+      pending_funcalls = Fcons(list3(Qrun_hook_with_args,
+                                     Qns_system_appearance_change_functions,
+                                     Vns_system_appearance),
+                               pending_funcalls);
+    }
 #endif
 
 #ifdef NS_IMPL_COCOA
@@ -6491,9 +6501,6 @@ static const void *kEmacsAppKVOContext = &kEmacsAppKVOContext;
 }
 
 #if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
-#ifndef NSAppKitVersionNumber10_14
-#define NSAppKitVersionNumber10_14 1671
-#endif
 - (void)systemAppearanceDidChange:(NSAppearance *)newAppearance
 {
 
@@ -6699,9 +6706,15 @@ not_in_argv (NSString *arg)
 {
   NSTRACE ("[EmacsApp applicationWillTerminate:]");
 
-  [self removeObserver:self
-            forKeyPath:NSStringFromSelector(@selector(effectiveAppearance))
-               context:&kEmacsAppKVOContext];
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400
+  if (effectiveAppearanceObserverRegistered)
+    {
+      [self removeObserver:self
+                forKeyPath:NSStringFromSelector(@selector(effectiveAppearance))
+                   context:&kEmacsAppKVOContext];
+      effectiveAppearanceObserverRegistered = NO;
+    }
+#endif
 }
 
 
