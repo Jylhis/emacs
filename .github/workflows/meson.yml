@@ -49,7 +49,25 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
-          fetch-depth: 0
+          # Shallow clone: only the HEAD commit.  fetch-depth: 0
+          # fetches all remote refs and tags, which times out on this
+          # large (~1.5 GB) repo within the 5-minute job limit.  We
+          # fetch only the specific comparison base below.
+          fetch-depth: 1
+
+      - name: Fetch comparison base
+        # ci-classify.sh needs both HEAD and the base commit for
+        # git diff --name-only.  Fetch just that one commit shallowly
+        # so no full history download is required.
+        run: |
+          zero=0000000000000000000000000000000000000000
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin \
+              "${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event.before }}" != "$zero" ]; then
+            git fetch --no-tags --depth=1 origin \
+              "${{ github.event.before }}"
+          fi
 
       - name: Classify changed paths
         id: classify
