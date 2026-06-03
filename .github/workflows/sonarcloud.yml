@@ -16,8 +16,6 @@ on:
   push:
     branches:
       - dev
-  pull_request:
-    types: [opened, synchronize, reopened]
 
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind a stale scan.
@@ -54,17 +52,7 @@ jobs:
     needs: [classify]
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # GitHub does not expose repository secrets (SONAR_TOKEN) to
-    # workflows triggered from forked PRs, so the scan step would
-    # fail with auth errors.  Skip the whole job for fork PRs --
-    # build verification is already covered by meson.yml, and Sonar
-    # re-runs on push to dev after the PR is merged.
-    if: >-
-      needs.classify.outputs.sonar == 'true'
-      && (
-        github.event_name != 'pull_request'
-        || github.event.pull_request.head.repo.full_name == github.repository
-      )
+    if: needs.classify.outputs.sonar == 'true'
 
     steps:
       - name: Checkout
