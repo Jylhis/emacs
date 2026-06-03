@@ -148,7 +148,7 @@ in
   # https://devenv.sh/binary-caching/
   cachix = {
     enable = true;
-    pull = [ "jylhis" ];
+    pull = [ "devenv" ];
   };
 
   # https://devenv.sh/integrations/claude-code/

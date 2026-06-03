@@ -6,8 +6,8 @@
 # Build the Meson tree inside a devenv.sh shell so CI uses the same
 # Nix-pinned toolchain as a developer's local environment.  Pattern
 # follows https://devenv.sh/integrations/github-actions/ .  The
-# jylhis Cachix cache is pulled from on every run; pushes to it are
-# restricted to main branches (see authToken expression below).
+# public devenv Cachix cache is pulled from to speed up CI dependency
+# installation.
 
 name: meson
 
@@ -258,12 +258,6 @@ jobs:
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
-        with:
-          # Push only on pushes to dev / master / emacs-* release
-          # branches.  PR runs (incl. fork PRs) and workflow_dispatch
-          # get pull-only.  Empty token => cachix-action runs in
-          # pull-only mode.
-          cachix-auth-token: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
 
       # ---- Verify Nix-wrapped toolchain is active ---------------------
       # Compile + link a sentinel that exercises the same gcc/ld/crt
@@ -625,8 +619,6 @@ jobs:
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
-        with:
-          cachix-auth-token: ${{ (github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/emacs-'))) && secrets.CACHIX_AUTH_TOKEN || '' }}
 
       - name: Verify Nix-wrapped toolchain
         run: |

@@ -3,7 +3,7 @@
 #
 # This file is part of GNU Emacs.
 #
-# Composite action: install Nix + Cachix (with jylhis pull cache),
+# Composite action: install Nix + Cachix (public devenv pull cache),
 # install devenv, and hoist the dev-shell env into $BASH_ENV so every
 # subsequent step's bash auto-sources it.  Used by meson.yml,
 # sonarcloud.yml, and codeql.yml so the toolchain is identical across
@@ -11,16 +11,8 @@
 
 name: Set up devenv
 description: >-
-  Install Nix + devenv with the jylhis Cachix cache, then hoist the
-  dev-shell env into $BASH_ENV.
-
-inputs:
-  cachix-auth-token:
-    description: >-
-      Auth token for pushing to the jylhis Cachix cache.  Leave empty
-      for pull-only behaviour (fork PRs, non-main branches).
-    required: false
-    default: ''
+  Install Nix + devenv with the public devenv Cachix cache, then hoist
+  the dev-shell env into $BASH_ENV.
 
 runs:
   using: composite
@@ -32,14 +24,10 @@ runs:
           accept-flake-config = true
           experimental-features = nix-command flakes
 
-    - name: Set up Cachix (pull jylhis + devenv)
+    - name: Set up Cachix (pull devenv)
       uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1  # v16
       with:
-        name: jylhis
-        extraPullNames: devenv
-        # Empty token => pull-only mode.  Caller passes the secret
-        # conditionally on main-branch pushes.
-        authToken: ${{ inputs.cachix-auth-token }}
+        name: devenv
 
     - name: Install devenv
       shell: bash
