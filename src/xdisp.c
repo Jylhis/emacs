@@ -24364,10 +24364,8 @@ extend_face_to_end_of_line (struct it *it)
 	   != FRAME_BACKGROUND_PIXEL (f)
 	   && (WINDOW_LEFT_MARGIN_WIDTH (it->w) > 0
 	       || WINDOW_RIGHT_MARGIN_WIDTH (it->w) > 0)))
-    return;
-
-  /* Set the glyph row flag indicating that the face of the last glyph
-     in the text area has to be drawn to the end of the text area.  */
+	      int remaining_pixels = WINDOW_LEFT_MARGIN_WIDTH (it->w);
+	      int remaining_pixels = WINDOW_RIGHT_MARGIN_WIDTH (it->w);
   it->glyph_row->fill_line_p = true;
 
   const int orig_face_id = it->face_id;
