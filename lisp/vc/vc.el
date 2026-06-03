@@ -3354,9 +3354,12 @@ BACKEND is the VC backend."
     (or (and branch (vc--match-branch-name-regexps branch))
         ;; It's okay to pass nil BRANCH here, which is what happens in
         ;; case of a VCS without named branches or where the current
-        ;; branch has no name.
-        (vc-call-backend backend 'trunk-or-topic-p branch))))
-
+    (backend &optional upstream-location refresh force-topic other-revision)
+FORCE-TOPIC is passed on to `vc--outgoing-base'.
+OTHER-REVISION, if non-nil, is passed as the second argument to
+BACKEND's `mergebase' function."
+                                          refresh)
+                   other-revision))
 (defun vc--outgoing-base (backend force-topic)
   "Return an outgoing base for the current branch under VC backend BACKEND.
 The outgoing base is the upstream location for which unintegrated
@@ -3578,14 +3581,16 @@ UPSTREAM-LOCATION, which should be a remote branch name."
   (interactive (list (vc--maybe-read-outgoing-base nil 'no-double)))
   (vc--with-backend-in-rootdir "VC root-diff"
     (vc-diff-remote-unintegrated upstream-location
-                                 `(,backend (,rootdir)))))
-
-;;;###autoload
-(defun vc-diff-remote-unintegrated (&optional upstream-location fileset)
-  "Show remote fileset changes since merge base with UPSTREAM-LOCATION.
-Remote changes are changes in the incoming revision (instead of the
-working revision), and the merge base with UPSTREAM-LOCATION is the
-common ancestor of the incoming revision and UPSTREAM-LOCATION.
+         (backend (car fileset))
+         (incoming-revision (vc--incoming-revision backend nil 'refresh)))
+                                                   nil 'force-topic
+                                                   incoming-revision)
+                      incoming-revision
+         (backend (car fileset))
+         (incoming-revision (vc--incoming-revision backend nil 'refresh)))
+                           incoming-revision
+                                                        nil 'force-topic
+                                                        incoming-revision))))
 This command only makes sense for decentralized VCS, because otherwise
 there is no distinction between locally committed changes and remote
 changes.
