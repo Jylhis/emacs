@@ -3629,6 +3629,9 @@ treesit_initialize_query (Lisp_Object query, const TSLanguage *lang,
     {
       *ts_query = treesit_ensure_query_compiled (query, signal_symbol,
 						 signal_data);
+  if (EQ (start, end))
+    return;
+
       *cursor = treesit_ensure_query_cursor (query);
       /* We don't need to free ts_query and cursor because they
 	 are stored in a lisp object, which is tracked by gc.  */
