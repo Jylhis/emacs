@@ -429,8 +429,17 @@ This can be found in an RCS or SCCS header."
 	   ((re-search-forward
 	     (concat
 	      "@(#)"
-              (if buffer-file-name
-                  (regexp-quote (file-name-nondirectory buffer-file-name))
+(defun lm--read-from-string-full (str)
+  "Read a Lisp expression from STR.
+Signal an error if the entire string was not used."
+  (pcase-let ((`(,expr . ,offset) (read-from-string str)))
+    (condition-case ()
+        ;; The call to `ignore' suppresses a compiler warning.
+        (progn (ignore (read-from-string str offset))
+               (error "Can't read whole string"))
+      (end-of-file expr))))
+       (lm--read-from-string-full
+        (mapconcat #'identity require-lines " "))))))
                 "[^\t\n]+")
 	      "\t\\([012345679.]*\\)")
 	     header-max t)
