@@ -1428,7 +1428,11 @@ The return value is the target column for the file names."
 	      ;; Always revert when `dir-or-list' is a cons.  Also revert
 	      ;; if `dired-directory' is a cons but `dir-or-list' is not.
 	      ((or (consp dir-or-list) (consp dired-directory))
-	       (setq dired-directory dir-or-list)
+	    (progn
+                   ;; Clear stale state from prior `insert-directory'
+                   ;; invocations before reading this directory.
+                   (setq dired--ls-error-buffer nil)
+                   (dired-readin)
 	       (revert-buffer))
 	      ;; Always revert regardless of whether it has changed or not.
 	      ((eq dired-auto-revert-buffer t)
