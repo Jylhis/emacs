@@ -36,11 +36,13 @@ on:
 permissions:
   contents: read
 
+# Tag/manual only: docs-only edits cannot trigger this workflow, and
+# GitHub does not evaluate path filters for tag pushes anyway.
 # Don't cancel an in-progress release: once a tag is being processed we
-# want it to finish even if a follow-up push arrives.
+# want a rerun for the same ref to replace any stale attempt.
 concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ================================================================

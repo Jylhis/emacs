@@ -20,8 +20,16 @@ on:
   push:
     branches:
       - dev
+    paths-ignore:
+      - '**/*.md'
+      - '.claude/**'
+      - 'doc/**'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+      - '.claude/**'
+      - 'doc/**'
 
 permissions:
   contents: read
@@ -29,7 +37,7 @@ permissions:
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind a stale scan.
 concurrency:
-  group: sonarcloud-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -68,6 +76,10 @@ jobs:
     # re-runs on push to dev after the PR is merged.
     if: >-
       needs.classify.outputs.sonar == 'true'
+      && (
+        github.event_name != 'pull_request'
+        || github.event.pull_request.draft == false
+      )
       && (
         github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository

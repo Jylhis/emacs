@@ -17,11 +17,15 @@ on:
       - dev
       - master
       - 'emacs-*'
-      - 'feature/*'
-      - 'fix/*'
-    tags:
-      - '*'
+    paths-ignore:
+      - '**/*.md'
+      - '.claude/**'
+      - 'doc/**'
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '.claude/**'
+      - 'doc/**'
   workflow_dispatch:
 
 permissions:
@@ -30,7 +34,7 @@ permissions:
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind a stale build.
 concurrency:
-  group: meson-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -211,6 +215,9 @@ jobs:
           fi
           exit $status
 
+      - name: Check CI cost guards
+        run: bash .github/scripts/check-ci-cost-guards.sh
+
       # Workflow YAML lint.
       - name: Lint GitHub Actions workflows
         if: needs.classify.outputs.actionlint == 'true'
@@ -225,7 +232,12 @@ jobs:
   build-and-test:
     name: build + test (${{ matrix.label }})
     needs: [classify, lint]
-    if: needs.classify.outputs.linux_meson == 'true'
+    if: >-
+      needs.classify.outputs.linux_meson == 'true'
+      && (
+        github.event_name != 'pull_request'
+        || github.event.pull_request.draft == false
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     permissions:
@@ -628,7 +640,12 @@ jobs:
   macos-build-and-test:
     name: macos build + install (terminal-only)
     needs: [classify, lint]
-    if: needs.classify.outputs.macos_meson == 'true'
+    if: >-
+      needs.classify.outputs.macos_meson == 'true'
+      && (
+        github.event_name != 'pull_request'
+        || github.event.pull_request.draft == false
+      )
     runs-on: macos-14
     timeout-minutes: 90
 

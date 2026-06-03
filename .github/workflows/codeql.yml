@@ -9,8 +9,16 @@ on:
   push:
     branches:
       - dev
+    paths-ignore:
+      - '**/*.md'
+      - '.claude/**'
+      - 'doc/**'
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+      - '.claude/**'
+      - 'doc/**'
   schedule:
     - cron: '37 4 * * 1'
   workflow_dispatch:
@@ -21,7 +29,7 @@ permissions:
 # Cancel in-progress runs of the same workflow on the same ref so a
 # new push doesn't queue behind stale analysis.
 concurrency:
-  group: codeql-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -57,6 +65,10 @@ jobs:
       needs.classify.outputs.codeql_actions == 'true'
       && (
         github.event_name != 'pull_request'
+        || github.event.pull_request.draft == false
+      )
+      && (
+        github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository
       )
     runs-on: ubuntu-24.04
@@ -85,6 +97,10 @@ jobs:
     needs: [classify]
     if: >-
       needs.classify.outputs.codeql_cpp == 'true'
+      && (
+        github.event_name != 'pull_request'
+        || github.event.pull_request.draft == false
+      )
       && (
         github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository
@@ -116,6 +132,10 @@ jobs:
     needs: [classify]
     if: >-
       needs.classify.outputs.codeql_python == 'true'
+      && (
+        github.event_name != 'pull_request'
+        || github.event.pull_request.draft == false
+      )
       && (
         github.event_name != 'pull_request'
         || github.event.pull_request.head.repo.full_name == github.repository
