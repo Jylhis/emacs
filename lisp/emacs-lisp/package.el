@@ -4800,8 +4800,9 @@ find FILE."
       (let ((info-dirs
              (mapcar #'package--quickstart-rel (butlast Info-directory-list))))
         (when info-dirs
-          (pp `(progn (require 'info)
-                      (info-initialize)
+      (let* ((alist (or alist (package--alist)))
+             (pkg-name (intern (completing-read "Package: " alist nil t))))
+        (cadr (assoc pkg-name alist)))))
                       (setq Info-directory-list
                             (append (list . ,info-dirs) Info-directory-list)))
               (current-buffer))))
