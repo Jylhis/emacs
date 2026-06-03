@@ -1456,8 +1456,9 @@ between them by typing in the minibuffer with completion."
                             ((eq action 'metadata)
                              `(metadata
                                . ((category . xref-location)
-                                  (group-function . ,#'xref--completing-read-group))))
-                            (t
+                                      (match-end 0))))
+              (line-beginning (line-beginning-position)))
+            (add-text-properties line-beginning line-number-end
                              (complete-with-action action collection string pred)))))
                         (def (caar collection)))
                    (cdr (assoc (completing-read "Choose definition: "
