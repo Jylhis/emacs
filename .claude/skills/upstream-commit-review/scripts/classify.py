@@ -85,13 +85,13 @@ RENAMED_TO: dict[str, str] = {
 
 # Paths in areas this fork removed wholesale (autotools cutover, NS-only
 # focus, no lwlib/Xaw, no MSDOS/MinGW, no Haiku, no w32term/w32proc).
-# A commit whose every non-added file falls under one of these regexes
-# is SKIPPED with the `removed-area` bucket — there is nothing for the
-# human to triage, and the rows would otherwise repeat as REVIEW rows
-# (with `missing-file:...` reasons) on every run.  A commit that ALSO
-# touches files outside these areas still goes to REVIEW via the
-# missing-file rule so the human can decide whether the in-area portion
-# is worth a partial cherry-pick.
+# A commit whose every touched file falls under one of these regexes is
+# SKIPPED with the `removed-area` bucket — there is nothing for the human
+# to triage, and the rows would otherwise repeat as REVIEW rows (with
+# `missing-file:...` reasons) on every run.  A commit that ALSO touches
+# files outside these areas still goes to REVIEW via the missing-file rule
+# so the human can decide whether the in-area portion is worth a partial
+# cherry-pick.
 REMOVED_AREAS_RX = re.compile(
     r"^lwlib/"
     r"|^m4/"
@@ -141,10 +141,9 @@ class Commit:
 
     @property
     def all_in_removed_area(self) -> bool:
-        """True iff every non-added file is in a permanently-removed area."""
-        relevant = [f for f in self.files if f not in self.added_files]
-        return bool(relevant) and all(
-            REMOVED_AREAS_RX.search(f) for f in relevant
+        """True iff every touched file is in a permanently-removed area."""
+        return bool(self.files) and all(
+            REMOVED_AREAS_RX.search(f) for f in self.files
         )
 
 

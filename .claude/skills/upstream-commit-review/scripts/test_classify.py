@@ -127,6 +127,18 @@ class ClassifyTests(unittest.TestCase):
             self.assertEqual(d.bucket, "review")
             self.assertTrue(d.reason.startswith("missing-file:"))
 
+    def test_removed_area_mixed_added_live_file_still_reviews(self):
+        # Added files must also be part of the removed-area predicate.
+        # Otherwise a commit that modifies only removed files but adds a
+        # still-shipped file could be hidden by the SKIP rule before the
+        # missing-file/review rule has a chance to run.
+        c = commit("a" * 40, "Cross-area cleanup",
+                   ["lwlib/lwlib.c", "src/new-live-file.c"],
+                   added_files={"src/new-live-file.c"})
+        d = classify.classify(c)
+        self.assertEqual(d.bucket, "review")
+        self.assertTrue(d.reason.startswith("missing-file:"))
+
     def test_removed_area_translations_skips_non_en(self):
         c = commit("a" * 40, "; fr: Fix typos",
                    ["doc/translations/fr/info_common.mk"])
