@@ -57,6 +57,21 @@ def insert_snippets(text: str, lib_dir: Path) -> str:
                     out.append(snippet)
     return "".join(out)
 
+def _append_assert_static_assert(text: str, lib_dir: Path) -> str:
+    verify = (lib_dir / "verify.h").read_text()
+    verify = re.sub(r"/\*@assert\.h omit start@\*/.*?/\*@assert\.h omit end@\*/\n?", "", verify, flags=re.S)
+    verify = verify.replace("_gl_verify", "_gl_static_assert")
+    verify = verify.replace("_GL_VERIFY", "_GL_STATIC_ASSERT")
+    verify = re.sub(r"_GL\((_STATIC_ASSERT_H)\)", r"_GL\1", verify)
+    if not text.endswith("\n"):
+        text += "\n"
+    if not verify.endswith("\n"):
+        verify += "\n"
+    return text + verify
+
+def _rewrite_ieee754_guard(text: str) -> str:
+    return text.replace("#ifndef _GL_GNULIB_HEADER", "#if 0", 1)
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--input", type=Path, required=True)
@@ -73,6 +88,11 @@ def main() -> int:
         type=Path,
         help="JSON file mapping variable names to override values",
     )
+    p.add_argument("--append-assert-verify", action="store_true",
+                   help="append transformed verify.h body used by assert.h rule")
+    p.add_argument("--rewrite-ieee754-guard", action="store_true",
+                   help="rewrite ieee754.in.h gnulib guard to #if 0")
+
     p.add_argument(
         "--lib-dir",
         type=Path,
@@ -97,6 +117,13 @@ def main() -> int:
     out = substitute(src, overrides)
     if args.lib_dir is not None:
         out = insert_snippets(out, args.lib_dir)
+    if args.rewrite_ieee754_guard:
+        out = _rewrite_ieee754_guard(out)
+    if args.append_assert_verify:
+        if args.lib_dir is None:
+            print("--append-assert-verify requires --lib-dir", file=sys.stderr)
+            return 2
+        out = _append_assert_static_assert(out, args.lib_dir)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(out)
     return 0

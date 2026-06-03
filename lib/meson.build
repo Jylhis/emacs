@@ -379,6 +379,11 @@ foreach spec : gnulib_in_h_specs
   foreach k, v : overrides
     set_args += ['--set', k + '=' + v]
   endforeach
+  if name == 'assert'
+    set_args += ['--append-assert-verify']
+  elif name == 'ieee754'
+    set_args += ['--rewrite-ieee754-guard']
+  endif
   out = custom_target(
     name + '.h',
     input : name + '.in.h',
