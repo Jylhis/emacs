@@ -5077,9 +5077,6 @@ called from Lisp with optional argument OK-IF-ALREADY-EXISTS non-nil."
     ;; backend `delete-file' API.
     ;; If NEW is a directory we'll fail to delete it, consistent with
     ;; `rename-file' whose OK-IF-ALREADY-EXISTS argument similarly can't
-    ;; Update visited file names for buffers visiting files under OLD.
-    (when dirp
-      (dired-rename-subdir old new))
     ;; delete existing directories.
     (when (file-exists-p new)
       (if ok-if-already-exists (vc-delete-file new 'noconfirm)
@@ -5106,6 +5103,9 @@ called from Lisp with optional argument OK-IF-ALREADY-EXISTS non-nil."
     (vc-file-clearprops new)
     ;; Move the actual file (unless the backend did it already)
     (when (file-exists-p old) (rename-file old new))
+    ;; Update visited file names for buffers visiting files under OLD.
+    (when dirp
+      (dired-rename-subdir old new))
     ;; ?? Renaming a file might change its contents due to keyword expansion.
     ;; We should really check out a new copy if the old copy was precisely equal
     ;; to some checked-in revision.  However, testing for this is tricky....

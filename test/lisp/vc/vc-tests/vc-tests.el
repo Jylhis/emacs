@@ -712,7 +712,29 @@ This checks also `vc-backend' and `vc-responsible-backend'."
                               (directory-file-name new-dir))
               (should-not (file-exists-p tmp-name))
               (should (file-exists-p new-name))
-              (should (vc-registered new-name))))
+              (should (vc-registered new-name)))
+
+            ;; Test that visited buffers get updated file names.
+            (let* ((tmp-dir (expand-file-name "dir7/" default-directory))
+                   (tmp-name (expand-file-name "foo" tmp-dir))
+                   (new-dir (expand-file-name "dir8/" default-directory))
+                   (new-name (expand-file-name "foo" new-dir)))
+              (make-directory tmp-dir)
+              (write-region "foo" nil tmp-name nil 'nomessage)
+              (cl-letf (((symbol-function #'yes-or-no-p)
+                         #'always))
+                (vc-register `(,backend
+                               (,(file-relative-name tmp-name
+                                                     default-directory)))))
+              (let ((buf (find-file-noselect tmp-name)))
+                (unwind-protect
+                    (progn
+                      (vc-rename-file (directory-file-name tmp-dir)
+                                      (directory-file-name new-dir))
+                      ;; Buffer visiting a file under OLD must now
+                      ;; point to the corresponding path under NEW.
+                      (should (equal (buffer-file-name buf) new-name)))
+                  (kill-buffer buf)))))
 
         ;; Save exit.
         (ignore-errors
