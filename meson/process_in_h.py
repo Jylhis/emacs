@@ -59,10 +59,14 @@ def insert_snippets(text: str, lib_dir: Path) -> str:
 
 def _append_assert_static_assert(text: str, lib_dir: Path) -> str:
     verify = (lib_dir / "verify.h").read_text()
-    verify = re.sub(r"/\*@assert\.h omit start@\*/.*?/\*@assert\.h omit end@\*/\n?", "", verify, flags=re.S)
+    verify = re.sub(
+        r"/\*\s*@assert\.h omit start@\s*\*/.*?/\*\s*@assert\.h omit end@\s*\*/\n?",
+        "",
+        verify,
+        flags=re.S,
+    )
     verify = verify.replace("_gl_verify", "_gl_static_assert")
     verify = verify.replace("_GL_VERIFY", "_GL_STATIC_ASSERT")
-    verify = re.sub(r"_GL\((_STATIC_ASSERT_H)\)", r"_GL\1", verify)
     if not text.endswith("\n"):
         text += "\n"
     if not verify.endswith("\n"):
