@@ -56,7 +56,7 @@ jobs:
       is_tag: ${{ steps.v.outputs.is_tag }}
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
       - name: Compute version + tag
         id: v
         run: |
@@ -121,7 +121,7 @@ jobs:
           - { arch: aarch64, runs-on: ubuntu-24.04-arm, variant: nox,  setup_args: '-Dtoolkit=none -Dnative-compilation=aot -Dxft=disabled -Dxpm=disabled -Drsvg=disabled' }
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -193,7 +193,7 @@ jobs:
           - { arch: arm64,  runs-on: macos-14 }
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -243,7 +243,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Download per-arch Emacs.app artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v6.0.0
@@ -309,7 +309,7 @@ jobs:
           - { system: aarch64-darwin, runs-on: macos-14,         pkgs: 'emacs-jylhis emacs-jylhis-nox' }
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Install Nix
         uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3  # v31
@@ -386,7 +386,7 @@ jobs:
           - { abi: arm64-v8a,   ndk_arch: aarch64-linux-android }
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
 
       - name: Write ANDROID_STATUS doc
         env:
@@ -439,7 +439,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout (full history for log)
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
         with:
           fetch-depth: 0
 
