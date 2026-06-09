@@ -759,7 +759,7 @@ jobs:
           if-no-files-found: ignore
 
   # ================================================================
-  # C test-coverage build for SonarCloud.
+  # C test-coverage build + SonarCloud scan (dev pushes only).
   #
   # SonarCloud only analyzes the C/C++ (and meson/*.py) sources here --
   # there is no Elisp analyzer -- so the coverage that matters is C
@@ -768,12 +768,16 @@ jobs:
   # build, which is too expensive to repeat on every PR and would
   # invalidate the build-and-test ccache (instrumented objects carry
   # extra --coverage flags).  So this is a dedicated job that runs once
-  # per dev push, converts the gcov data to SonarQube's generic
-  # test-coverage XML with gcovr, and uploads it as an artifact.  The
-  # SonarCloud workflow downloads the latest such artifact off dev and
-  # imports it via sonar.coverageReportPaths.
+  # per dev push: it builds instrumented, runs ERT, converts the gcov
+  # data to SonarQube's generic test-coverage XML with gcovr, and runs
+  # the SonarCloud scan *in the same job* so the coverage report always
+  # matches the exact revision being scanned (no cross-workflow race or
+  # stale-revision line mismatches).  sonarcloud.yml handles PR scans
+  # (without coverage).  The scan step runs even when the instrumented
+  # build fails, so dev is still analyzed; the coverage report is then
+  # simply omitted rather than configured-but-missing.
   coverage:
-    name: coverage (C, for SonarCloud)
+    name: coverage + sonar (C, dev)
     needs: [classify, lint]
     # Only when buildable code changed, and only on dev pushes (not on
     # PRs or other branches) to bound the cost of the instrumented build.
@@ -787,6 +791,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          # Full history for SonarCloud blame-based new-code detection.
+          fetch-depth: 0
 
       - name: Set up devenv
         uses: ./.github/actions/setup-devenv
@@ -888,6 +895,9 @@ jobs:
       # indexes.  Restrict to the C we own (src/, lib-src/); gnulib
       # (lib/) and generated build/ sources are out of scope.
       - name: Generate SonarQube coverage report
+        # Only when the green-run gate (build + dump + smoke) passed; on
+        # failure coverage.xml is simply absent and the scan below omits
+        # the coverage property rather than pointing at a missing file.
         run: |
           gcovr --root "$PWD" \
             --sonarqube coverage.xml \
@@ -898,11 +908,29 @@ jobs:
           test -s coverage.xml
 
       - name: Upload coverage report
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
           name: coverage-sonarqube
           path: coverage.xml
           retention-days: 14
+
+      # Scan in the same job so the report matches the scanned revision.
+      # `always()` so dev is analyzed even if the instrumented build or
+      # tests failed above; the coverage define is added only when
+      # gcovr actually produced coverage.xml (hashFiles is empty
+      # otherwise), so a missing report never trips the generic coverage
+      # importer.  meson setup (run earlier) already wrote
+      # build/compile_commands.json for the CFamily analyzer.
+      - name: SonarQube Scan
+        if: always()
+        uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995  # v8.1.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            --define "sonar.cfamily.compile-commands=build/compile_commands.json"
+            ${{ hashFiles('coverage.xml') != '' && '--define sonar.coverageReportPaths=coverage.xml' || '' }}
 
       - name: Dump build diagnostics on failure
         if: failure()
