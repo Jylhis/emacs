@@ -1,0 +1,108 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Copyright (C) 2026 Free Software Foundation, Inc.
+#
+# This file is part of GNU Emacs.
+#
+# Composite action: install Nix + Cachix (with jylhis pull cache),
+# install devenv, and hoist the dev-shell env into $BASH_ENV so every
+# subsequent step's bash auto-sources it.  Used by CI jobs that need
+# the same Nix-pinned toolchain a local `devenv shell` provides.
+
+name: Set up devenv
+description: >-
+  Install Nix + devenv with the jylhis Cachix cache, then hoist the
+  dev-shell env into $BASH_ENV.
+
+inputs:
+  cachix-auth-token:
+    description: >-
+      Auth token for pushing to the jylhis Cachix cache.  Leave empty
+      for pull-only behaviour (fork PRs, non-main branches).
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Install Nix
+      uses: cachix/install-nix-action@8aa03977d8d733052d78f4e008a241fd1dbf36b3  # v31
+      with:
+        extra_nix_config: |
+          accept-flake-config = true
+          experimental-features = nix-command flakes
+
+    - name: Set up Cachix (pull jylhis + devenv)
+      uses: cachix/cachix-action@3ba601ff5bbb07c7220846facfa2cd81eeee15a1  # v16
+      with:
+        name: jylhis
+        extraPullNames: devenv
+        # Empty token => pull-only mode.  Caller passes the secret
+        # conditionally on main-branch pushes.
+        authToken: ${{ inputs.cachix-auth-token }}
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile add nixpkgs#devenv
+
+    # Activate devenv once, capture export statements via `declare -px`,
+    # and write to a file that every subsequent step's bash auto-sources
+    # via $BASH_ENV.  This keeps the wrapper setup hooks' NIX_LDFLAGS /
+    # NIX_CC_WRAPPER_TARGET_HOST_* env vars live across steps without
+    # re-entering `devenv shell` each time.  Same mechanism that
+    # nicknovitski/nix-develop uses for `nix develop`.
+    - name: Activate devenv into $BASH_ENV
+      shell: bash
+      run: |
+        set -euo pipefail
+        cat > /tmp/devenv-dump.sh <<'DUMP'
+        #!/usr/bin/env bash
+        set -euo pipefail
+        echo "[dump] DEVENV_ROOT=${DEVENV_ROOT:-<unset>}" >&2
+        echo "[dump] cc:       $(command -v cc || echo MISSING)" >&2
+        echo "[dump] autoconf: $(command -v autoconf || echo MISSING)" >&2
+        declare -px
+        DUMP
+        chmod +x /tmp/devenv-dump.sh
+        devenv shell -- /tmp/devenv-dump.sh > /tmp/devenv-env.raw
+        grep -E '^declare -x ' /tmp/devenv-env.raw > /tmp/devenv-env.sh || true
+        lines=$(wc -l < /tmp/devenv-env.sh)
+        echo "Captured $lines lines of export statements"
+        if [ "$lines" -lt 20 ]; then
+          echo "::error::devenv shell produced suspiciously little env ($lines lines)"
+          echo "Raw devenv shell output:"
+          cat /tmp/devenv-env.raw || true
+          cat /tmp/devenv-env.sh || true
+          exit 1
+        fi
+        # Strip vars GitHub or the runner controls -- we mustn't
+        # overwrite HOME, USER, GITHUB_*, etc.
+        grep -vE '^declare -[arx]+ (BASH|BASHOPTS|BASH_VERSINFO|BASH_VERSION|COMP_WORDBREAKS|DIRSTACK|EUID|GROUPS|HOSTNAME|HOSTTYPE|IFS|MACHTYPE|OLDPWD|OPTERR|OPTIND|OSTYPE|PIPESTATUS|PPID|PS[0-9]|PWD|RANDOM|SECONDS|SHELL|SHELLOPTS|SHLVL|UID|USER|LOGNAME|HOME|TERM|TMPDIR|GITHUB_[A-Z_]+|RUNNER_[A-Z_]+|ACTIONS_[A-Z_]+|ImageOS|ImageVersion|INVOCATION_ID|JOURNAL_STREAM|XDG_RUNTIME_DIR|DBUS_SESSION_BUS_ADDRESS|SYSTEMD_EXEC_PID|_)=' \
+          /tmp/devenv-env.sh > /tmp/devenv-env-filtered.sh
+        mv /tmp/devenv-env-filtered.sh /tmp/devenv-env.sh
+        echo "After filtering: $(wc -l < /tmp/devenv-env.sh) lines"
+        echo "BASH_ENV=/tmp/devenv-env.sh" >> "$GITHUB_ENV"
+
+        # Hoist the nix-store bin dirs from the devenv PATH into
+        # GITHUB_PATH so non-bash steps (JS-based GitHub Actions like
+        # hendrikmuhs/ccache-action) can find ccache etc.  $BASH_ENV
+        # only affects bash invocations; Node child processes use the
+        # raw runner PATH.  We only forward /nix/store/*/bin entries
+        # to keep the runner's standard PATH ordering intact for
+        # non-nix tools.
+        devenv_path=$(grep -E '^declare -[arx]+ PATH=' /tmp/devenv-env.sh \
+                        | head -1 \
+                        | sed -E 's/^[^"]*"//; s/"$//' || true)
+        if [ -n "$devenv_path" ]; then
+          nix_dirs=0
+          while IFS= read -r d; do
+            case "$d" in
+              /nix/store/*/bin)
+                echo "$d" >> "$GITHUB_PATH"
+                nix_dirs=$((nix_dirs + 1))
+                ;;
+            esac
+          done < <(printf '%s\n' "$devenv_path" | tr ':' '\n')
+          echo "Added $nix_dirs nix-store bin dirs to GITHUB_PATH"
+        else
+          echo "::warning::could not extract PATH from devenv env dump"
+        fi
