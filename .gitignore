@@ -25,6 +25,7 @@
 !.dir-locals.el
 !.gitattributes
 !.gitignore
+!.github
 !.gitlab-ci.yml
 !.mailmap
 
@@ -391,3 +392,18 @@ exec/config.h.in
 exec/config-mips.m4
 exec/configure
 exec/*.s.s
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# nix build output symlinks
+/result
+/result-*
+
+# pre-commit
+.pre-commit-config.yaml
