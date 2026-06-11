@@ -55,7 +55,7 @@
   wayland,
 
   apple-sdk,
-  sigtool,
+  darwin,
 
   src ? lib.cleanSource ../.,
   version ? "32.0.50",
@@ -159,7 +159,7 @@ stdenv.mkDerivation (_finalAttrs: {
     ]
   )
   ++ optionals stdenv.isDarwin [ apple-sdk ]
-  ++ optionals (stdenv.isDarwin && withNS) [ sigtool ];
+  ++ optionals (stdenv.isDarwin && withNS) [ darwin.sigtool ];
 
   # The git tree carries no pre-generated configure script.
   preConfigure = ''
