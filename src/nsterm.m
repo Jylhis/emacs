@@ -6662,27 +6662,22 @@ static const void *kEmacsAppKVOContext = &kEmacsAppKVOContext;
     [appearance_name isEqualToString:NSAppearanceNameDarkAqua];
   Vns_system_appearance = is_dark_appearance ? Qdark : Qlight;
 
-  run_system_appearance_change_hook ();
-}
-
-static inline void run_system_appearance_change_hook (void)
-{
-  if (NILP (Vns_system_appearance_change_functions))
-    return;
-
-  block_input ();
-
-  bool owfi = waiting_for_input;
-  waiting_for_input = false;
-
-  safe_calln (Qrun_hook_with_args,
-          Qns_system_appearance_change_functions,
-          Vns_system_appearance);
-  Fredisplay(Qt);
-
-  waiting_for_input = owfi;
-
-  unblock_input ();
+  /* KVO callbacks can fire deep inside the AppKit run loop, where
+     calling Lisp is not safe: the interpreter may be mid-eval or
+     mid-GC.  Queue the hook on pending_funcalls instead; the main
+     event loop runs it at the next safe opportunity.  This mirrors
+     how the systemWillSleep / systemDidWake handlers above defer
+     their Lisp work via the event queue.  */
+  if (!NILP (Vns_system_appearance_change_functions))
+    {
+      block_input ();
+      pending_funcalls
+	= Fcons (list3 (Qrun_hook_with_args,
+			Qns_system_appearance_change_functions,
+			Vns_system_appearance),
+		 pending_funcalls);
+      unblock_input ();
+    }
 }
 #endif /* (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101400 */
 
