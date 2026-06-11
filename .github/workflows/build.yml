@@ -282,7 +282,7 @@ jobs:
             lisp/net/eww-tests \
             lisp/vc/vc-git-tests \
             lisp/image-tests \
-            lisp/treesit-tests \
+            src/treesit-tests \
             lisp/subr-tests \
             src/fns-tests \
             src/editfns-tests
