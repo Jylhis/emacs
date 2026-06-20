@@ -32,6 +32,22 @@ final: _prev: {
     withNS = true;
   };
 
+  # --- Core + native-lisp split (caching) ------------------------------------
+  # Fast "core": AOT-compiles only the preloaded lisp; the rest JITs at runtime
+  # unless the companion native-lisp package is co-installed.  A C change
+  # rebuilds only this; the eln tree below is untouched.
+  emacs-jylhis-core = final.callPackage ./package.nix {
+    root = src;
+    nativeFullAot = false;
+  };
+
+  # The remaining lisp/ tree, AOT-compiled against emacs-jylhis-core as a
+  # separate, independently-cached derivation.  Co-install with the core
+  # (same profile) for full AOT coverage without a JIT first-run cost.
+  emacs-jylhis-native-lisp = final.callPackage ./native-lisp.nix {
+    emacs-core = final.emacs-jylhis-core;
+  };
+
   # Shorthand package set for the default build.
   emacsPackagesFor-jylhis = final.emacsPackagesFor final.emacs-jylhis;
 }

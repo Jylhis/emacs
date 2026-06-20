@@ -48,6 +48,9 @@
             default = pkgs.emacs-jylhis;
             emacs = pkgs.emacs-jylhis;
             emacs-nox = pkgs.emacs-jylhis-nox;
+            # Core + native-lisp split (independently cached); co-install both.
+            emacs-core = pkgs.emacs-jylhis-core;
+            emacs-native-lisp = pkgs.emacs-jylhis-native-lisp;
           }
           // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
             emacs-pgtk = pkgs.emacs-jylhis-pgtk;
