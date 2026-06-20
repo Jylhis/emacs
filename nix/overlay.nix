@@ -43,6 +43,10 @@ final: _prev: {
     nativeFullAot = false;
   };
 
+  # Standalone helper programs (emacsclient, etags, …) — independent of the
+  # Emacs C core, so they neither pull in temacs nor rebuild on src/*.c edits.
+  emacs-jylhis-lib-src = final.callPackage ./lib-src.nix { root = src; };
+
   # Shorthand package set for the default build.
   emacsPackagesFor-jylhis = final.emacsPackagesFor final.emacs-jylhis;
 }

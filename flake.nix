@@ -53,6 +53,8 @@
           emacs-nox = pkgs.emacs-jylhis-nox;
           # Lighter build: defers rarely-used libraries to runtime JIT.
           emacs-core = pkgs.emacs-jylhis-core;
+          # Standalone helper programs (emacsclient, etags, …).
+          emacs-tools = pkgs.emacs-jylhis-lib-src;
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           emacs-pgtk = pkgs.emacs-jylhis-pgtk;
