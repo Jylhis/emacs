@@ -71,7 +71,19 @@
 
         formatter = treefmtEval.config.build.wrapper;
 
-        checks.formatting = treefmtEval.config.build.check self;
+        checks = {
+          formatting = treefmtEval.config.build.check self;
+
+          # Build the terminal Emacs and assert it runs, has native
+          # compilation, and has tree-sitter linked in.
+          emacs-smoke = pkgs.runCommand "emacs-jylhis-smoke" { } ''
+            e=${pkgs.emacs-jylhis-nox}/bin/emacs
+            test "$($e --batch --eval '(princ (+ 1 1))')" = 2
+            $e --batch --eval '(unless (native-comp-available-p) (error "native-comp missing"))'
+            $e --batch --eval '(unless (treesit-available-p) (error "tree-sitter missing"))'
+            touch $out
+          '';
+        };
       }
     );
 }
