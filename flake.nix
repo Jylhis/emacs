@@ -29,6 +29,10 @@
     {
       overlays.default = overlay;
       lib = import ./nix/lib.nix { inherit emacs-overlay; };
+
+      nixosModules.default = ./nix/modules/nixos.nix;
+      homeManagerModules.default = ./nix/modules/home-manager.nix;
+      darwinModules.default = ./nix/modules/darwin.nix;
     }
     // flake-utils.lib.eachDefaultSystem (
       system:
