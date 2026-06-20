@@ -17,7 +17,7 @@ in
   config = lib.mkIf cfg.enable (
     lib.mkMerge [
       {
-        home.packages = [ cfg.finalPackage ];
+        home.packages = [ cfg.finalPackage ] ++ cfg.extraProfilePackages;
 
         home.sessionVariables = lib.mkIf cfg.defaultEditor {
           EDITOR = "emacsclient";

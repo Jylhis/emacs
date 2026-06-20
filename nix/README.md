@@ -29,9 +29,9 @@ nix build .#emacs-nox    # terminal build
 nix develop              # dev shell for incremental `make`
 ```
 
-Variants (overlay attrs / flake packages): `emacs` (default), `emacs-nox`,
-`emacs-pgtk`, `emacs-gtk3`, `emacs-macos`, plus the split pair `emacs-core` /
-`emacs-native-lisp`.
+Variants (overlay attrs / flake packages): `emacs` (default, full AOT),
+`emacs-nox`, `emacs-pgtk`, `emacs-gtk3`, `emacs-macos`, and `emacs-core`
+(lighter — see below).
 
 ## Modules
 
@@ -59,32 +59,41 @@ home-manager is the same under `inputs.emacs-jylhis.homeManagerModules.default`.
 | `enable` | Install the build |
 | `package` | Which variant (default `pkgs.emacs-jylhis`) |
 | `extraPackages` | `epkgs: [ ... ]` Elisp packages |
-| `extraProfilePackages` | Co-installed packages — set `[ pkgs.emacs-jylhis-native-lisp ]` with `emacs-jylhis-core` |
+| `extraProfilePackages` | Extra packages installed alongside (tools on PATH for the daemon) |
 | `defaultEditor` | Set `EDITOR=emacsclient` |
 | `daemon.enable` | Run `emacs --fg-daemon` as a user service |
 | `daemon.extraOptions` | Extra daemon args |
 
-## Caching and the build split
+## Caching: what works, and what doesn't
 
-Native compilation of the full `lisp/` tree (~2k `.eln`) dominates build time.
-Nix derivations are atomic on their source, and the C core + preloaded Lisp +
-`pdmp` dump are one coupled unit, so the core cannot be losslessly sub-divided.
-What *is* separable — and is the expensive part — is the non-preloaded `.eln`
-tree:
+Native compilation of the `lisp/` tree dominates build time. The obvious idea —
+split the core from the rest of the `.eln` and cache them independently — was
+tried and **does not work** here. Measured on this tree:
 
-- **`emacs-jylhis-core`** builds native-compilation in *default* mode (only the
-  preloaded Lisp is AOT-compiled; `NATIVE_FULL_AOT` is dropped). A C change
-  rebuilds only this — it never recompiles the whole `.eln` tree.
-- **`emacs-jylhis-native-lisp`** AOT-compiles the rest against the core binary
-  into its own `share/emacs/native-lisp/<abi>/`. `nixpkgs` `site-start.el`
-  unions that across `NIX_PROFILES`, so co-installing both
-  (`extraProfilePackages`) yields full AOT coverage with the two halves cached
-  independently. A Lisp change rebuilds only this half.
-- Third-party Elisp packages are already separate derivations via
+- `emacs` (full AOT): 3011 `.eln`.
+- `emacs-core` (default mode): 1667 `.eln`.
+
+The build already AOT-compiles every preloaded/loaded-at-build library (1667)
+to produce a working dumped Emacs; that set can't be deferred. A separate
+"compile the remaining lisp" derivation is defeated by three things: the
+installed lisp is gzip-compressed (`compress-install`), `.eln` filenames are
+hashed from the source's **absolute path and content** (so eln compiled
+elsewhere aren't found at runtime), and `load--fixup-all-elns` rewrites
+references after install. Even if forced to work, `emacs-core` still recompiles
+1667 `.eln` on *any* source change, so the incremental saving is small.
+
+So Nix derivations cannot give an incremental core/lisp split. The caching
+levers that **do** work:
+
+- **Cachix** — build once, substitute everywhere. Push the package outputs;
+  other machines and CI pull instead of building.
+- **`emacs-core`** — a genuinely lighter target: ~45% fewer `.eln`, faster to
+  build, smaller closure. The deferred libraries native-compile on first use
+  (JIT) into the user's eln-cache. Good for CI and constrained machines; it is
+  *not* an incremental-rebuild mechanism.
+- **Third-party Elisp packages** are already separate derivations via
   `emacsPackagesFor`; adding one never rebuilds Emacs.
-
-Push `emacs-core` and `emacs-native-lisp` to Cachix and machines substitute the
-expensive halves instead of building.
+- **The dev shell** is the real answer for iteration — see below.
 
 **For true file-level incrementality** (editing one file → only its dependents
 rebuild), Nix cannot help — use the dev shell, where Emacs's own Makefiles do

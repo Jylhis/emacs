@@ -46,14 +46,10 @@ in
     extraProfilePackages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [ ];
-      example = lib.literalExpression "[ pkgs.emacs-jylhis-native-lisp ]";
+      example = lib.literalExpression "[ pkgs.ripgrep pkgs.fd ]";
       description = ''
-        Extra packages installed into the same profile as Emacs.  Set this to
-        `[ pkgs.emacs-jylhis-native-lisp ]` when `package` is the fast
-        `emacs-jylhis-core` build: nixpkgs' site-start.el unions
-        `<profile>/share/emacs/native-lisp/` across profile entries, so the
-        co-installed AOT .eln are found and nothing JIT-compiles at runtime —
-        with core and native-lisp cached as separate derivations.
+        Extra packages installed into the same profile/system as Emacs — for
+        tools the daemon should find on PATH (ripgrep, language servers, etc.).
       '';
     };
 

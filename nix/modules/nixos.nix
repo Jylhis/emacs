@@ -14,7 +14,7 @@ in
   imports = [ ./program.nix ];
 
   config = lib.mkIf cfg.enable {
-    environment.systemPackages = [ cfg.finalPackage ];
+    environment.systemPackages = [ cfg.finalPackage ] ++ cfg.extraProfilePackages;
 
     environment.variables = lib.mkIf cfg.defaultEditor {
       EDITOR = lib.mkOverride 900 "emacsclient";
