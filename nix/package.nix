@@ -49,9 +49,10 @@ in
   withWebP = true;
 }).overrideAttrs
   (old: {
-    pname = "emacs-jylhis" + lib.optionalString noGui "-nox" + lib.optionalString (
-      withNativeCompilation && !nativeFullAot
-    ) "-core";
+    pname =
+      "emacs-jylhis"
+      + lib.optionalString noGui "-nox"
+      + lib.optionalString (withNativeCompilation && !nativeFullAot) "-core";
     inherit version src;
 
     # Drop NATIVE_FULL_AOT for the core build so `make` only AOT-compiles the

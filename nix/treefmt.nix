@@ -1,7 +1,6 @@
 # Formatter config for the Nix layer only.  Upstream Emacs sources (C, Elisp,
 # Texinfo) are deliberately excluded; they follow GNU style, not nixfmt.
-{ ... }:
-{
+_: {
   projectRootFile = "flake.nix";
 
   programs = {

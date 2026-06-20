@@ -47,25 +47,24 @@
         treefmtEval = treefmt-nix.lib.evalModule pkgs ./nix/treefmt.nix;
       in
       {
-        packages =
-          {
-            default = pkgs.emacs-jylhis;
-            emacs = pkgs.emacs-jylhis;
-            emacs-nox = pkgs.emacs-jylhis-nox;
-            # Lighter build: defers rarely-used libraries to runtime JIT.
-            emacs-core = pkgs.emacs-jylhis-core;
-          }
-          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
-            emacs-pgtk = pkgs.emacs-jylhis-pgtk;
-            emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
-          }
-          // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-            emacs-macos = pkgs.emacs-jylhis-macos;
-          };
+        packages = {
+          default = pkgs.emacs-jylhis;
+          emacs = pkgs.emacs-jylhis;
+          emacs-nox = pkgs.emacs-jylhis-nox;
+          # Lighter build: defers rarely-used libraries to runtime JIT.
+          emacs-core = pkgs.emacs-jylhis-core;
+        }
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
+          emacs-pgtk = pkgs.emacs-jylhis-pgtk;
+          emacs-gtk3 = pkgs.emacs-jylhis-gtk3;
+        }
+        // lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+          emacs-macos = pkgs.emacs-jylhis-macos;
+        };
 
         devShells.default = import ./nix/devshell.nix {
           inherit pkgs lib;
-          emacs-jylhis = pkgs.emacs-jylhis;
+          inherit (pkgs) emacs-jylhis;
         };
 
         formatter = treefmtEval.config.build.wrapper;

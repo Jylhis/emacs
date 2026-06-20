@@ -9,7 +9,11 @@
 
 let
   cfg = config.programs.emacs-jylhis;
-  daemonArgs = [ "${cfg.finalPackage}/bin/emacs" "--fg-daemon" ] ++ cfg.daemon.extraOptions;
+  daemonArgs = [
+    "${cfg.finalPackage}/bin/emacs"
+    "--fg-daemon"
+  ]
+  ++ cfg.daemon.extraOptions;
 in
 {
   imports = [ ./program.nix ];

@@ -84,7 +84,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    programs.emacs-jylhis.finalPackage =
-      (pkgs.emacsPackagesFor cfg.package).emacsWithPackages cfg.extraPackages;
+    programs.emacs-jylhis.finalPackage = (pkgs.emacsPackagesFor cfg.package).emacsWithPackages cfg.extraPackages;
   };
 }

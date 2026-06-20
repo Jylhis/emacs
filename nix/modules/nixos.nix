@@ -29,7 +29,11 @@ in
       serviceConfig = {
         Type = "notify";
         ExecStart = lib.escapeShellArgs (
-          [ "${cfg.finalPackage}/bin/emacs" "--fg-daemon" ] ++ cfg.daemon.extraOptions
+          [
+            "${cfg.finalPackage}/bin/emacs"
+            "--fg-daemon"
+          ]
+          ++ cfg.daemon.extraOptions
         );
         ExecStop = "${cfg.finalPackage}/bin/emacsclient --eval (kill-emacs)";
         # emacsclient kills the daemon with SIGTERM (15); treat as success.
