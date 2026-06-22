@@ -67,6 +67,10 @@ in
       difftastic
       git-imerge
 
+      # Admin tooling (spell-check, semantic C patches)
+      codespell
+      coccinelle
+
       # Debugging
       # gdb
     ])
@@ -82,6 +86,7 @@ in
         libgccjit
         gtk3
         xorg.libX11
+        xorg.libXpm
         xorg.libXfixes
         xorg.libXrender
         xorg.libXrandr
@@ -222,6 +227,53 @@ in
         set -euo pipefail
         cd "$DEVENV_ROOT"
         meson compile -C build emacs.pdmp
+      '';
+    };
+
+    # ---- Test helpers ----
+    emacs-test-file = {
+      description = "Run ERT tests for a single lisp/*.el file, e.g. emacs-test-file simple";
+      exec = ''
+        set -euo pipefail
+        FILE="''${1:?Usage: emacs-test-file <basename>}"
+        cd "$DEVENV_ROOT"
+        meson test -C build "lisp/''${FILE}-tests"
+      '';
+    };
+
+    # ---- Admin helpers ----
+    emacs-codespell = {
+      description = "Spell-check the source tree via admin/run-codespell.";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        codespell --config admin/.codespell.cfg "$@"
+      '';
+    };
+
+    emacs-bisect = {
+      description = "Start a git bisect session using admin/git-bisect-start.";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT"
+        bash admin/git-bisect-start "$@"
+      '';
+    };
+
+    # ---- Debug ----
+    emacs-debug = {
+      description = "Launch GDB (Linux) or LLDB (macOS) from src/ with auto-loaded init.";
+      exec = ''
+        set -euo pipefail
+        cd "$DEVENV_ROOT/src"
+        if command -v gdb >/dev/null 2>&1; then
+          gdb --args ./emacs "$@"
+        elif command -v lldb >/dev/null 2>&1; then
+          lldb -- ./emacs "$@"
+        else
+          echo "Neither gdb nor lldb found in PATH" >&2
+          exit 1
+        fi
       '';
     };
   };

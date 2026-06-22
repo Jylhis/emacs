@@ -291,7 +291,6 @@ use that string instead."
   "Non-nil means display inline images below image links."
   :type 'boolean
   :local t
-  :safe #'booleanp
   :version "31.1"
   :package-version "1.0")
 

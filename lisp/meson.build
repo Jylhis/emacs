@@ -17,6 +17,7 @@
 byte_compile_batch = files('../meson/byte_compile_batch.py')
 list_lisp_files = files('../meson/list_lisp_files.py')
 run_loaddefs = files('../meson/run_loaddefs.py')
+update_ldefs_boot = files('../meson/update_ldefs_boot.py')
 
 # ----------------------------------------------------------------------
 # loaddefs.el and *-loaddefs.el -- autoload extraction.  Mirrors the
@@ -55,6 +56,18 @@ loaddefs_stamp = custom_target(
              charscript_el, emoji_zwj_el, charsets_stamp,
              leim_list_stamp],
   build_by_default : true,
+)
+
+ldefs_boot_stamp = custom_target(
+  'ldefs-boot',
+  output : 'ldefs-boot.stamp',
+  command : [
+    py, update_ldefs_boot,
+    '--source-root', meson.global_source_root(),
+    '--stamp',       '@OUTPUT@',
+  ],
+  depends : [loaddefs_stamp],
+  build_by_default : false,
 )
 
 # ----------------------------------------------------------------------

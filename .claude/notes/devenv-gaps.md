@@ -3,53 +3,54 @@
 Packages and scripts that the upstream documentation recommends but
 are not yet in devenv.nix.
 
-## Missing packages
+## Status (updated 2026-06-01, JYL-28)
 
-| Package | Why | Source |
+Most gaps have been filled.  Remaining items noted below.
+
+## Package status
+
+| Package | Why | Status |
 |---------|-----|--------|
-| codespell | `admin/run-codespell` spell-checks the tree | admin/README |
-| coccinelle | Semantic C patches in `admin/coccinelle/` | admin/coccinelle/README |
-| tree-sitter | Grammar compatibility testing | admin/tree-sitter/ |
-| libgccjit | Native Lisp compilation (--with-native-compilation) | INSTALL |
-| harfbuzz | Complex text layout (recommended over m17n) | INSTALL |
-| librsvg | SVG image support | INSTALL |
-| libwebp | WebP image support | INSTALL |
-| libjpeg | JPEG image support | INSTALL |
-| libtiff | TIFF image support | INSTALL |
-| giflib | GIF image support | INSTALL |
-| libpng | PNG image support | INSTALL |
-| zlib | Required by libpng | INSTALL |
-| libxpm | XPM image support (X11 only) | INSTALL |
-| dbus | D-Bus support | INSTALL |
-| ImageMagick | Optional, disabled by default | INSTALL |
+| codespell | `admin/run-codespell` spell-checks the tree | **Added (JYL-28)** |
+| coccinelle | Semantic C patches in `admin/coccinelle/` | **Added (JYL-28)** |
+| libxpm | XPM image support (X11 only) | **Added (JYL-28)** |
+| tree-sitter | Grammar compatibility testing | Present (added earlier) |
+| libgccjit | Native Lisp compilation | Present, Linux-only (added earlier) |
+| harfbuzz | Complex text layout | Present (added earlier) |
+| librsvg | SVG image support | Present (added earlier) |
+| libwebp | WebP image support | Present (added earlier) |
+| libjpeg | JPEG image support | Present (added earlier) |
+| libtiff | TIFF image support | Present (added earlier) |
+| giflib | GIF image support | Present (added earlier) |
+| libpng | PNG image support | Present (added earlier) |
+| zlib | Required by libpng | Present (added earlier) |
+| dbus | D-Bus support | Present, Linux-only (added earlier) |
+| ImageMagick | Optional, disabled by default | Intentionally omitted (optional, disabled) |
 
-Note: on macOS with NS build, X11 image libraries are not needed --
-Cocoa frameworks handle images natively.  The libraries above matter
-primarily for X11/GTK builds.
+## Convenience scripts
 
-## Missing convenience scripts
-
-| Script | Purpose |
-|--------|---------|
-| emacs-emake | Wraps `admin/emake` for quiet build + auto-test |
-| emacs-codespell | Wraps `admin/run-codespell` |
-| emacs-test-file | Single-file test: `make -C test lisp/$1-tests` |
-| emacs-bisect | Wraps `admin/git-bisect-start` |
-| emacs-ns-install | macOS: `make install` + note about Emacs.app location |
-| emacs-debug | Launches `gdb` or `lldb` from src/ with correct paths |
+| Script | Purpose | Status |
+|--------|---------|--------|
+| emacs-run | Launch locally built Emacs -Q | Present (added earlier) |
+| emacs-run-installed | Launch installed Emacs -Q | Present (added earlier) |
+| meson-setup | Configure meson build dir | Present (added earlier) |
+| meson-build | Build all Meson targets | Present (added earlier) |
+| meson-pdmp | Run full dump cycle | Present (added earlier) |
+| emacs-test-file | Single-file ERT test runner | **Added (JYL-28)** |
+| emacs-codespell | Wraps `admin/run-codespell` | **Added (JYL-28)** |
+| emacs-bisect | Wraps `admin/git-bisect-start` | **Added (JYL-28)** |
+| emacs-debug | Launches GDB/LLDB from src/ | **Added (JYL-28)** |
+| emacs-emake | Wraps `admin/emake` | N/A — Meson-only fork, no emake |
+| emacs-ns-install | macOS: make install + Emacs.app note | Not yet added |
 
 ## GDB/LLDB auto-load setup
 
-etc/DEBUG recommends adding to ~/.gdbinit:
+`emacs-debug` script now launches from `src/` which auto-loads `src/.gdbinit`.
+One-time manual step still needed to add to `~/.gdbinit`:
 
     add-auto-load-safe-path /path/to/emacs/src/.gdbinit
 
-This could be done via an enterShell hook in devenv.nix, or
-documented as a one-time manual step.
-
 ## Out-of-tree build support
 
-INSTALL recommends out-of-tree builds for testing different
-configurations.  A script wrapping this pattern would be useful:
-
-    mkdir -p build && cd build && ../configure [opts] && make -j$(nproc)
+Not applicable: this fork supports in-tree builds only (Meson + Ninja).
+`build/` is the conventional out-of-tree build dir.
