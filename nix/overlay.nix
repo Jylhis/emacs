@@ -47,6 +47,22 @@ final: _prev: {
   # Emacs C core, so they neither pull in temacs nor rebuild on src/*.c edits.
   emacs-jylhis-lib-src = final.callPackage ./lib-src.nix { root = src; };
 
+  # The non-preloaded lisp/ tree, AOT-compiled against emacs-jylhis-core as a
+  # separate, independently-cached derivation.  Co-install with the core for
+  # full AOT coverage; a lisp-only edit rebuilds only this.
+  emacs-jylhis-native-lisp = final.callPackage ./native-lisp.nix {
+    emacs-core = final.emacs-jylhis-core;
+    apple-sdk = final.apple-sdk or null;
+  };
+
+  # Directly-runnable full Emacs assembled from the split: core wrapped to find
+  # the separately-built native-lisp eln.  Equivalent to the monolith, but its
+  # halves are cached independently.
+  emacs-jylhis-split = final.callPackage ./compose.nix {
+    emacs-core = final.emacs-jylhis-core;
+    native-lisp = final.emacs-jylhis-native-lisp;
+  };
+
   # Shorthand package set for the default build.
   emacsPackagesFor-jylhis = final.emacsPackagesFor final.emacs-jylhis;
 }

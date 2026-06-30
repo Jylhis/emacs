@@ -55,6 +55,10 @@
           emacs-core = pkgs.emacs-jylhis-core;
           # Standalone helper programs (emacsclient, etags, …).
           emacs-tools = pkgs.emacs-jylhis-lib-src;
+          # Non-preloaded lisp AOT-compiled separately; co-install with core.
+          emacs-native-lisp = pkgs.emacs-jylhis-native-lisp;
+          # Full Emacs assembled from the core + native-lisp split.
+          emacs-split = pkgs.emacs-jylhis-split;
         }
         // lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
           emacs-pgtk = pkgs.emacs-jylhis-pgtk;
